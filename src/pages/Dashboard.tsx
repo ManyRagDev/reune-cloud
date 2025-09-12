@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Calendar, Clock, MapPin, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Event {
   id: string;
@@ -62,45 +63,69 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent }: DashboardProps) =>
     });
   };
 
+  const cardColors = [
+    'bg-turquoise-light border-turquoise/20',
+    'bg-coral-light border-coral/20',
+    'bg-yellow-light border-yellow/20',
+    'bg-lavender-light border-lavender/20',
+    'bg-mint-light border-mint/20',
+    'bg-peach-light border-peach/20'
+  ];
+
+  const getCardColor = (index: number) => {
+    return cardColors[index % cardColors.length];
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-card border-b px-4 py-6">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-primary">ReUNE</h1>
-            <p className="text-muted-foreground">Olá, {userEmail}!</p>
+      <header className="bg-card/50 backdrop-blur-sm border-b border-border/50 px-6 py-8">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <div className="animate-fade-in">
+            <h1 className="text-3xl font-bold text-primary tracking-tight">ReUNE</h1>
+            <p className="text-muted-foreground font-medium">Olá, {userEmail}!</p>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4">
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Meus Eventos</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {events.filter(event => event.isOwner).map((event) => (
-              <Card key={event.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onViewEvent(event.id)}>
-                <CardHeader className="pb-2">
+      <main className="max-w-6xl mx-auto p-6 animate-fade-in">
+        <div className="mb-12">
+          <h2 className="text-2xl font-semibold mb-6 text-foreground">Meus Eventos</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {events.filter(event => event.isOwner).map((event, index) => (
+              <Card 
+                key={event.id} 
+                className={cn(
+                  "cursor-pointer group animate-scale-in",
+                  getCardColor(index)
+                )}
+                onClick={() => onViewEvent(event.id)}
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{event.title}</CardTitle>
-                    <Badge variant="secondary">Organizador</Badge>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Eventos</p>
+                      <CardTitle className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+                        {event.title}
+                      </CardTitle>
+                    </div>
+                    <Badge variant="secondary" className="bg-white/80 text-foreground text-xs px-3 py-1">
+                      Organizador
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {formatDate(event.date)}
+                  <div className="space-y-3">
+                    <div className="flex items-center text-sm font-medium text-foreground/80">
+                      <Calendar className="w-4 h-4 mr-3 text-primary" />
+                      {formatDate(event.date)} • {event.time}
                     </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4 mr-2" />
-                      {event.time}
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <MapPin className="w-4 h-4 mr-2" />
+                    <div className="flex items-center text-sm text-foreground/70">
+                      <MapPin className="w-4 h-4 mr-3 text-primary" />
                       {event.location}
                     </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Users className="w-4 h-4 mr-2" />
+                    <div className="flex items-center text-sm text-foreground/70">
+                      <Users className="w-4 h-4 mr-3 text-primary" />
                       {event.attendees} convidados
                     </div>
                   </div>
@@ -110,35 +135,47 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent }: DashboardProps) =>
           </div>
         </div>
 
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Convites Recebidos</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {events.filter(event => !event.isOwner).map((event) => (
-              <Card key={event.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onViewEvent(event.id)}>
-                <CardHeader className="pb-2">
+        <div className="mb-12">
+          <h2 className="text-2xl font-semibold mb-6 text-foreground">Convites Recebidos</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {events.filter(event => !event.isOwner).map((event, index) => (
+              <Card 
+                key={event.id} 
+                className={cn(
+                  "cursor-pointer group animate-scale-in",
+                  getCardColor(index + 3)
+                )}
+                onClick={() => onViewEvent(event.id)}
+                style={{ animationDelay: `${(index + 3) * 100}ms` }}
+              >
+                <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{event.title}</CardTitle>
-                    <Badge variant={event.status === 'confirmed' ? 'default' : event.status === 'pending' ? 'secondary' : 'destructive'}>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Eventos</p>
+                      <CardTitle className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+                        {event.title}
+                      </CardTitle>
+                    </div>
+                    <Badge 
+                      variant={event.status === 'confirmed' ? 'default' : event.status === 'pending' ? 'secondary' : 'destructive'}
+                      className="text-xs px-3 py-1"
+                    >
                       {event.status === 'confirmed' ? 'Confirmado' : event.status === 'pending' ? 'Pendente' : 'Recusado'}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {formatDate(event.date)}
+                  <div className="space-y-3">
+                    <div className="flex items-center text-sm font-medium text-foreground/80">
+                      <Calendar className="w-4 h-4 mr-3 text-primary" />
+                      {formatDate(event.date)} • {event.time}
                     </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4 mr-2" />
-                      {event.time}
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <MapPin className="w-4 h-4 mr-2" />
+                    <div className="flex items-center text-sm text-foreground/70">
+                      <MapPin className="w-4 h-4 mr-3 text-primary" />
                       {event.location}
                     </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Users className="w-4 h-4 mr-2" />
+                    <div className="flex items-center text-sm text-foreground/70">
+                      <Users className="w-4 h-4 mr-3 text-primary" />
                       {event.attendees} convidados
                     </div>
                   </div>
@@ -152,10 +189,12 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent }: DashboardProps) =>
       {/* Floating Action Button */}
       <Button
         onClick={onCreateEvent}
+        variant="floating"
         size="lg"
-        className="fixed bottom-6 right-6 rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-shadow"
+        className="fixed bottom-8 right-8 rounded-full w-16 h-16 text-lg animate-scale-in"
+        style={{ animationDelay: '600ms' }}
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-7 h-7" />
       </Button>
     </div>
   );

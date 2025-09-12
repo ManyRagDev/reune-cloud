@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,53 +10,66 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* ReUNE Brand Colors - Light grey background, blue accents */
-    --background: 210 20% 98%;
-    --foreground: 222.2 84% 4.9%;
+    /* Modern ReUNE Brand Colors - Pastel and vibrant palette */
+    --background: 220 15% 97%;
+    --foreground: 220 13% 18%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 13% 18%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 13% 18%;
 
-    /* Blue primary color for ReUNE brand */
-    --primary: 213 94% 68%;
+    /* Turquoise/Aqua primary color */
+    --primary: 174 62% 47%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Soft pastels for variety */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 13% 18%;
 
-    --muted: 210 40% 94%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 8.9% 46.1%;
 
-    --accent: 213 94% 68%;
+    --accent: 174 62% 47%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 213 94% 68%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 174 62% 47%;
 
-    --radius: 0.5rem;
+    /* Vibrant pastel colors for cards */
+    --turquoise: 174 62% 47%;
+    --turquoise-light: 174 55% 91%;
+    --coral: 14 91% 71%;
+    --coral-light: 14 85% 93%;
+    --yellow: 48 96% 72%;
+    --yellow-light: 48 90% 94%;
+    --lavender: 250 60% 80%;
+    --lavender-light: 250 55% 94%;
+    --mint: 158 64% 52%;
+    --mint-light: 158 58% 92%;
+    --peach: 25 95% 78%;
+    --peach-light: 25 88% 95%;
+
+    /* Shadows and effects */
+    --shadow-soft: 220 13% 91%;
+    --shadow-floating: 0 10px 30px -12px hsl(220 13% 91% / 0.25);
+    --shadow-card: 0 4px 20px -8px hsl(220 13% 91% / 0.35);
+
+    --radius: 1rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 174 62% 47%;
   }
 
   .dark {
