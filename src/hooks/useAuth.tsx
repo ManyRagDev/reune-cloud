@@ -6,7 +6,7 @@ const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
 
 // Mock user for dev mode
 const createMockUser = (): User => ({
-  id: 'dev00000-0000-0000-0000-000000000123',
+  id: 'd0000000-0000-0000-0000-000000000123',
   email: 'dev@reune.com',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
