@@ -81,34 +81,13 @@ const Login = ({ onLogin }: LoginProps) => {
     }
   };
 
-  const handleDevLogin = async () => {
-    setEmail(devCredentials.email);
-    setPassword(devCredentials.password);
-    setLoading(true);
+  const handleDevModeLogin = () => {
+    toast({
+      title: "Modo DEV ativado!",
+      description: "Entrando como desenvolvedor",
+    });
     
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: devCredentials.email,
-        password: devCredentials.password,
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Login DEV realizado com sucesso!",
-        description: "Modo desenvolvedor ativado",
-      });
-      
-      onLogin();
-    } catch (error: any) {
-      toast({
-        title: "Erro no login DEV",
-        description: error.message || "Credenciais de dev não encontradas. Crie a conta dev@reune.com com senha dev123456",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    onLogin();
   };
 
   return (
@@ -162,11 +141,11 @@ const Login = ({ onLogin }: LoginProps) => {
             <Button 
               type="button"
               className="w-full h-12 text-base font-semibold" 
-              onClick={handleDevLogin}
+              onClick={handleDevModeLogin}
               disabled={loading}
               variant="secondary"
             >
-              🚀 Login Rápido Dev
+              🚀 Entrar como DEV (Bypass Auth)
             </Button>
           )}
           

@@ -9,7 +9,7 @@ import EventDetails from './EventDetails';
 type Screen = 'login' | 'dashboard' | 'createEvent' | 'eventDetails';
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, enableDevMode } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
   const [selectedEventId, setSelectedEventId] = useState<string>('');
 
@@ -22,7 +22,12 @@ const Index = () => {
   }, [user, loading]);
 
   const handleLogin = () => {
-    // Auth state change will be handled by useAuth hook
+    // Ativa modo dev se estiver configurado
+    const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
+    if (isDevMode) {
+      enableDevMode();
+    }
+    setCurrentScreen('dashboard');
   };
 
   const handleLogout = async () => {

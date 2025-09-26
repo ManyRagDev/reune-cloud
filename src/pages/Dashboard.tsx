@@ -5,8 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Calendar, Clock, MapPin, Users, LogOut, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Event {
   id: number;
@@ -30,12 +30,41 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: DashboardProps) => {
-  const { user } = useAuth();
+  const { user, devModeActive, disableDevMode } = useAuth();
   const { toast } = useToast();
   const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
-  const isDevUser = user?.email === 'dev@reune.com';
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleLogout = async () => {
+    try {
+      if (devModeActive) {
+        // Modo dev: apenas desativa o modo dev
+        disableDevMode();
+        toast({
+          title: "Modo DEV desativado!",
+          description: "Voltando ao login",
+        });
+      } else {
+        // Modo normal: faz logout real do Supabase
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        
+        toast({
+          title: "Logout realizado com sucesso!",
+          description: "Até logo!",
+        });
+      }
+      
+      onLogout();
+    } catch (error: any) {
+      toast({
+        title: "Erro no logout",
+        description: error.message || "Ocorreu um erro. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchEvents = async () => {
     if (!user) return;
@@ -105,7 +134,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
   return (
     <div className="min-h-screen bg-background">
-      {isDevMode && isDevUser && (
+      {(isDevMode && devModeActive) && (
         <div className="fixed top-4 right-4 bg-green-500/90 text-green-900 px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium z-50">
           <AlertTriangle className="w-4 h-4" />
           LOGADO COMO DEV
@@ -120,7 +149,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={onLogout}
+            onClick={handleLogout}
             className="text-muted-foreground hover:text-foreground"
           >
             <LogOut className="w-4 h-4 mr-2" />
