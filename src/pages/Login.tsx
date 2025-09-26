@@ -59,6 +59,16 @@ const Login = ({ onLogin }: LoginProps) => {
           >
             {isLogin ? 'Entrar' : 'Criar Conta'}
           </Button>
+          
+          {/* Botão temporário para desenvolvimento */}
+          <Button 
+            className="w-full h-10 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white border-0" 
+            onClick={() => onLogin('admin@reune.dev')}
+            variant="outline"
+          >
+            🚀 Entrar Admin (Dev)
+          </Button>
+          
           <div className="text-center pt-4">
             <button
               type="button"
