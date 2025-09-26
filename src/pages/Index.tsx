@@ -12,8 +12,18 @@ const Index = () => {
   const { user, loading, enableDevMode } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  
+  const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
 
   useEffect(() => {
+    // Verifica se o modo dev está ativo no localStorage
+    const devModeFromStorage = isDevMode && localStorage.getItem('devModeActive') === 'true';
+    
+    if (devModeFromStorage) {
+      setCurrentScreen('dashboard');
+      return;
+    }
+    
     if (user) {
       setCurrentScreen('dashboard');
     } else if (!loading) {
@@ -22,11 +32,6 @@ const Index = () => {
   }, [user, loading]);
 
   const handleLogin = () => {
-    // Ativa modo dev se estiver configurado
-    const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
-    if (isDevMode) {
-      enableDevMode();
-    }
     setCurrentScreen('dashboard');
   };
 
@@ -65,7 +70,11 @@ const Index = () => {
     }
 
     if (!user && currentScreen !== 'login') {
-      return <Login onLogin={handleLogin} />;
+      // Verifica se o modo dev está ativo antes de forçar login
+      const devModeActive = isDevMode && localStorage.getItem('devModeActive') === 'true';
+      if (!devModeActive) {
+        return <Login onLogin={handleLogin} />;
+      }
     }
 
     switch (currentScreen) {

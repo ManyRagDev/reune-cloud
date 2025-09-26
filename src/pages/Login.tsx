@@ -82,12 +82,21 @@ const Login = ({ onLogin }: LoginProps) => {
   };
 
   const handleDevModeLogin = () => {
+    // Primeiro ativa o modo dev
+    const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
+    if (isDevMode) {
+      localStorage.setItem('devModeActive', 'true');
+    }
+    
     toast({
       title: "Modo DEV ativado!",
       description: "Entrando como desenvolvedor",
     });
     
-    onLogin();
+    // Força a navegação
+    setTimeout(() => {
+      onLogin();
+    }, 100);
   };
 
   return (
