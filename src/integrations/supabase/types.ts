@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      table_reune: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_date: string
+          event_time: string
+          id: number
+          is_public: boolean | null
+          location: string | null
+          max_attendees: number | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_time?: string
+          id?: number
+          is_public?: boolean | null
+          location?: string | null
+          max_attendees?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_time?: string
+          id?: number
+          is_public?: boolean | null
+          location?: string | null
+          max_attendees?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
