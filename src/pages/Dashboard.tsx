@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Calendar, Clock, MapPin, Users, LogOut } from 'lucide-react';
+import { Plus, Calendar, Clock, MapPin, Users, LogOut, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,6 +32,8 @@ interface DashboardProps {
 const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: DashboardProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
+  const isDevUser = user?.email === 'dev@reune.com';
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -103,6 +105,12 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
   return (
     <div className="min-h-screen bg-background">
+      {isDevMode && isDevUser && (
+        <div className="fixed top-4 right-4 bg-green-500/90 text-green-900 px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium z-50">
+          <AlertTriangle className="w-4 h-4" />
+          LOGADO COMO DEV
+        </div>
+      )}
       <header className="bg-card/50 backdrop-blur-sm border-b border-border/50 px-6 py-8">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="animate-fade-in">
