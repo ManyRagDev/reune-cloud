@@ -4,8 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package } from 'lucide-react';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface Attendee {
   id: string;
@@ -23,6 +29,12 @@ interface Supply {
 interface EventDetailsProps {
   eventId: string;
   onBack: () => void;
+}
+
+interface EventConfirmation {
+  date: 'confirmed' | 'rejected' | 'pending';
+  time: 'confirmed' | 'rejected' | 'pending';
+  location: 'confirmed' | 'rejected' | 'pending';
 }
 
 const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
@@ -55,6 +67,23 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [newGuest, setNewGuest] = useState('');
   const [newSupply, setNewSupply] = useState('');
 
+  // Estados para confirmação flexível
+  const [confirmation, setConfirmation] = useState<EventConfirmation>({
+    date: 'pending',
+    time: 'pending', 
+    location: 'pending'
+  });
+
+  // Estados para alternativas propostas
+  const [alternativeDate, setAlternativeDate] = useState<Date | undefined>();
+  const [alternativeTime, setAlternativeTime] = useState('');
+  const [alternativeLocation, setAlternativeLocation] = useState('');
+
+  // Estados para controlar popovers
+  const [showDatePopover, setShowDatePopover] = useState(false);
+  const [showTimePopover, setShowTimePopover] = useState(false);
+  const [showLocationPopover, setShowLocationPopover] = useState(false);
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('pt-BR', {
@@ -63,6 +92,73 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  // Função para verificar se pode confirmar presença
+  const canConfirmPresence = () => {
+    return confirmation.date === 'confirmed' && 
+           confirmation.time === 'confirmed' && 
+           confirmation.location === 'confirmed';
+  };
+
+  // Funções para confirmar/rejeitar cada item
+  const handleConfirmDate = () => {
+    setConfirmation(prev => ({ ...prev, date: 'confirmed' }));
+  };
+
+  const handleRejectDate = () => {
+    setConfirmation(prev => ({ ...prev, date: 'rejected' }));
+    setShowDatePopover(true);
+  };
+
+  const handleConfirmTime = () => {
+    setConfirmation(prev => ({ ...prev, time: 'confirmed' }));
+  };
+
+  const handleRejectTime = () => {
+    setConfirmation(prev => ({ ...prev, time: 'rejected' }));
+    setShowTimePopover(true);
+  };
+
+  const handleConfirmLocation = () => {
+    setConfirmation(prev => ({ ...prev, location: 'confirmed' }));
+  };
+
+  const handleRejectLocation = () => {
+    setConfirmation(prev => ({ ...prev, location: 'rejected' }));
+    setShowLocationPopover(true);
+  };
+
+  // Funções para salvar alternativas
+  const saveAlternativeDate = () => {
+    if (alternativeDate) {
+      toast({
+        title: "Alternativa de data enviada!",
+        description: `Você sugeriu: ${format(alternativeDate, 'dd/MM/yyyy', { locale: ptBR })}`,
+      });
+      setShowDatePopover(false);
+    }
+  };
+
+  const saveAlternativeTime = () => {
+    if (alternativeTime) {
+      toast({
+        title: "Alternativa de horário enviada!",
+        description: `Você sugeriu: ${alternativeTime}`,
+      });
+      setShowTimePopover(false);
+    }
+  };
+
+  const saveAlternativeLocation = () => {
+    if (alternativeLocation.trim()) {
+      toast({
+        title: "Alternativa de local enviada!",
+        description: `Você sugeriu: ${alternativeLocation}`,
+      });
+      setShowLocationPopover(false);
+      setAlternativeLocation('');
+    }
   };
 
   const addGuest = () => {
@@ -137,31 +233,175 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         <Card>
           <CardHeader>
             <CardTitle>Informações do Evento</CardTitle>
+            <CardDescription>Confirme ou sugira alternativas para cada item</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center text-muted-foreground">
-                <Calendar className="w-5 h-5 mr-3" />
-                <span>{formatDate(event.date)}</span>
+            <div className="space-y-6">
+              {/* Data */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center text-muted-foreground">
+                  <Calendar className="w-5 h-5 mr-3" />
+                  <div>
+                    <span className="font-medium text-foreground">Data:</span>
+                    <p>{formatDate(event.date)}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={confirmation.date === 'confirmed' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={handleConfirmDate}
+                  >
+                    <Check className="w-4 h-4 mr-1" />
+                    Confirmar
+                  </Button>
+                  <Popover open={showDatePopover} onOpenChange={setShowDatePopover}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={confirmation.date === 'rejected' ? 'destructive' : 'outline'}
+                        size="sm"
+                        onClick={handleRejectDate}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Não posso
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-4">
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Sugira uma data alternativa:</h4>
+                        <CalendarComponent
+                          mode="single"
+                          selected={alternativeDate}
+                          onSelect={setAlternativeDate}
+                          className="pointer-events-auto"
+                        />
+                        <Button onClick={saveAlternativeDate} className="w-full">
+                          Confirmar Alternativa
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
-              <div className="flex items-center text-muted-foreground">
-                <Clock className="w-5 h-5 mr-3" />
-                <span>{event.time}</span>
+
+              {/* Horário */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center text-muted-foreground">
+                  <Clock className="w-5 h-5 mr-3" />
+                  <div>
+                    <span className="font-medium text-foreground">Horário:</span>
+                    <p>{event.time}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={confirmation.time === 'confirmed' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={handleConfirmTime}
+                  >
+                    <Check className="w-4 h-4 mr-1" />
+                    Confirmar
+                  </Button>
+                  <Popover open={showTimePopover} onOpenChange={setShowTimePopover}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={confirmation.time === 'rejected' ? 'destructive' : 'outline'}
+                        size="sm"
+                        onClick={handleRejectTime}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Não posso
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-4">
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Sugira um horário alternativo:</h4>
+                        <Select value={alternativeTime} onValueChange={setAlternativeTime}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um horário" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => (
+                              <SelectItem key={i} value={`${i.toString().padStart(2, '0')}:00`}>
+                                {`${i.toString().padStart(2, '0')}:00`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button onClick={saveAlternativeTime} className="w-full">
+                          Confirmar Alternativa
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
-              <div className="flex items-center text-muted-foreground">
-                <MapPin className="w-5 h-5 mr-3" />
-                <span>{event.location}</span>
+
+              {/* Local */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center text-muted-foreground">
+                  <MapPin className="w-5 h-5 mr-3" />
+                  <div>
+                    <span className="font-medium text-foreground">Local:</span>
+                    <p>{event.location}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={confirmation.location === 'confirmed' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={handleConfirmLocation}
+                  >
+                    <Check className="w-4 h-4 mr-1" />
+                    Confirmar
+                  </Button>
+                  <Popover open={showLocationPopover} onOpenChange={setShowLocationPopover}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={confirmation.location === 'rejected' ? 'destructive' : 'outline'}
+                        size="sm"
+                        onClick={handleRejectLocation}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Não posso
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-4">
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Sugira um local alternativo:</h4>
+                        <Textarea
+                          placeholder="Digite sua sugestão de local..."
+                          value={alternativeLocation}
+                          onChange={(e) => setAlternativeLocation(e.target.value)}
+                        />
+                        <Button onClick={saveAlternativeLocation} className="w-full">
+                          Confirmar Alternativa
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
+
               {event.description && (
-                <p className="text-muted-foreground mt-4">{event.description}</p>
+                <div className="pt-4 border-t">
+                  <p className="text-muted-foreground">{event.description}</p>
+                </div>
               )}
             </div>
           </CardContent>
         </Card>
 
         {/* Confirmation Button */}
-        <Button className="w-full" size="lg">
-          Confirmar minha presença
+        <Button 
+          className="w-full" 
+          size="lg"
+          disabled={!canConfirmPresence()}
+        >
+          {canConfirmPresence() 
+            ? "Confirmar minha presença" 
+            : "Confirme data, hora e local para continuar"
+          }
         </Button>
 
         {/* Attendees */}
