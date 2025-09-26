@@ -3,20 +3,67 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface LoginProps {
-  onLogin: (email: string) => void;
+  onLogin: () => void;
 }
 
 const Login = ({ onLogin }: LoginProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      onLogin(email);
+    if (!email || !password) return;
+
+    setLoading(true);
+    
+    try {
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Bem-vindo de volta!",
+        });
+        
+        onLogin();
+      } else {
+        const redirectUrl = `${window.location.origin}/`;
+        
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl
+          }
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Conta criada com sucesso!",
+          description: "Verifique seu email para confirmar a conta.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro na autenticação",
+        description: error.message || "Ocorreu um erro. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,21 +99,13 @@ const Login = ({ onLogin }: LoginProps) => {
             />
           </div>
           <Button 
+            type="submit"
             className="w-full h-12 text-base font-semibold" 
             onClick={handleSubmit}
-            disabled={!email || !password}
+            disabled={!email || !password || loading}
             variant="floating"
           >
-            {isLogin ? 'Entrar' : 'Criar Conta'}
-          </Button>
-          
-          {/* Botão temporário para desenvolvimento */}
-          <Button 
-            className="w-full h-10 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white border-0" 
-            onClick={() => onLogin('admin@reune.dev')}
-            variant="outline"
-          >
-            🚀 Entrar Admin (Dev)
+            {loading ? 'Aguarde...' : (isLogin ? 'Entrar' : 'Criar Conta')}
           </Button>
           
           <div className="text-center pt-4">

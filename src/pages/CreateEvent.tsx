@@ -5,34 +5,70 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 interface CreateEventProps {
   onBack: () => void;
-  onCreate: (event: any) => void;
+  onCreate: () => void;
 }
 
 const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newEvent = {
-      id: Date.now().toString(),
-      title,
-      date,
-      time,
-      location,
-      description,
-      isOwner: true,
-      attendees: 0
-    };
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para criar um evento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
     
-    onCreate(newEvent);
+    try {
+      const { error } = await supabase
+        .from('table_reune')
+        .insert({
+          title,
+          event_date: date,
+          event_time: time,
+          location,
+          description,
+          user_id: user.id,
+          is_public: true,
+          status: 'published'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Evento criado com sucesso!",
+        description: "Seu evento foi publicado e já está disponível.",
+      });
+
+      onCreate();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao criar evento",
+        description: error.message || "Ocorreu um erro. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -117,8 +153,12 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
                 />
               </div>
 
-              <Button type="submit" className="w-full">
-                Criar Evento
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={loading || !title || !date || !time || !location}
+              >
+                {loading ? 'Criando...' : 'Criar Evento'}
               </Button>
             </form>
           </CardContent>
