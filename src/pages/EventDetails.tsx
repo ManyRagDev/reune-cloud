@@ -8,10 +8,13 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useEvent } from '@/hooks/useEvent';
+import { useAuth } from '@/hooks/useAuth';
+import { InviteGuestDialog } from '@/components/InviteGuestDialog';
 
 interface Attendee {
   id: string;
@@ -39,17 +42,8 @@ interface EventConfirmation {
 
 const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const { toast } = useToast();
-  
-  // Mock data - Em uma implementação real, viria do backend
-  const [event] = useState({
-    id: eventId,
-    title: 'Churrasco de Domingo',
-    date: '2024-01-20',
-    time: '15:00',
-    location: 'Casa do João - Rua das Flores, 123',
-    description: 'Um churrasco para relaxar e se divertir com os amigos!',
-    isOwner: eventId === '1'
-  });
+  const { user } = useAuth();
+  const { event, organizers, loading, error, isOrganizer, addOrganizer, removeOrganizer } = useEvent(eventId);
 
   const [attendees, setAttendees] = useState<Attendee[]>([
     { id: '1', name: 'Ana Silva', email: 'ana@email.com', status: 'confirmed' },
@@ -161,6 +155,21 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     }
   };
 
+  // Função para convidar pessoa (organizador ou convidado comum)
+  const handleInvite = async (email: string, name: string, shouldBeOrganizer: boolean) => {
+    // TODO: Implementar lógica de envio de convites
+    // Por enquanto, se for organizador, adiciona direto na tabela de organizadores
+    if (shouldBeOrganizer) {
+      // Aqui seria necessário primeiro criar/encontrar o usuário pelo email
+      // Por simplicidade, vamos simular
+      const mockUserId = `user-${Date.now()}`;
+      return await addOrganizer(mockUserId);
+    } else {
+      // Lógica para convites normais seria implementada aqui
+      return { error: null };
+    }
+  };
+
   const addGuest = () => {
     if (newGuest.trim()) {
       const newAttendee: Attendee = {
@@ -221,7 +230,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           </Button>
           <div>
             <h1 className="text-xl font-semibold">{event.title}</h1>
-            {event.isOwner && (
+            {isOrganizer && (
               <Badge variant="secondary" className="mt-1">Organizador</Badge>
             )}
           </div>
@@ -233,7 +242,9 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         <Card>
           <CardHeader>
             <CardTitle>Informações do Evento</CardTitle>
-            <CardDescription>Confirme ou sugira alternativas para cada item</CardDescription>
+            {!isOrganizer && (
+              <CardDescription>Confirme ou sugira alternativas para cada item</CardDescription>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -243,45 +254,47 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   <Calendar className="w-5 h-5 mr-3" />
                   <div>
                     <span className="font-medium text-foreground">Data:</span>
-                    <p>{formatDate(event.date)}</p>
+                    <p>{formatDate(event.event_date)}</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant={confirmation.date === 'confirmed' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={handleConfirmDate}
-                  >
-                    <Check className="w-4 h-4 mr-1" />
-                    Confirmar
-                  </Button>
-                  <Popover open={showDatePopover} onOpenChange={setShowDatePopover}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={confirmation.date === 'rejected' ? 'destructive' : 'outline'}
-                        size="sm"
-                        onClick={handleRejectDate}
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Não posso
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-4">
-                      <div className="space-y-4">
-                        <h4 className="font-medium">Sugira uma data alternativa:</h4>
-                        <CalendarComponent
-                          mode="single"
-                          selected={alternativeDate}
-                          onSelect={setAlternativeDate}
-                          className="pointer-events-auto"
-                        />
-                        <Button onClick={saveAlternativeDate} className="w-full">
-                          Confirmar Alternativa
+                {!isOrganizer && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant={confirmation.date === 'confirmed' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={handleConfirmDate}
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Confirmar
+                    </Button>
+                    <Popover open={showDatePopover} onOpenChange={setShowDatePopover}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={confirmation.date === 'rejected' ? 'destructive' : 'outline'}
+                          size="sm"
+                          onClick={handleRejectDate}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Não posso
                         </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-4">
+                        <div className="space-y-4">
+                          <h4 className="font-medium">Sugira uma data alternativa:</h4>
+                          <CalendarComponent
+                            mode="single"
+                            selected={alternativeDate}
+                            onSelect={setAlternativeDate}
+                            className="pointer-events-auto"
+                          />
+                          <Button onClick={saveAlternativeDate} className="w-full">
+                            Confirmar Alternativa
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
 
               {/* Horário */}
@@ -290,51 +303,53 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   <Clock className="w-5 h-5 mr-3" />
                   <div>
                     <span className="font-medium text-foreground">Horário:</span>
-                    <p>{event.time}</p>
+                    <p>{event.event_time}</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant={confirmation.time === 'confirmed' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={handleConfirmTime}
-                  >
-                    <Check className="w-4 h-4 mr-1" />
-                    Confirmar
-                  </Button>
-                  <Popover open={showTimePopover} onOpenChange={setShowTimePopover}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={confirmation.time === 'rejected' ? 'destructive' : 'outline'}
-                        size="sm"
-                        onClick={handleRejectTime}
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Não posso
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-4">
-                      <div className="space-y-4">
-                        <h4 className="font-medium">Sugira um horário alternativo:</h4>
-                        <Select value={alternativeTime} onValueChange={setAlternativeTime}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um horário" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 24 }, (_, i) => (
-                              <SelectItem key={i} value={`${i.toString().padStart(2, '0')}:00`}>
-                                {`${i.toString().padStart(2, '0')}:00`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button onClick={saveAlternativeTime} className="w-full">
-                          Confirmar Alternativa
+                {!isOrganizer && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant={confirmation.time === 'confirmed' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={handleConfirmTime}
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Confirmar
+                    </Button>
+                    <Popover open={showTimePopover} onOpenChange={setShowTimePopover}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={confirmation.time === 'rejected' ? 'destructive' : 'outline'}
+                          size="sm"
+                          onClick={handleRejectTime}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Não posso
                         </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-4">
+                        <div className="space-y-4">
+                          <h4 className="font-medium">Sugira um horário alternativo:</h4>
+                          <Select value={alternativeTime} onValueChange={setAlternativeTime}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um horário" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 24 }, (_, i) => (
+                                <SelectItem key={i} value={`${i.toString().padStart(2, '0')}:00`}>
+                                  {`${i.toString().padStart(2, '0')}:00`}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button onClick={saveAlternativeTime} className="w-full">
+                            Confirmar Alternativa
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
 
               {/* Local */}
@@ -346,41 +361,43 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                     <p>{event.location}</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant={confirmation.location === 'confirmed' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={handleConfirmLocation}
-                  >
-                    <Check className="w-4 h-4 mr-1" />
-                    Confirmar
-                  </Button>
-                  <Popover open={showLocationPopover} onOpenChange={setShowLocationPopover}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={confirmation.location === 'rejected' ? 'destructive' : 'outline'}
-                        size="sm"
-                        onClick={handleRejectLocation}
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Não posso
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-4">
-                      <div className="space-y-4">
-                        <h4 className="font-medium">Sugira um local alternativo:</h4>
-                        <Textarea
-                          placeholder="Digite sua sugestão de local..."
-                          value={alternativeLocation}
-                          onChange={(e) => setAlternativeLocation(e.target.value)}
-                        />
-                        <Button onClick={saveAlternativeLocation} className="w-full">
-                          Confirmar Alternativa
+                {!isOrganizer && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant={confirmation.location === 'confirmed' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={handleConfirmLocation}
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Confirmar
+                    </Button>
+                    <Popover open={showLocationPopover} onOpenChange={setShowLocationPopover}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={confirmation.location === 'rejected' ? 'destructive' : 'outline'}
+                          size="sm"
+                          onClick={handleRejectLocation}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Não posso
                         </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-4">
+                        <div className="space-y-4">
+                          <h4 className="font-medium">Sugira um local alternativo:</h4>
+                          <Textarea
+                            placeholder="Digite sua sugestão de local..."
+                            value={alternativeLocation}
+                            onChange={(e) => setAlternativeLocation(e.target.value)}
+                          />
+                          <Button onClick={saveAlternativeLocation} className="w-full">
+                            Confirmar Alternativa
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
 
               {event.description && (
@@ -392,17 +409,66 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           </CardContent>
         </Card>
 
-        {/* Confirmation Button */}
-        <Button 
-          className="w-full" 
-          size="lg"
-          disabled={!canConfirmPresence()}
-        >
-          {canConfirmPresence() 
-            ? "Confirmar minha presença" 
-            : "Confirme data, hora e local para continuar"
-          }
-        </Button>
+        {/* Confirmation Button - apenas para convidados */}
+        {!isOrganizer && (
+          <Button 
+            className="w-full" 
+            size="lg"
+            disabled={!canConfirmPresence()}
+          >
+            {canConfirmPresence() 
+              ? "Confirmar minha presença" 
+              : "Confirme data, hora e local para continuar"
+            }
+          </Button>
+        )}
+
+        {/* Organizers - apenas organizadores podem ver e editar */}
+        {isOrganizer && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center">
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Organizadores ({1 + organizers.length})
+                </CardTitle>
+                <InviteGuestDialog onInvite={handleInvite} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {/* Criador do evento */}
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div>
+                    <p className="font-medium">Criador do evento</p>
+                    <p className="text-sm text-muted-foreground">ID: {event.user_id}</p>
+                  </div>
+                  <Badge variant="default">Organizador Principal</Badge>
+                </div>
+                
+                {/* Co-organizadores */}
+                {organizers.map((organizer) => (
+                  <div key={organizer.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Co-organizador</p>
+                      <p className="text-sm text-muted-foreground">ID: {organizer.user_id}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Adicionado em {new Date(organizer.added_at).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeOrganizer(organizer.id)}
+                    >
+                      <UserMinus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Attendees */}
         <Card>
@@ -414,6 +480,9 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   Convidados ({attendees.length})
                 </CardTitle>
               </div>
+              {!isOrganizer && (
+                <InviteGuestDialog onInvite={(email, name) => handleInvite(email, name, false)} />
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -434,7 +503,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 </div>
               ))}
               
-              {event.isOwner && (
+              {isOrganizer && (
                 <div className="flex gap-2 mt-4">
                   <Input
                     placeholder="Nome do convidado..."
@@ -500,7 +569,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 </div>
               ))}
               
-              {event.isOwner && (
+              {isOrganizer && (
                 <div className="flex gap-2 mt-4">
                   <Input
                     placeholder="Adicionar item..."

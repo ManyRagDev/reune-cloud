@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      event_organizers: {
+        Row: {
+          added_at: string | null
+          added_by: string
+          event_id: number | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string | null
+          added_by: string
+          event_id?: number | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string | null
+          added_by?: string
+          event_id?: number | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_organizers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       table_reune: {
         Row: {
           created_at: string
