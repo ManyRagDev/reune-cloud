@@ -159,6 +159,11 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           </CardContent>
         </Card>
 
+        {/* Confirmation Button */}
+        <Button className="w-full" size="lg">
+          Confirmar minha presença
+        </Button>
+
         {/* Attendees */}
         <Card>
           <CardHeader>
