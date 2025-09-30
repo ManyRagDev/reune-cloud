@@ -120,12 +120,12 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
   }
 
   const cardColors = [
-    'bg-turquoise-light border-turquoise/20',
-    'bg-coral-light border-coral/20',
-    'bg-yellow-light border-yellow/20',
-    'bg-lavender-light border-lavender/20',
-    'bg-mint-light border-mint/20',
-    'bg-peach-light border-peach/20'
+    'bg-orange-light border-orange/20',
+    'bg-gold-light border-gold/20',
+    'bg-teal-light border-teal/20',
+    'bg-cyan-light border-cyan/20',
+    'bg-orange-light border-orange/30',
+    'bg-cyan-light border-cyan/30'
   ];
 
   const getCardColor = (index: number) => {
@@ -135,7 +135,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
   return (
     <div className="min-h-screen bg-background">
       {(isDevMode && devModeActive) && (
-        <div className="fixed top-4 right-4 bg-green-500/90 text-green-900 px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium z-50">
+        <div className="fixed top-4 right-4 bg-secondary/90 text-secondary-foreground px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium z-50">
           <AlertTriangle className="w-4 h-4" />
           LOGADO COMO DEV
         </div>
@@ -213,49 +213,36 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
         </div>
 
         <div className="mb-12">
-          <h2 className="text-2xl font-semibold mb-6 text-foreground">Convites Recebidos</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <h2 className="text-2xl font-semibold mb-6 text-foreground">Eventos Pendentes</h2>
+          <p className="text-sm text-muted-foreground mb-4">Eventos aguardando sua confirmação</p>
+          <div className="flex flex-wrap gap-3">
             {events.filter(event => !event.isOwner).length === 0 ? (
-              <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">Você não foi convidado para nenhum evento ainda.</p>
-              </div>
+              <p className="text-muted-foreground text-sm">Nenhum evento pendente.</p>
             ) : (
               events.filter(event => !event.isOwner).map((event, index) => (
-                <Card 
-                  key={event.id} 
+                <div
+                  key={event.id}
+                  onClick={() => onViewEvent(event.id.toString())}
                   className={cn(
-                    "cursor-pointer group animate-scale-in",
+                    "px-6 py-4 rounded-xl cursor-pointer transition-all hover:scale-105 hover:shadow-lg",
+                    "border-2 flex items-center gap-3 animate-scale-in",
                     getCardColor(index + 3)
                   )}
-                  onClick={() => onViewEvent(event.id.toString())}
                   style={{ animationDelay: `${(index + 3) * 100}ms` }}
                 >
-                  <CardHeader className="pb-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Eventos</p>
-                        <CardTitle className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
-                          {event.title}
-                        </CardTitle>
-                      </div>
-                      <Badge variant="secondary" className="text-xs px-3 py-1">
-                        Público
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center text-sm font-medium text-foreground/80">
-                        <Calendar className="w-4 h-4 mr-3 text-primary" />
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="font-semibold text-foreground">{event.title}</p>
+                      <p className="text-xs text-muted-foreground">
                         {formatDate(event.event_date)} • {event.event_time}
-                      </div>
-                      <div className="flex items-center text-sm text-foreground/70">
-                        <MapPin className="w-4 h-4 mr-3 text-primary" />
-                        {event.location || 'Local não informado'}
-                      </div>
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    Pendente
+                  </Badge>
+                </div>
               ))
             )}
           </div>

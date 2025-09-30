@@ -15,6 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { useEvent } from '@/hooks/useEvent';
 import { useAuth } from '@/hooks/useAuth';
 import { InviteGuestDialog } from '@/components/InviteGuestDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Attendee {
   id: string;
@@ -77,6 +78,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [showDatePopover, setShowDatePopover] = useState(false);
   const [showTimePopover, setShowTimePopover] = useState(false);
   const [showLocationPopover, setShowLocationPopover] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -152,6 +154,83 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       });
       setShowLocationPopover(false);
       setAlternativeLocation('');
+    }
+  };
+
+  // Função para salvar confirmação no Supabase
+  const handleSaveConfirmation = async () => {
+    if (!user || !event) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('event_confirmations')
+        .upsert({
+          event_id: Number(event.id),
+          user_id: user.id,
+          date_confirmed: confirmation.date === 'confirmed',
+          time_confirmed: confirmation.time === 'confirmed',
+          location_confirmed: confirmation.location === 'confirmed',
+          presence_confirmed: false,
+          alternative_date: confirmation.date === 'rejected' && alternativeDate 
+            ? alternativeDate.toISOString().split('T')[0] 
+            : null,
+          alternative_time: confirmation.time === 'rejected' ? alternativeTime : null,
+          alternative_location: confirmation.location === 'rejected' ? alternativeLocation : null,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Configurações salvas!",
+        description: "Suas preferências foram registradas.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar suas preferências.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Função para confirmar presença
+  const handleConfirmPresence = async () => {
+    if (!user || !event) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('event_confirmations')
+        .upsert({
+          event_id: Number(event.id),
+          user_id: user.id,
+          date_confirmed: true,
+          time_confirmed: true,
+          location_confirmed: true,
+          presence_confirmed: true,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Presença confirmada!",
+        description: "Sua confirmação foi registrada com sucesso.",
+      });
+
+      // Volta ao dashboard após confirmar
+      setTimeout(() => {
+        onBack();
+      }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao confirmar",
+        description: error.message || "Não foi possível confirmar sua presença.",
+        variant: "destructive",
+      });
+      setSaving(false);
     }
   };
 
@@ -433,18 +512,32 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           </CardContent>
         </Card>
 
-        {/* Confirmation Button - apenas para convidados */}
+        {/* Confirmation Buttons - apenas para convidados */}
         {!isOrganizer && (
-          <Button 
-            className="w-full" 
-            size="lg"
-            disabled={!canConfirmPresence()}
-          >
-            {canConfirmPresence() 
-              ? "Confirmar minha presença" 
-              : "Confirme data, hora e local para continuar"
-            }
-          </Button>
+          <div className="space-y-3">
+            <Button 
+              className="w-full" 
+              size="lg"
+              disabled={!canConfirmPresence() || saving}
+              onClick={handleConfirmPresence}
+            >
+              {saving ? "Salvando..." : canConfirmPresence() 
+                ? "Confirmar minha presença" 
+                : "Confirme data, hora e local para continuar"
+              }
+            </Button>
+            {(confirmation.date !== 'pending' || confirmation.time !== 'pending' || confirmation.location !== 'pending') && (
+              <Button 
+                variant="outline"
+                className="w-full" 
+                size="lg"
+                disabled={saving}
+                onClick={handleSaveConfirmation}
+              >
+                {saving ? "Salvando..." : "Salvar Configurações"}
+              </Button>
+            )}
+          </div>
         )}
 
         {/* Organizers - apenas organizadores podem ver e editar */}

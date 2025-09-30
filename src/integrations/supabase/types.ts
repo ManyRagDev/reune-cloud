@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      event_confirmations: {
+        Row: {
+          alternative_date: string | null
+          alternative_location: string | null
+          alternative_time: string | null
+          created_at: string
+          date_confirmed: boolean | null
+          event_id: number
+          id: string
+          location_confirmed: boolean | null
+          presence_confirmed: boolean | null
+          time_confirmed: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alternative_date?: string | null
+          alternative_location?: string | null
+          alternative_time?: string | null
+          created_at?: string
+          date_confirmed?: boolean | null
+          event_id: number
+          id?: string
+          location_confirmed?: boolean | null
+          presence_confirmed?: boolean | null
+          time_confirmed?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alternative_date?: string | null
+          alternative_location?: string | null
+          alternative_time?: string | null
+          created_at?: string
+          date_confirmed?: boolean | null
+          event_id?: number
+          id?: string
+          location_confirmed?: boolean | null
+          presence_confirmed?: boolean | null
+          time_confirmed?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_confirmations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_organizers: {
         Row: {
           added_at: string | null
