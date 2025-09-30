@@ -60,30 +60,22 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Vibrant pastels
-        turquoise: {
-          DEFAULT: "hsl(var(--turquoise))",
-          light: "hsl(var(--turquoise-light))",
+        // ReUNE Logo Colors
+        orange: {
+          DEFAULT: "hsl(var(--orange))",
+          light: "hsl(var(--orange-light))",
         },
-        coral: {
-          DEFAULT: "hsl(var(--coral))",
-          light: "hsl(var(--coral-light))",
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          light: "hsl(var(--gold-light))",
         },
-        yellow: {
-          DEFAULT: "hsl(var(--yellow))",
-          light: "hsl(var(--yellow-light))",
+        teal: {
+          DEFAULT: "hsl(var(--teal))",
+          light: "hsl(var(--teal-light))",
         },
-        lavender: {
-          DEFAULT: "hsl(var(--lavender))",
-          light: "hsl(var(--lavender-light))",
-        },
-        mint: {
-          DEFAULT: "hsl(var(--mint))",
-          light: "hsl(var(--mint-light))",
-        },
-        peach: {
-          DEFAULT: "hsl(var(--peach))",
-          light: "hsl(var(--peach-light))",
+        cyan: {
+          DEFAULT: "hsl(var(--cyan))",
+          light: "hsl(var(--cyan-light))",
         },
       },
       borderRadius: {

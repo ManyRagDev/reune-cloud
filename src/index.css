@@ -10,66 +10,71 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Modern ReUNE Brand Colors - Pastel and vibrant palette */
-    --background: 220 15% 97%;
-    --foreground: 220 13% 18%;
+    /* ReUNE Brand Colors - Logo Palette */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 26%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 13% 18%;
+    --card-foreground: 0 0% 26%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 13% 18%;
+    --popover-foreground: 0 0% 26%;
 
-    /* Turquoise/Aqua primary color */
-    --primary: 174 62% 47%;
+    /* Laranja Vibrante - Energia, CTAs primários */
+    --primary: 16 100% 57%;
     --primary-foreground: 0 0% 100%;
 
-    /* Soft pastels for variety */
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 13% 18%;
+    /* Azul Petróleo/Teal - Confiança, base, profissionalismo */
+    --secondary: 173 100% 24%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 14% 95%;
-    --muted-foreground: 220 8.9% 46.1%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 74%;
 
-    --accent: 174 62% 47%;
+    /* Azul Claro/Ciano - Modernidade, interatividade secundária */
+    --accent: 187 100% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 174 62% 47%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 16 100% 57%;
 
-    /* Vibrant pastel colors for cards */
-    --turquoise: 174 62% 47%;
-    --turquoise-light: 174 55% 91%;
-    --coral: 14 91% 71%;
-    --coral-light: 14 85% 93%;
-    --yellow: 48 96% 72%;
-    --yellow-light: 48 90% 94%;
-    --lavender: 250 60% 80%;
-    --lavender-light: 250 55% 94%;
-    --mint: 158 64% 52%;
-    --mint-light: 158 58% 92%;
-    --peach: 25 95% 78%;
-    --peach-light: 25 88% 95%;
+    /* ReUNE Logo Extended Palette */
+    --orange: 16 100% 57%;
+    --orange-light: 16 100% 95%;
+    --gold: 45 100% 51%;
+    --gold-light: 45 100% 95%;
+    --teal: 173 100% 24%;
+    --teal-light: 173 100% 90%;
+    --cyan: 187 100% 42%;
+    --cyan-light: 187 100% 92%;
+
+    /* Typography & Neutrals */
+    --text-primary: 0 0% 26%;
+    --text-secondary: 0 0% 74%;
+
+    /* Gradients */
+    --gradient-warm: linear-gradient(135deg, hsl(16 100% 57%), hsl(45 100% 51%));
+    --gradient-cool: linear-gradient(135deg, hsl(173 100% 24%), hsl(187 100% 42%));
 
     /* Shadows and effects */
-    --shadow-soft: 220 13% 91%;
-    --shadow-floating: 0 10px 30px -12px hsl(220 13% 91% / 0.25);
-    --shadow-card: 0 4px 20px -8px hsl(220 13% 91% / 0.35);
+    --shadow-soft: 0 2px 10px -3px hsl(0 0% 0% / 0.1);
+    --shadow-floating: 0 10px 30px -12px hsl(16 100% 57% / 0.25);
+    --shadow-card: 0 4px 20px -8px hsl(0 0% 0% / 0.15);
 
     --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 174 62% 47%;
+    --sidebar-background: 173 100% 24%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 16 100% 57%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 173 80% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 173 80% 20%;
+    --sidebar-ring: 16 100% 57%;
   }
 
   .dark {
