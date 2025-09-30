@@ -159,7 +159,16 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   // Função para salvar confirmação no Supabase
   const handleSaveConfirmation = async () => {
-    if (!user || !event) return;
+    if (!user) {
+      toast({
+        title: "Autenticação necessária",
+        description: "Você precisa estar logado para salvar as configurações.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!event) return;
 
     setSaving(true);
     try {
@@ -198,7 +207,16 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   // Função para confirmar presença
   const handleConfirmPresence = async () => {
-    if (!user || !event) return;
+    if (!user) {
+      toast({
+        title: "Autenticação necessária",
+        description: "Você precisa estar logado para confirmar presença.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!event) return;
 
     setSaving(true);
     try {
