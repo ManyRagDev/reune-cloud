@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import reUneLogo from '@/assets/reune-logo.png';
 
 interface Event {
   id: number;
@@ -142,9 +143,12 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
       )}
       <header className="bg-card/50 backdrop-blur-sm border-b border-border/50 px-6 py-8">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="animate-fade-in">
-            <h1 className="text-3xl font-bold text-primary tracking-tight">ReUNE</h1>
-            <p className="text-muted-foreground font-medium">Olá, {userEmail}!</p>
+          <div className="flex items-center gap-4 animate-fade-in">
+            <img src={reUneLogo} alt="ReUNE Logo" className="h-12 w-auto" />
+            <div>
+              <h1 className="text-3xl font-bold text-primary tracking-tight">ReUNE</h1>
+              <p className="text-muted-foreground font-medium">Olá, {userEmail}!</p>
+            </div>
           </div>
           <Button 
             variant="ghost" 

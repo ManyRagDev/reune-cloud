@@ -172,11 +172,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
     setSaving(true);
     try {
+      // Verifica sessão do Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Sessão expirada. Faça login novamente.");
+      }
+
       const { error } = await supabase
         .from('event_confirmations')
         .upsert({
           event_id: Number(event.id),
-          user_id: user.id,
+          user_id: session.user.id,
           date_confirmed: confirmation.date === 'confirmed',
           time_confirmed: confirmation.time === 'confirmed',
           location_confirmed: confirmation.location === 'confirmed',
@@ -195,9 +202,10 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         description: "Suas preferências foram registradas.",
       });
     } catch (error: any) {
+      console.error('Erro ao salvar:', error);
       toast({
         title: "Erro ao salvar",
-        description: error.message || "Não foi possível salvar suas preferências.",
+        description: error.message || "Não foi possível salvar suas preferências. Verifique sua autenticação.",
         variant: "destructive",
       });
     } finally {
@@ -220,11 +228,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
     setSaving(true);
     try {
+      // Verifica sessão do Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Sessão expirada. Faça login novamente.");
+      }
+
       const { error } = await supabase
         .from('event_confirmations')
         .upsert({
           event_id: Number(event.id),
-          user_id: user.id,
+          user_id: session.user.id,
           date_confirmed: true,
           time_confirmed: true,
           location_confirmed: true,
@@ -243,9 +258,10 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         onBack();
       }, 1500);
     } catch (error: any) {
+      console.error('Erro ao confirmar presença:', error);
       toast({
         title: "Erro ao confirmar",
-        description: error.message || "Não foi possível confirmar sua presença.",
+        description: error.message || "Não foi possível confirmar sua presença. Verifique sua autenticação.",
         variant: "destructive",
       });
       setSaving(false);
@@ -526,37 +542,27 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   <p className="text-muted-foreground">{event.description}</p>
                 </div>
               )}
+
+              {/* Botão de confirmar presença - dentro do card */}
+              {!isOrganizer && canConfirmPresence() && (
+                <div className="pt-6 border-t mt-6">
+                  <Button 
+                    className="w-full" 
+                    size="lg"
+                    disabled={saving}
+                    onClick={handleConfirmPresence}
+                    variant="default"
+                  >
+                    {saving ? "Confirmando..." : "✓ Confirmar Presença no Evento"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Confirme sua presença após validar data, hora e local
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
-
-        {/* Confirmation Buttons - apenas para convidados */}
-        {!isOrganizer && (
-          <div className="space-y-3">
-            <Button 
-              className="w-full" 
-              size="lg"
-              disabled={!canConfirmPresence() || saving}
-              onClick={handleConfirmPresence}
-            >
-              {saving ? "Salvando..." : canConfirmPresence() 
-                ? "Confirmar minha presença" 
-                : "Confirme data, hora e local para continuar"
-              }
-            </Button>
-            {(confirmation.date !== 'pending' || confirmation.time !== 'pending' || confirmation.location !== 'pending') && (
-              <Button 
-                variant="outline"
-                className="w-full" 
-                size="lg"
-                disabled={saving}
-                onClick={handleSaveConfirmation}
-              >
-                {saving ? "Salvando..." : "Salvar Configurações"}
-              </Button>
-            )}
-          </div>
-        )}
 
         {/* Organizers - apenas organizadores podem ver e editar */}
         {isOrganizer && (
@@ -720,6 +726,26 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Botão de Salvar - apenas para convidados, no final da página */}
+        {!isOrganizer && (confirmation.date !== 'pending' || confirmation.time !== 'pending' || confirmation.location !== 'pending') && (
+          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+            <CardContent className="pt-6">
+              <Button 
+                variant="floating"
+                className="w-full"
+                size="lg"
+                disabled={saving}
+                onClick={handleSaveConfirmation}
+              >
+                {saving ? "Salvando..." : "💾 Salvar Minhas Preferências"}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Salve suas confirmações e sugestões de alternativas antes de sair
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );
