@@ -21,6 +21,7 @@ interface Event {
   status: string | null;
   created_at: string;
   isOwner: boolean;
+  isConfirmed: boolean;
 }
 
 interface DashboardProps {
@@ -72,20 +73,36 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Busca eventos e confirmações
+      const { data: eventsData, error: eventsError } = await supabase
         .from('table_reune')
         .select('*')
         .or(`user_id.eq.${user.id},is_public.eq.true`)
         .order('event_date', { ascending: true });
 
-      if (error) throw error;
+      if (eventsError) throw eventsError;
 
-      const eventsWithOwnership = data.map(event => ({
+      // Busca confirmações do usuário
+      const { data: confirmationsData, error: confirmationsError } = await supabase
+        .from('event_confirmations')
+        .select('event_id, presence_confirmed')
+        .eq('user_id', user.id);
+
+      if (confirmationsError) throw confirmationsError;
+
+      // Cria um mapa de confirmações
+      const confirmationsMap = new Map(
+        confirmationsData?.map(c => [c.event_id, c.presence_confirmed]) || []
+      );
+
+      const eventsWithStatus = eventsData.map(event => ({
         ...event,
-        isOwner: event.user_id === user.id
+        isOwner: event.user_id === user.id,
+        isConfirmed: confirmationsMap.get(event.id) === true
       }));
 
-      setEvents(eventsWithOwnership);
+      setEvents(eventsWithStatus);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar eventos",
@@ -166,16 +183,16 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
         <div className="mb-12">
           <h2 className="text-2xl font-semibold mb-6 text-foreground">Meus Eventos</h2>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {events.filter(event => event.isOwner).length === 0 ? (
+            {events.filter(event => event.isOwner || event.isConfirmed).length === 0 ? (
               <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground mb-4">Você ainda não criou nenhum evento.</p>
+                <p className="text-muted-foreground mb-4">Você ainda não tem eventos confirmados.</p>
                 <Button onClick={onCreateEvent} variant="outline">
                   <Plus className="w-4 h-4 mr-2" />
                   Criar Primeiro Evento
                 </Button>
               </div>
             ) : (
-              events.filter(event => event.isOwner).map((event, index) => (
+              events.filter(event => event.isOwner || event.isConfirmed).map((event, index) => (
                 <Card 
                   key={event.id} 
                   className={cn(
@@ -194,7 +211,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                         </CardTitle>
                       </div>
                       <Badge variant="secondary" className="bg-white/80 text-foreground text-xs px-3 py-1">
-                        Organizador
+                        {event.isOwner ? 'Organizador' : 'Confirmado'}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -220,10 +237,10 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
           <h2 className="text-2xl font-semibold mb-6 text-foreground">Eventos Pendentes</h2>
           <p className="text-sm text-muted-foreground mb-4">Eventos aguardando sua confirmação</p>
           <div className="flex flex-wrap gap-3">
-            {events.filter(event => !event.isOwner).length === 0 ? (
+            {events.filter(event => !event.isOwner && !event.isConfirmed).length === 0 ? (
               <p className="text-muted-foreground text-sm">Nenhum evento pendente.</p>
             ) : (
-              events.filter(event => !event.isOwner).map((event, index) => (
+              events.filter(event => !event.isOwner && !event.isConfirmed).map((event, index) => (
                 <div
                   key={event.id}
                   onClick={() => onViewEvent(event.id.toString())}
