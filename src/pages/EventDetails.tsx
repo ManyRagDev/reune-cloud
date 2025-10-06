@@ -16,6 +16,7 @@ import { useEvent } from '@/hooks/useEvent';
 import { useAuth } from '@/hooks/useAuth';
 import { InviteGuestDialog } from '@/components/InviteGuestDialog';
 import { supabase } from '@/integrations/supabase/client';
+// Force TypeScript to reload types
 
 interface Attendee {
   id: string;
