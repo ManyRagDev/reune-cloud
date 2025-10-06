@@ -14,7 +14,136 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      event_confirmations: {
+        Row: {
+          alternative_date: string | null
+          alternative_location: string | null
+          alternative_time: string | null
+          created_at: string
+          date_confirmed: boolean | null
+          event_id: number
+          id: string
+          location_confirmed: boolean | null
+          presence_confirmed: boolean | null
+          time_confirmed: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alternative_date?: string | null
+          alternative_location?: string | null
+          alternative_time?: string | null
+          created_at?: string
+          date_confirmed?: boolean | null
+          event_id: number
+          id?: string
+          location_confirmed?: boolean | null
+          presence_confirmed?: boolean | null
+          time_confirmed?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alternative_date?: string | null
+          alternative_location?: string | null
+          alternative_time?: string | null
+          created_at?: string
+          date_confirmed?: boolean | null
+          event_id?: number
+          id?: string
+          location_confirmed?: boolean | null
+          presence_confirmed?: boolean | null
+          time_confirmed?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_confirmations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_organizers: {
+        Row: {
+          added_at: string | null
+          added_by: string
+          event_id: number | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string | null
+          added_by: string
+          event_id?: number | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string | null
+          added_by?: string
+          event_id?: number | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_organizers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      table_reune: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_date: string
+          event_time: string
+          id: number
+          is_public: boolean | null
+          location: string | null
+          max_attendees: number | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_time?: string
+          id?: number
+          is_public?: boolean | null
+          location?: string | null
+          max_attendees?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_time?: string
+          id?: number
+          is_public?: boolean | null
+          location?: string | null
+          max_attendees?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
