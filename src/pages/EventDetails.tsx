@@ -43,7 +43,7 @@ interface EventConfirmation {
 
 const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { event, organizers, loading, error, isOrganizer, addOrganizer, removeOrganizer } = useEvent(eventId);
 
   const [attendees, setAttendees] = useState<Attendee[]>([
@@ -159,7 +159,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   // Função para salvar confirmação no Supabase
   const handleSaveConfirmation = async () => {
-    if (!user) {
+    if (!user || !session) {
       toast({
         title: "Autenticação necessária",
         description: "Você precisa estar logado para salvar as configurações.",
@@ -172,13 +172,6 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
     setSaving(true);
     try {
-      // Verifica sessão do Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error("Sessão expirada. Faça login novamente.");
-      }
-
       const { error } = await supabase
         .from('event_confirmations')
         .upsert({
@@ -215,7 +208,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   // Função para confirmar presença
   const handleConfirmPresence = async () => {
-    if (!user) {
+    if (!user || !session) {
       toast({
         title: "Autenticação necessária",
         description: "Você precisa estar logado para confirmar presença.",
@@ -228,13 +221,6 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
     setSaving(true);
     try {
-      // Verifica sessão do Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error("Sessão expirada. Faça login novamente.");
-      }
-
       const { error } = await supabase
         .from('event_confirmations')
         .upsert({
