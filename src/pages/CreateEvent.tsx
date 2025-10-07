@@ -61,10 +61,11 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
       });
 
       onCreate();
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Ocorreu um erro. Tente novamente.";
       toast({
         title: "Erro ao criar evento",
-        description: error.message || "Ocorreu um erro. Tente novamente.",
+        description: message,
         variant: "destructive",
       });
     } finally {

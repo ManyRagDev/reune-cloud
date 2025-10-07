@@ -30,6 +30,7 @@ const Login = ({ onLogin }: LoginProps) => {
       setEmail(devCredentials.email);
       setPassword(devCredentials.password);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDevMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,10 +72,11 @@ const Login = ({ onLogin }: LoginProps) => {
           description: "Verifique seu email para confirmar a conta.",
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
         title: "Erro na autenticação",
-        description: error.message || "Ocorreu um erro. Tente novamente.",
+        description: err?.message || "Ocorreu um erro. Tente novamente.",
         variant: "destructive",
       });
     } finally {

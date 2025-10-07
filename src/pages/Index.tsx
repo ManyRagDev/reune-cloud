@@ -5,6 +5,7 @@ import Login from './Login';
 import Dashboard from './Dashboard';
 import CreateEvent from './CreateEvent';
 import EventDetails from './EventDetails';
+import ChatWidget from '@/components/ChatWidget';
 
 type Screen = 'login' | 'dashboard' | 'createEvent' | 'eventDetails';
 
@@ -29,7 +30,7 @@ const Index = () => {
     } else if (!loading) {
       setCurrentScreen('login');
     }
-  }, [user, loading]);
+  }, [user, loading, isDevMode]);
 
   const handleLogin = () => {
     setCurrentScreen('dashboard');
@@ -83,28 +84,37 @@ const Index = () => {
       
       case 'dashboard':
         return (
-          <Dashboard
-            userEmail={user?.email || ''}
-            onCreateEvent={handleCreateEvent}
-            onViewEvent={handleViewEvent}
-            onLogout={handleLogout}
-          />
+          <>
+            <Dashboard
+              userEmail={user?.email || ''}
+              onCreateEvent={handleCreateEvent}
+              onViewEvent={handleViewEvent}
+              onLogout={handleLogout}
+            />
+            <ChatWidget />
+          </>
         );
       
       case 'createEvent':
         return (
-          <CreateEvent
-            onBack={handleBackToDashboard}
-            onCreate={handleEventCreated}
-          />
+          <>
+            <CreateEvent
+              onBack={handleBackToDashboard}
+              onCreate={handleEventCreated}
+            />
+            <ChatWidget />
+          </>
         );
       
       case 'eventDetails':
         return (
-          <EventDetails
-            eventId={selectedEventId}
-            onBack={handleBackToDashboard}
-          />
+          <>
+            <EventDetails
+              eventId={selectedEventId}
+              onBack={handleBackToDashboard}
+            />
+            <ChatWidget />
+          </>
         );
       
       default:

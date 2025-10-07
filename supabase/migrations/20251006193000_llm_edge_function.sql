@@ -1,0 +1,3 @@
+-- Placeholder: documentação/registro da Edge Function /llm/chat
+-- A função HTTP será implementada em código de edge (TypeScript/Node) fora do SQL.
+-- Este arquivo serve apenas para versionar a criação da rota lógica.

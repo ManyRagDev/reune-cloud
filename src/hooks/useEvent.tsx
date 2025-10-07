@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 // Force TypeScript refresh
@@ -43,7 +43,7 @@ export const useEvent = (eventId: string) => {
   };
 
   // Busca dados do evento
-  const fetchEvent = async () => {
+  const fetchEvent = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -59,10 +59,10 @@ export const useEvent = (eventId: string) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventIdNumber]);
 
   // Busca co-organizadores do evento
-  const fetchOrganizers = async () => {
+  const fetchOrganizers = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('event_organizers')
@@ -74,7 +74,7 @@ export const useEvent = (eventId: string) => {
     } catch (err) {
       console.error('Erro ao buscar organizadores:', err);
     }
-  };
+  }, [eventIdNumber]);
 
   // Adiciona co-organizador
   const addOrganizer = async (userId: string) => {
@@ -120,7 +120,7 @@ export const useEvent = (eventId: string) => {
       fetchEvent();
       fetchOrganizers();
     }
-  }, [eventId, eventIdNumber]);
+  }, [eventId, eventIdNumber, fetchEvent, fetchOrganizers]);
 
   return {
     event,

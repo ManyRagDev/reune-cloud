@@ -195,11 +195,12 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         title: "Configurações salvas!",
         description: "Suas preferências foram registradas.",
       });
-    } catch (error: any) {
-      console.error('Erro ao salvar:', error);
+    } catch (error) {
+      const err = error as { message?: string };
+      console.error('Erro ao salvar:', err);
       toast({
         title: "Erro ao salvar",
-        description: error.message || "Não foi possível salvar suas preferências. Verifique sua autenticação.",
+        description: err?.message || "Não foi possível salvar suas preferências. Verifique sua autenticação.",
         variant: "destructive",
       });
     } finally {
@@ -244,11 +245,12 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       setTimeout(() => {
         onBack();
       }, 1500);
-    } catch (error: any) {
-      console.error('Erro ao confirmar presença:', error);
+    } catch (error) {
+      const err = error as { message?: string };
+      console.error('Erro ao confirmar presença:', err);
       toast({
         title: "Erro ao confirmar",
-        description: error.message || "Não foi possível confirmar sua presença. Verifique sua autenticação.",
+        description: err?.message || "Não foi possível confirmar sua presença. Verifique sua autenticação.",
         variant: "destructive",
       });
       setSaving(false);

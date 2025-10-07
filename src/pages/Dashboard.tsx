@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +38,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
   const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const userId = user?.id;
 
   const handleLogout = async () => {
     try {
@@ -60,17 +61,18 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
       }
       
       onLogout();
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
         title: "Erro no logout",
-        description: error.message || "Ocorreu um erro. Tente novamente.",
+        description: err?.message || "Ocorreu um erro. Tente novamente.",
         variant: "destructive",
       });
     }
   };
 
-  const fetchEvents = async () => {
-    if (!user) return;
+  const fetchEvents = useCallback(async () => {
+    if (!userId) return;
 
     try {
       setLoading(true);
@@ -79,7 +81,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
       const { data: eventsData, error: eventsError } = await supabase
         .from('table_reune')
         .select('*')
-        .or(`user_id.eq.${user.id},is_public.eq.true`)
+        .or(`user_id.eq.${userId},is_public.eq.true`)
         .order('event_date', { ascending: true });
 
       if (eventsError) throw eventsError;
@@ -88,7 +90,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
       const { data: confirmationsData, error: confirmationsError } = await supabase
         .from('event_confirmations')
         .select('event_id, presence_confirmed')
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
       if (confirmationsError) throw confirmationsError;
 
@@ -99,25 +101,26 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
       const eventsWithStatus = eventsData.map(event => ({
         ...event,
-        isOwner: event.user_id === user.id,
+        isOwner: event.user_id === userId,
         isConfirmed: confirmationsMap.get(event.id) === true
       }));
 
       setEvents(eventsWithStatus);
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
         title: "Erro ao carregar eventos",
-        description: error.message || "Não foi possível carregar os eventos.",
+        description: err?.message || "Não foi possível carregar os eventos.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, toast]);
 
   useEffect(() => {
     fetchEvents();
-  }, [user]);
+  }, [fetchEvents]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);

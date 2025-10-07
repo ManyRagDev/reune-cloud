@@ -1,0 +1,287 @@
+{
+  "summary": {
+    "totalErrors": 10,
+    "totalWarnings": 10,
+    "totalFiles": 97,
+    "filesWithIssues": 15
+  },
+  "byFile": [
+    {
+      "file": "src\\api\\llm\\toolsRouter.ts",
+      "errors": 1,
+      "warnings": 0,
+      "messages": [
+        {
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2,
+          "line": 30,
+          "column": 42,
+          "message": "Unexpected any. Specify a different type."
+        }
+      ]
+    },
+    {
+      "file": "src\\components\\ui\\badge.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "messages": [
+        {
+          "rule": "react-refresh/only-export-components",
+          "severity": 1,
+          "line": 29,
+          "column": 17,
+          "message": "Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components."
+        }
+      ]
+    },
+    {
+      "file": "src\\components\\ui\\button.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "messages": [
+        {
+          "rule": "react-refresh/only-export-components",
+          "severity": 1,
+          "line": 48,
+          "column": 18,
+          "message": "Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components."
+        }
+      ]
+    },
+    {
+      "file": "src\\components\\ui\\command.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "messages": [
+        {
+          "rule": "@typescript-eslint/no-empty-object-type",
+          "severity": 2,
+          "line": 24,
+          "column": 11,
+          "message": "An interface declaring no members is equivalent to its supertype."
+        }
+      ]
+    },
+    {
+      "file": "src\\components\\ui\\form.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "messages": [
+        {
+          "rule": "react-refresh/only-export-components",
+          "severity": 1,
+          "line": 129,
+          "column": 10,
+          "message": "Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components."
+        }
+      ]
+    },
+    {
+      "file": "src\\components\\ui\\navigation-menu.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "messages": [
+        {
+          "rule": "react-refresh/only-export-components",
+          "severity": 1,
+          "line": 111,
+          "column": 3,
+          "message": "Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components."
+        }
+      ]
+    },
+    {
+      "file": "src\\components\\ui\\sidebar.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "messages": [
+        {
+          "rule": "react-refresh/only-export-components",
+          "severity": 1,
+          "line": 634,
+          "column": 3,
+          "message": "Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components."
+        }
+      ]
+    },
+    {
+      "file": "src\\components\\ui\\sonner.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "messages": [
+        {
+          "rule": "react-refresh/only-export-components",
+          "severity": 1,
+          "line": 27,
+          "column": 19,
+          "message": "Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components."
+        }
+      ]
+    },
+    {
+      "file": "src\\components\\ui\\textarea.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "messages": [
+        {
+          "rule": "@typescript-eslint/no-empty-object-type",
+          "severity": 2,
+          "line": 5,
+          "column": 18,
+          "message": "An interface declaring no members is equivalent to its supertype."
+        }
+      ]
+    },
+    {
+      "file": "src\\components\\ui\\toggle.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "messages": [
+        {
+          "rule": "react-refresh/only-export-components",
+          "severity": 1,
+          "line": 37,
+          "column": 18,
+          "message": "Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components."
+        }
+      ]
+    },
+    {
+      "file": "src\\core\\orchestrator\\chatOrchestrator.ts",
+      "errors": 6,
+      "warnings": 0,
+      "messages": [
+        {
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2,
+          "line": 30,
+          "column": 81,
+          "message": "Unexpected any. Specify a different type."
+        },
+        {
+          "rule": "no-useless-escape",
+          "severity": 2,
+          "line": 34,
+          "column": 34,
+          "message": "Unnecessary escape character: \\-."
+        },
+        {
+          "rule": "no-useless-escape",
+          "severity": 2,
+          "line": 35,
+          "column": 50,
+          "message": "Unnecessary escape character: \\-."
+        },
+        {
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2,
+          "line": 137,
+          "column": 25,
+          "message": "Unexpected any. Specify a different type."
+        },
+        {
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2,
+          "line": 149,
+          "column": 25,
+          "message": "Unexpected any. Specify a different type."
+        },
+        {
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2,
+          "line": 163,
+          "column": 25,
+          "message": "Unexpected any. Specify a different type."
+        }
+      ]
+    },
+    {
+      "file": "src\\hooks\\useEvent.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "messages": [
+        {
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1,
+          "line": 123,
+          "column": 6,
+          "message": "React Hook useEffect has missing dependencies: 'fetchEvent' and 'fetchOrganizers'. Either include them or remove the dependency array."
+        }
+      ]
+    },
+    {
+      "file": "src\\pages\\CreateEvent.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "messages": [
+        {
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2,
+          "line": 64,
+          "column": 21,
+          "message": "Unexpected any. Specify a different type."
+        }
+      ]
+    },
+    {
+      "file": "src\\pages\\Dashboard.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "messages": [
+        {
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1,
+          "line": 122,
+          "column": 6,
+          "message": "React Hook useEffect has a missing dependency: 'fetchEvents'. Either include it or remove the dependency array."
+        }
+      ]
+    },
+    {
+      "file": "src\\pages\\Index.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "messages": [
+        {
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1,
+          "line": 33,
+          "column": 6,
+          "message": "React Hook useEffect has a missing dependency: 'isDevMode'. Either include it or remove the dependency array."
+        }
+      ]
+    }
+  ],
+  "byRule": [
+    {
+      "rule": "react-refresh/only-export-components",
+      "count": 7,
+      "errors": 0,
+      "warnings": 7
+    },
+    {
+      "rule": "@typescript-eslint/no-explicit-any",
+      "count": 6,
+      "errors": 6,
+      "warnings": 0
+    },
+    {
+      "rule": "react-hooks/exhaustive-deps",
+      "count": 3,
+      "errors": 0,
+      "warnings": 3
+    },
+    {
+      "rule": "@typescript-eslint/no-empty-object-type",
+      "count": 2,
+      "errors": 2,
+      "warnings": 0
+    },
+    {
+      "rule": "no-useless-escape",
+      "count": 2,
+      "errors": 2,
+      "warnings": 0
+    }
+  ]
+}
