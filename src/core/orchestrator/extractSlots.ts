@@ -1,18 +1,31 @@
 import { normalize } from "@/core/nlp/normalize";
-import { parsePeopleCount } from "@/core/nlp/ptNumbers";
 
 const TYPE_RE = /\b(churrasco|piquenique|jantar|pizza|feijoada|aniversario|aniversário|festa)\b/i;
 const DATE_RE = /\b(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{1,2}\s+de\s+\w+|\d{4}-\d{2}-\d{2})\b/i;
+// Regex melhorado: captura número APENAS quando seguido de palavra relacionada a pessoas
+const PEOPLE_COUNT_RE = /\b(\d+)\s*(pessoa|pessoas|convidado|convidados|participante|participantes)\b/i;
 
 export function extractSlotsByRules(
   text: string,
   draft?: { tipo_evento?: string; qtd_pessoas?: number; data_evento?: string }
 ) {
   const t = normalize(text);
-  const tipo = (t.match(TYPE_RE)?.[1] ?? draft?.tipo_evento ?? "").toLowerCase();
-  const qtd = parsePeopleCount(t) ?? draft?.qtd_pessoas;
+  
+  // 1. Extrair tipo de evento
+  const tipoNovo = t.match(TYPE_RE)?.[1]?.toLowerCase();
+  
+  // 2. Extrair quantidade - com contexto para evitar pegar números de data
+  const qtdMatch = t.match(PEOPLE_COUNT_RE);
+  const qtdNovo = qtdMatch ? parseInt(qtdMatch[1], 10) : undefined;
+  
+  // 3. Extrair data
   const dateMatch = t.match(DATE_RE);
-  const data = dateMatch?.[1] ?? draft?.data_evento;
+  const dataNovo = dateMatch?.[1];
+  
+  // 4. Merge hierárquico: novo > draft (mantém valores antigos só se não houver novo)
+  const tipo = tipoNovo || draft?.tipo_evento;
+  const qtd = qtdNovo !== undefined ? qtdNovo : draft?.qtd_pessoas;
+  const data = dataNovo || draft?.data_evento;
   
   return {
     tipo_evento: tipo || undefined,

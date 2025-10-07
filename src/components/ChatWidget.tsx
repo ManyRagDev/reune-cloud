@@ -51,22 +51,21 @@ export default function ChatWidget() {
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setInput('');
     try {
-      // Construir estado de conversa com histórico para dar contexto ao LLM
-      const userMessage: ChatMessage = { role: 'user', content: text };
-      const history = convState?.history ?? [];
-      const state: ConversationState = {
-        conversationId: convState?.conversationId || `chat-${user?.id || 'anon'}`,
-        context: { ...(convState?.context || {}), eventoId },
-        history,
-        lastUpdated: convState?.lastUpdated || Date.now(),
-      };
+      // Construir histórico completo no formato LlmMessage para passar ao orquestrador
+      const llmHistory = messages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }));
+      
+      // Adicionar a mensagem atual ao histórico
+      llmHistory.push({ role: 'user', content: text });
 
       const res = await orchestrate(
         text,
         user?.id || 'dev',
         eventoId,
         stagnationCount >= 2,
-        messages.slice(-6)
+        llmHistory // Passa o histórico COMPLETO para o orquestrador
       );
 
       // Lógica anti-loop
@@ -80,14 +79,13 @@ export default function ChatWidget() {
       const assistantMessage: ChatMessage = { role: 'assistant', content: res.mensagem };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // Se houver toolCalls e o evento_id for retornado, manter no estado para contexto futuro
-      if (res.evento_id) setEventoId(res.evento_id || undefined);
+      // Atualizar evento_id no estado se retornado
+      if (res.evento_id) setEventoId(res.evento_id);
 
       // Executar chamadas de ferramenta retornadas, se existirem
       if (Array.isArray(res.toolCalls) && res.toolCalls.length > 0) {
         for (const tc of res.toolCalls) {
           try {
-            // Garantir que o evento_id esteja presente nos argumentos
             const args = { ...(tc.arguments || {}), evento_id: res.evento_id || eventoId };
             await runToolCall(user?.id || 'dev', { name: tc.name, arguments: args });
           } catch (err) {
@@ -96,15 +94,15 @@ export default function ChatWidget() {
         }
       }
 
-      // Atualizar estado de conversa com a resposta
+      // Atualizar estado de conversa (não precisa duplicar histórico, já está em messages)
       setConvState({
-        ...state,
+        conversationId: convState?.conversationId || `chat-${user?.id || 'anon'}`,
         context: {
           eventoId: res.evento_id || eventoId,
           tipo_evento: res.tipo_evento,
           qtd_pessoas: res.qtd_pessoas,
         },
-        history: [...history, userMessage, assistantMessage],
+        history: llmHistory.concat({ role: 'assistant', content: res.mensagem }),
         lastUpdated: Date.now(),
       });
     } catch (e) {
