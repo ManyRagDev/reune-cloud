@@ -58,8 +58,14 @@ export const orchestrate = async (
     data_evento: draft?.evento?.data_evento,
   });
   
-  const { tipo_evento, qtd_pessoas, data_evento, is_confirm } = slots;
+  let { tipo_evento, qtd_pessoas, data_evento, is_confirm } = slots;
   console.log('[ORCHESTRATE] Slots extraídos:', { tipo_evento, qtd_pessoas, data_evento, is_confirm });
+  
+  // Se não detectou tipo, mas a mensagem é apenas um número e o draft tinha tipo → herdamos o tipo anterior
+  if (!tipo_evento && /^\d+$/.test(userText.trim()) && draft?.evento?.tipo_evento) {
+    console.log('[ORCHESTRATE] Herdando tipo_evento do contexto:', draft.evento.tipo_evento);
+    tipo_evento = draft.evento.tipo_evento;
+  }
   
   // 3) Se há draft, atualizar o evento com os novos slots (merge persistente)
   if (draft?.evento?.id && (tipo_evento || qtd_pessoas || data_evento)) {
@@ -242,6 +248,17 @@ export const orchestrate = async (
       console.error('[ORCHESTRATE] Erro ao gerar/salvar itens:', error);
       throw error;
     }
+  }
+
+  // Guarda para "quais são os itens?"
+  if (draft?.evento?.status === "itens_pendentes_confirmacao" && /itens|lista/i.test(userText)) {
+    console.log('[ORCHESTRATE] Caso: pergunta sobre itens - mostrando snapshot');
+    return {
+      estado: "itens_pendentes_confirmacao",
+      evento_id: draft.evento.id,
+      mensagem: "Aqui está a lista atual de itens do seu evento:",
+      snapshot: await rpc.get_event_plan(draft.evento.id),
+    };
   }
 
   if (draft?.evento?.status === "itens_pendentes_confirmacao") {

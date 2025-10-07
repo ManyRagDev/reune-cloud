@@ -1,6 +1,6 @@
 import { normalize } from "@/core/nlp/normalize";
 
-const TYPE_RE = /\b(churrasco|piquenique|jantar|pizza|feijoada|aniversario|aniversário|festa)\b/i;
+const TYPE_RE = /\b(churrasco|piquenique|jantar|pizza|feijoada|aniversario|aniversário|festa|almoço|almoco|lanche|lasanha)\b/i;
 // Captura datas: dd/mm/yyyy, dd/mm, yyyy-mm-dd, "dia 15 de novembro", "15 de novembro"
 const DATE_RE = /\b(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|(?:dia\s+)?\d{1,2}\s+de\s+\w+(?:\s+de\s+\d{4})?|\d{4}-\d{2}-\d{2})\b/i;
 // Regex melhorado: captura número APENAS quando seguido de palavra relacionada a pessoas
