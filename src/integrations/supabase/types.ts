@@ -67,6 +67,53 @@ export type Database = {
           },
         ]
       }
+      event_items: {
+        Row: {
+          categoria: string
+          created_at: string
+          event_id: number
+          id: number
+          nome_item: string
+          prioridade: string
+          quantidade: number
+          unidade: string
+          updated_at: string
+          valor_estimado: number
+        }
+        Insert: {
+          categoria?: string
+          created_at?: string
+          event_id: number
+          id?: number
+          nome_item: string
+          prioridade?: string
+          quantidade?: number
+          unidade?: string
+          updated_at?: string
+          valor_estimado?: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          event_id?: number
+          id?: number
+          nome_item?: string
+          prioridade?: string
+          quantidade?: number
+          unidade?: string
+          updated_at?: string
+          valor_estimado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_items_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_organizers: {
         Row: {
           added_at: string | null
@@ -92,6 +139,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "event_organizers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_participants: {
+        Row: {
+          contato: string | null
+          created_at: string
+          event_id: number
+          id: number
+          nome_participante: string
+          status_convite: string
+          updated_at: string
+        }
+        Insert: {
+          contato?: string | null
+          created_at?: string
+          event_id: number
+          id?: number
+          nome_participante: string
+          status_convite?: string
+          updated_at?: string
+        }
+        Update: {
+          contato?: string | null
+          created_at?: string
+          event_id?: number
+          id?: number
+          nome_participante?: string
+          status_convite?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_participants_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "table_reune"
@@ -149,7 +234,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      distribution_bulk_upsert: {
+        Args: { evento_id: string; rows: Json }
+        Returns: Json[]
+      }
+      get_distribution_summary: {
+        Args: { evento_id: string }
+        Returns: Json
+      }
+      get_event_plan: {
+        Args: { evento_id: string }
+        Returns: Json
+      }
+      items_replace_for_event: {
+        Args: { evento_id: string; itens: Json }
+        Returns: Json[]
+      }
+      participants_bulk_upsert: {
+        Args: { evento_id: string; participantes: Json }
+        Returns: Json[]
+      }
     }
     Enums: {
       [_ in never]: never
