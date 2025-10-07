@@ -224,6 +224,39 @@ function generateFallbackItems(tipo_evento: string, qtd_pessoas: number): Partia
   }));
 }
 
+export async function generateEventName(params: {
+  tipo_evento: string;
+  qtd_pessoas: number;
+  data_evento?: string;
+}): Promise<string> {
+  console.log('[Manager] generateEventName called with:', params);
+
+  const systemPrompt = `Você é um especialista em criar nomes criativos e curtos para eventos sociais.
+Gere um nome único e convidativo para o evento, com base nos dados fornecidos.
+O nome deve ser curto (máximo 50 caracteres), criativo e em português.
+Retorne APENAS o nome do evento, sem aspas, sem explicações adicionais.`;
+
+  const userPrompt = `Evento: ${params.tipo_evento}, ${params.qtd_pessoas} pessoas${params.data_evento ? `, data: ${params.data_evento}` : ''}`;
+
+  try {
+    const llmResponse = await getLlmSuggestions(systemPrompt, [
+      { role: 'user', content: userPrompt }
+    ], 0.7);
+
+    if (!llmResponse || !llmResponse.content) {
+      console.warn('[Manager] LLM não retornou nome, usando fallback');
+      return `${params.tipo_evento.charAt(0).toUpperCase() + params.tipo_evento.slice(1)} - ${params.qtd_pessoas} pessoas`;
+    }
+
+    const generatedName = llmResponse.content.trim().replace(/^["']|["']$/g, '');
+    console.info('[Manager] Nome gerado pela LLM:', generatedName);
+    return generatedName;
+  } catch (error) {
+    console.error('[Manager] Erro ao gerar nome com LLM:', error);
+    return `${params.tipo_evento.charAt(0).toUpperCase() + params.tipo_evento.slice(1)} - ${params.qtd_pessoas} pessoas`;
+  }
+}
+
 export async function setEventStatus(eventoId: UUID, status: Event['status']): Promise<void> {
   console.log(`[Manager] setEventStatus called with eventoId: ${eventoId}, status: ${status}`);
   try {
@@ -241,5 +274,40 @@ export async function setEventStatus(eventoId: UUID, status: Event['status']): P
     }
   } catch (error) {
     console.error('[Manager] Erro ao atualizar status do evento:', error);
+  }
+}
+
+export async function finalizeEvent(eventoId: UUID, eventData: Partial<Event>): Promise<void> {
+  console.log(`[Manager] finalizeEvent called with eventoId: ${eventoId}`);
+  try {
+    const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
+    
+    // Gera nome do evento se não houver
+    let eventName = eventData.nome_evento || 'Rascunho';
+    if (eventName === 'Rascunho' && eventData.tipo_evento && eventData.qtd_pessoas) {
+      eventName = await generateEventName({
+        tipo_evento: eventData.tipo_evento,
+        qtd_pessoas: eventData.qtd_pessoas,
+        data_evento: eventData.data_evento
+      });
+    }
+
+    const { error } = await supabase
+      .from('table_reune')
+      .update({ 
+        status: 'active',
+        title: eventName
+      })
+      .eq('id', eventIdNum);
+
+    if (error) {
+      console.error('[Manager] Erro ao finalizar evento:', error);
+      throw error;
+    }
+    
+    console.info('[Manager] Evento finalizado com sucesso:', eventName);
+  } catch (error) {
+    console.error('[Manager] Erro ao finalizar evento:', error);
+    throw error;
   }
 }

@@ -142,16 +142,22 @@ export const orchestrate = async (
   if (is_confirm && draft?.evento?.tipo_evento && draft?.evento?.qtd_pessoas) {
     console.log('[ORCHESTRATE] Caso: confirmação semântica com slots completos');
     
-    // Se já tem itens gerados, apenas confirmar (não regenerar)
+    // Se já tem itens gerados, finalizar evento
     if (draft?.evento?.status === "itens_pendentes_confirmacao") {
-      console.log('[ORCHESTRATE] Itens já existem - apenas confirmando');
+      console.log('[ORCHESTRATE] Itens já existem - finalizando evento');
+      const { finalizeEvent } = await import('./eventManager');
+      await finalizeEvent(draft.evento.id, draft.evento);
+      
       const snapshot = await rpc.get_event_plan(draft.evento.id);
       return {
-        estado: "itens_pendentes_confirmacao",
+        estado: "finalizado",
         evento_id: draft.evento.id,
-        mensagem: "Perfeito! Aqui está a lista que já foi gerada:",
+        mensagem: "Evento criado com sucesso! 🎉 Você pode vê-lo no seu dashboard.",
         snapshot,
         showItems: true,
+        ctas: [
+          { type: "view-dashboard", label: "Ver Dashboard" }
+        ]
       };
     }
     
