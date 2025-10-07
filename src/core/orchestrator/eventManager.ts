@@ -2,6 +2,7 @@ import { Event, EventSnapshot, Item, UUID } from "@/types/domain";
 import { getLlmSuggestions } from "@/api/llm/chat";
 import { rpc } from "@/api/rpc";
 import { supabase } from "@/integrations/supabase/client";
+import { parseLlmItemsResponse } from "./itemAdapter";
 
 export async function getPlanSnapshot(eventoId: UUID): Promise<EventSnapshot | null> {
   console.log(`[Manager] getPlanSnapshot called with eventoId: ${eventoId}`);
@@ -126,56 +127,49 @@ export async function generateItemList(params: {
 }): Promise<Partial<Item>[]> {
   console.log('[Manager] generateItemList called with:', params);
 
-  // Chama a LLM para gerar sugestões de itens baseadas no tipo de evento e quantidade de pessoas
-  const systemPrompt = `Você é um especialista em planejamento de eventos. 
-Com base no tipo de evento "${params.tipo_evento}" e para ${params.qtd_pessoas} pessoas, 
-gere uma lista de itens necessários com quantidades estimadas.
+  const systemPrompt = `Você é um especialista em planejamento de eventos.
+Gere uma lista de itens para um evento do tipo "${params.tipo_evento}" para ${params.qtd_pessoas} pessoas.
 
-Retorne APENAS um array JSON válido no seguinte formato:
-[
-  {
-    "nome_item": "Nome do item",
-    "quantidade": 1.5,
-    "unidade": "kg ou un ou L",
-    "valor_estimado": 25.90,
-    "categoria": "comida ou bebida ou descartaveis",
-    "prioridade": "A ou B ou C"
-  }
-]
+Retorne APENAS um array JSON válido, sem markdown ou explicações.
+Cada item deve ter exatamente estes campos (sem campos extras):
+{
+  "nome_item": string,
+  "quantidade": number,
+  "unidade": string,
+  "valor_estimado": number,
+  "categoria": string,
+  "prioridade": "A" | "B" | "C"
+}
 
-Prioridade A: Itens essenciais
-Prioridade B: Itens importantes
-Prioridade C: Itens opcionais
+Categorias comuns: comida, bebida, descartaveis, decoracao, combustivel.
+Prioridade: A = essencial, B = importante, C = opcional.
+Use a quantidade de pessoas para calcular as quantidades.`;
 
-Considere a quantidade de pessoas para calcular as quantidades.`;
-
-  const userMessage = `Gere itens para um ${params.tipo_evento} para ${params.qtd_pessoas} pessoas.`;
+  const userPrompt = `Evento: ${params.tipo_evento}, Pessoas: ${params.qtd_pessoas}`;
 
   try {
-    const llmResponse = await getLlmSuggestions(
-      systemPrompt,
-      [{ role: 'user', content: userMessage }],
-      0.3
-    );
+    const llmResponse = await getLlmSuggestions(systemPrompt, [
+      { role: 'user', content: userPrompt }
+    ], 0.3);
 
-    if (llmResponse && llmResponse.content) {
-      // Tenta extrair o JSON da resposta da LLM
-      const jsonMatch = llmResponse.content.match(/\[\s*\{.*\}\s*\]/s);
-      if (jsonMatch) {
-        const items = JSON.parse(jsonMatch[0]);
-        console.log('[Manager] Itens gerados pela LLM:', items);
-        return items;
-      }
+    if (!llmResponse || !llmResponse.content) {
+      console.warn('[Manager] LLM não retornou resposta, usando fallback');
+      return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
     }
 
-    console.warn('[Manager] LLM não retornou JSON válido, usando fallback');
-    
+    // Usa o adapter robusto para processar a resposta
+    try {
+      const items = parseLlmItemsResponse(llmResponse.content);
+      console.info('[Manager] Itens gerados pela LLM:', items.length);
+      return items;
+    } catch (adapterError) {
+      console.error('[Manager] Erro no adapter, usando fallback:', adapterError);
+      return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
+    }
   } catch (error) {
-    console.error('[Manager] Erro ao chamar LLM:', error);
+    console.error('[Manager] Erro ao gerar itens com LLM:', error);
+    return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
   }
-
-  // Fallback para uma lista básica se a LLM falhar
-  return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
 }
 
 // Função de fallback para gerar itens básicos

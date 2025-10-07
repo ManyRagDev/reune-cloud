@@ -10,8 +10,8 @@ async function participants_bulk_upsert(
 ): Promise<Participant[]> {
   console.debug('[RPC] participants_bulk_upsert', { evento_id, count: participantes.length });
   const { data, error } = await supabase.rpc('participants_bulk_upsert', { 
-    evento_id: evento_id, 
-    participantes: JSON.stringify(participantes) 
+    evento_id, 
+    participantes: participantes as any // SDK serializa para JSONB
   });
   if (error) {
     console.error('[RPC] Erro em participants_bulk_upsert:', error);
@@ -23,8 +23,8 @@ async function participants_bulk_upsert(
 async function items_replace_for_event(evento_id: string, itens: Item[], opts?: Opts): Promise<Item[]> {
   console.debug('[RPC] items_replace_for_event', { evento_id, count: itens.length });
   const { data, error } = await supabase.rpc('items_replace_for_event', { 
-    evento_id: evento_id, 
-    itens: JSON.stringify(itens) 
+    evento_id, 
+    itens: itens as any // SDK serializa para JSONB
   });
   if (error) {
     console.error('[RPC] Erro em items_replace_for_event:', error);
@@ -40,8 +40,8 @@ async function distribution_bulk_upsert(
 ): Promise<DistributionRow[]> {
   console.debug('[RPC] distribution_bulk_upsert', { evento_id, count: rows.length });
   const { data, error } = await supabase.rpc('distribution_bulk_upsert', { 
-    evento_id: evento_id, 
-    rows: JSON.stringify(rows) 
+    evento_id, 
+    rows: rows as any // SDK serializa para JSONB
   });
   if (error) {
     console.error('[RPC] Erro em distribution_bulk_upsert:', error);
@@ -57,7 +57,7 @@ async function get_event_plan(evento_id: string, opts?: Opts): Promise<{
   distribuicao: DistributionRow[];
 }> {
   console.debug('[RPC] get_event_plan', { evento_id });
-  const { data, error } = await supabase.rpc('get_event_plan', { evento_id: evento_id });
+  const { data, error } = await supabase.rpc('get_event_plan', { evento_id });
   if (error) {
     console.error('[RPC] Erro em get_event_plan:', error);
     throw new Error(`Erro ao chamar get_event_plan: ${error.message}`);
@@ -75,7 +75,7 @@ async function get_distribution_summary(evento_id: string, opts?: Opts): Promise
   custoTotal: number;
 }> {
   console.debug('[RPC] get_distribution_summary', { evento_id });
-  const { data, error } = await supabase.rpc('get_distribution_summary', { evento_id: evento_id });
+  const { data, error } = await supabase.rpc('get_distribution_summary', { evento_id });
   if (error) {
     console.error('[RPC] Erro em get_distribution_summary:', error);
     throw new Error(`Erro ao chamar get_distribution_summary: ${error.message}`);
