@@ -23,6 +23,7 @@ export interface ChatUiPayload {
   toolCalls?: Array<{ name: string; arguments: Record<string, unknown> }>;
   tipo_evento?: string;
   qtd_pessoas?: number;
+  showItems?: boolean;
 }
 
 export const getGreeting = (userId: UUID): ChatUiPayload => {
@@ -85,7 +86,20 @@ export const orchestrate = async (
     }
   }
 
-  // 3) Decisão por casos:
+  // 3) PRIORIZAR: Se já tem itens e usuário pede para ver, mostrar ANTES de qualquer lógica de slots
+  if (draft?.evento?.status === "itens_pendentes_confirmacao" && /itens|lista|mostrar|mostra|mostre/i.test(userText)) {
+    console.log('[ORCHESTRATE] Caso prioritário: mostrar itens existentes');
+    const snapshot = await rpc.get_event_plan(draft.evento.id);
+    return {
+      estado: "itens_pendentes_confirmacao",
+      evento_id: draft.evento.id,
+      mensagem: "Aqui está a lista de itens do seu evento:",
+      snapshot,
+      showItems: true,
+    };
+  }
+
+  // 4) Decisão por casos:
   if (force_action && draft?.evento?.tipo_evento && draft?.evento?.qtd_pessoas) {
     console.log('[ORCHESTRATE] Caso: força ação com slots completos');
     // Forçar ação se estagnado e com slots
@@ -117,6 +131,7 @@ export const orchestrate = async (
       evento_id: evtId,
       mensagem: `Ok! Listei os itens para seu **${tipo_evento} para ${qtd_pessoas} pessoas**.`,
       snapshot,
+      showItems: true,
       ctas: [
         { type: "confirm-items", label: "Confirmar lista" },
         { type: "edit-items", label: "Editar itens" },
@@ -126,7 +141,21 @@ export const orchestrate = async (
 
   if (is_confirm && draft?.evento?.tipo_evento && draft?.evento?.qtd_pessoas) {
     console.log('[ORCHESTRATE] Caso: confirmação semântica com slots completos');
-    // Confirmação semântica com slots completos → AGIR
+    
+    // Se já tem itens gerados, apenas confirmar (não regenerar)
+    if (draft?.evento?.status === "itens_pendentes_confirmacao") {
+      console.log('[ORCHESTRATE] Itens já existem - apenas confirmando');
+      const snapshot = await rpc.get_event_plan(draft.evento.id);
+      return {
+        estado: "itens_pendentes_confirmacao",
+        evento_id: draft.evento.id,
+        mensagem: "Perfeito! Aqui está a lista que já foi gerada:",
+        snapshot,
+        showItems: true,
+      };
+    }
+    
+    // Confirmação semântica com slots completos → AGIR (primeira vez)
     const { tipo_evento, qtd_pessoas } = draft.evento;
     const evtId = draft.evento.id;
 
@@ -154,6 +183,7 @@ export const orchestrate = async (
       evento_id: evtId,
       mensagem: `Ok! Listei os itens para seu **${tipo_evento} para ${qtd_pessoas} pessoas**.`,
       snapshot,
+      showItems: true,
       ctas: [
         { type: "confirm-items", label: "Confirmar lista" },
         { type: "edit-items", label: "Editar itens" },
@@ -239,6 +269,7 @@ export const orchestrate = async (
         evento_id: evtId,
         mensagem: `Listei itens e quantidades para **${tipo_evento} de ${qtd_pessoas} pessoas**. Quer revisar antes de dividir?`,
         snapshot,
+        showItems: true,
         ctas: [
           { type: "confirm-items", label: "Confirmar lista" },
           { type: "edit-items", label: "Editar itens" },
@@ -250,16 +281,7 @@ export const orchestrate = async (
     }
   }
 
-  // Guarda para "quais são os itens?"
-  if (draft?.evento?.status === "itens_pendentes_confirmacao" && /itens|lista/i.test(userText)) {
-    console.log('[ORCHESTRATE] Caso: pergunta sobre itens - mostrando snapshot');
-    return {
-      estado: "itens_pendentes_confirmacao",
-      evento_id: draft.evento.id,
-      mensagem: "Aqui está a lista atual de itens do seu evento:",
-      snapshot: await rpc.get_event_plan(draft.evento.id),
-    };
-  }
+  // Esta guarda foi movida para o início (linha ~91) para ter prioridade
 
   if (draft?.evento?.status === "itens_pendentes_confirmacao") {
     console.log('[ORCHESTRATE] Caso: status itens_pendentes_confirmacao - usando LLM com contexto');
