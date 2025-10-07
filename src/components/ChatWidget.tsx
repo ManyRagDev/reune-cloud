@@ -108,12 +108,17 @@ export default function ChatWidget() {
         lastUpdated: Date.now(),
       });
     } catch (e) {
+      console.error('[ChatWidget] Erro ao enviar mensagem:', e);
       let errorMessage = 'Ocorreu um erro ao processar sua solicitação. Tente novamente.';
-      if (e instanceof Error && e.message.toLowerCase().includes('failed to fetch')) {
-        errorMessage =
-          'Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente novamente.';
+      if (e instanceof Error) {
+        console.error('[ChatWidget] Detalhes do erro:', e.message, e.stack);
+        if (e.message.toLowerCase().includes('failed to fetch')) {
+          errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente novamente.';
+        } else {
+          errorMessage = `Erro: ${e.message}`;
+        }
       }
-      setMessages((prev) => [...prev, { role: 'assistant', content: `Erro: ${errorMessage}` }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: errorMessage }]);
     } finally {
       setSending(false);
     }

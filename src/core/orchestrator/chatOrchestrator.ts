@@ -141,7 +141,7 @@ export const orchestrate = async (
     const hasDate = draft?.evento?.data_evento || data_evento;
     
     if (!hasDate) {
-      // Perguntar a data antes de prosseguir
+      // Perguntar a data antes de prosseguir - NÃO GERAR ITENS AINDA
       const evtId = draft?.evento?.id ?? (
         await upsertEvent({
           usuario_id: userId,
@@ -166,48 +166,56 @@ export const orchestrate = async (
     }
     
     // Temos tipo, quantidade e data → prosseguir com geração de itens
+    console.log('[ORCHESTRATE] Temos todos os dados (tipo, qtd, data) → gerando itens');
     const evtId = draft?.evento?.id ?? (
       await upsertEvent({
         usuario_id: userId,
         nome_evento: "Rascunho",
         tipo_evento,
         qtd_pessoas,
+        data_evento,
         status: "collecting_core",
       })
     ).id;
     
     console.log('[ORCHESTRATE] Evento ID:', evtId);
 
-    // gera lista e salva (RPC)
-    const itensGerados = await generateItemList({ tipo_evento, qtd_pessoas });
-    console.log('[ORCHESTRATE] Itens gerados:', itensGerados);
-    const itensComIds = itensGerados.map(item => ({
-      ...item,
-      id: item.id || crypto.randomUUID(),
-      evento_id: evtId,
-      nome_item: item.nome_item || '',
-      quantidade: item.quantidade || 0,
-      unidade: item.unidade || 'un',
-      valor_estimado: item.valor_estimado || 0,
-      categoria: item.categoria || 'geral',
-      prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
-    })) as Item[];
-    await rpc.items_replace_for_event(evtId, itensComIds);
-    await setEventStatus(evtId, "itens_pendentes_confirmacao");
+    try {
+      // gera lista e salva (RPC)
+      const itensGerados = await generateItemList({ tipo_evento, qtd_pessoas });
+      console.log('[ORCHESTRATE] Itens gerados:', itensGerados);
+      const itensComIds = itensGerados.map(item => ({
+        ...item,
+        id: item.id || crypto.randomUUID(),
+        evento_id: evtId,
+        nome_item: item.nome_item || '',
+        quantidade: item.quantidade || 0,
+        unidade: item.unidade || 'un',
+        valor_estimado: item.valor_estimado || 0,
+        categoria: item.categoria || 'geral',
+        prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
+      })) as Item[];
+      
+      await rpc.items_replace_for_event(evtId, itensComIds);
+      await setEventStatus(evtId, "itens_pendentes_confirmacao");
 
-    // snapshot final
-    const snapshot = await rpc.get_event_plan(evtId);
+      // snapshot final
+      const snapshot = await rpc.get_event_plan(evtId);
 
-    return {
-      estado: "itens_pendentes_confirmacao",
-      evento_id: evtId,
-      mensagem: `Listei itens e quantidades para **${tipo_evento} de ${qtd_pessoas} pessoas**. Quer revisar antes de dividir?`,
-      snapshot,
-      ctas: [
-        { type: "confirm-items", label: "Confirmar lista" },
-        { type: "edit-items", label: "Editar itens" },
-      ],
-    };
+      return {
+        estado: "itens_pendentes_confirmacao",
+        evento_id: evtId,
+        mensagem: `Listei itens e quantidades para **${tipo_evento} de ${qtd_pessoas} pessoas**. Quer revisar antes de dividir?`,
+        snapshot,
+        ctas: [
+          { type: "confirm-items", label: "Confirmar lista" },
+          { type: "edit-items", label: "Editar itens" },
+        ],
+      };
+    } catch (error) {
+      console.error('[ORCHESTRATE] Erro ao gerar/salvar itens:', error);
+      throw error;
+    }
   }
 
   if (draft?.evento?.status === "itens_pendentes_confirmacao") {
