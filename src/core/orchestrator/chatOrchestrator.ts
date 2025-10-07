@@ -51,11 +51,12 @@ export const orchestrate = async (
   console.log('[ORCHESTRATE] Draft carregado:', draft);
 
   // 2) Extrair slots a partir da mensagem + draft
-  const { tipo_evento, qtd_pessoas, is_confirm } = extractSlotsByRules(userText, {
+  const { tipo_evento, qtd_pessoas, data_evento, is_confirm } = extractSlotsByRules(userText, {
     tipo_evento: draft?.evento?.tipo_evento,
     qtd_pessoas: draft?.evento?.qtd_pessoas,
+    data_evento: draft?.evento?.data_evento,
   });
-  console.log('[ORCHESTRATE] Slots extraídos:', { tipo_evento, qtd_pessoas, is_confirm });
+  console.log('[ORCHESTRATE] Slots extraídos:', { tipo_evento, qtd_pessoas, data_evento, is_confirm });
 
   // 3) Decisão por casos:
   if (force_action && draft?.evento?.tipo_evento && draft?.evento?.qtd_pessoas) {
@@ -134,12 +135,14 @@ export const orchestrate = async (
   }
 
   if (tipo_evento && qtd_pessoas) {
-    console.log('[ORCHESTRATE] Caso: slots completos → ação determinística');
-    // (1) ou (2) — COMPLETO → AGIR determinístico:
-    // se não houver evento, cria rascunho
-    const evtId =
-      draft?.evento?.id ??
-      (
+    console.log('[ORCHESTRATE] Caso: slots completos → verificar se precisa de data');
+    
+    // Verificar se já temos data ou se devemos perguntar
+    const hasDate = draft?.evento?.data_evento || data_evento;
+    
+    if (!hasDate) {
+      // Perguntar a data antes de prosseguir
+      const evtId = draft?.evento?.id ?? (
         await upsertEvent({
           usuario_id: userId,
           nome_evento: "Rascunho",
@@ -148,6 +151,31 @@ export const orchestrate = async (
           status: "collecting_core",
         })
       ).id;
+      
+      console.log('[ORCHESTRATE] Pedindo data para o evento:', evtId);
+      
+      return {
+        estado: "collecting_core",
+        evento_id: evtId,
+        mensagem: `Perfeito! ${tipo_evento} para ${qtd_pessoas} pessoas. Qual será a data do evento?`,
+        suggestions: [],
+        ctas: [],
+        tipo_evento,
+        qtd_pessoas,
+      };
+    }
+    
+    // Temos tipo, quantidade e data → prosseguir com geração de itens
+    const evtId = draft?.evento?.id ?? (
+      await upsertEvent({
+        usuario_id: userId,
+        nome_evento: "Rascunho",
+        tipo_evento,
+        qtd_pessoas,
+        status: "collecting_core",
+      })
+    ).id;
+    
     console.log('[ORCHESTRATE] Evento ID:', evtId);
 
     // gera lista e salva (RPC)
@@ -173,9 +201,7 @@ export const orchestrate = async (
     return {
       estado: "itens_pendentes_confirmacao",
       evento_id: evtId,
-      mensagem: `Listei itens e quantidades para **${tipo_evento} de ${
-        qtd_pessoas
-      } pessoas**. Quer revisar antes de dividir?`,
+      mensagem: `Listei itens e quantidades para **${tipo_evento} de ${qtd_pessoas} pessoas**. Quer revisar antes de dividir?`,
       snapshot,
       ctas: [
         { type: "confirm-items", label: "Confirmar lista" },
@@ -185,34 +211,42 @@ export const orchestrate = async (
   }
 
   if (draft?.evento?.status === "itens_pendentes_confirmacao") {
-    console.log('[ORCHESTRATE] Caso: status itens_pendentes_confirmacao - chamando LLM');
-    // Após a confirmação, podemos usar a LLM para sugestões
-    const llmPromise = getLlmSuggestions(
-      "Você é um assistente de planejamento de eventos. Com base nos itens e quantidades, gere ideias criativas e sucintas (sem números) para comidas, bebidas, decoração ou atividades. Retorne apenas as ideias em texto.",
-      history ?? [],
-      0.3,
-      {
+    console.log('[ORCHESTRATE] Caso: status itens_pendentes_confirmacao - resposta heurística');
+    // Responder sem LLM quando possível
+    
+    // Verificar se a mensagem do usuário indica edição ou confirmação
+    const lower = userText.toLowerCase();
+    const isConfirming = /\b(sim|ok|confirma|beleza|perfeito|pode seguir|isso|bora)\b/i.test(lower);
+    const isEditing = /\b(editar|mudar|alterar|modificar|ajustar)\b/i.test(lower);
+    
+    if (isConfirming) {
+      return {
+        estado: "itens_pendentes_confirmacao",
         evento_id: draft.evento.id,
-        user_id: userId,
-      }
-    );
-
-    const llmResult = await Promise.race([
-      llmPromise,
-      new Promise((resolve) => setTimeout(() => resolve(null), 1500)), // Timeout de 1.5s
-    ]);
-    console.log('[ORCHESTRATE] Resultado LLM:', llmResult);
-
-    const llmContent = llmResult && typeof llmResult === 'object' && 'content' in llmResult 
-      ? (llmResult as { content?: string }).content 
-      : undefined;
-
+        mensagem: "Ótimo! Os itens estão confirmados. Agora, quer adicionar participantes para dividir os custos?",
+        snapshot: draft,
+        ctas: [
+          { type: "add-participants", label: "Adicionar participantes" },
+          { type: "view-plan", label: "Ver plano completo" },
+        ],
+      };
+    }
+    
+    if (isEditing) {
+      return {
+        estado: "itens_pendentes_confirmacao",
+        evento_id: draft.evento.id,
+        mensagem: "Sem problemas! Me diga quais itens você quer editar.",
+        snapshot: draft,
+      };
+    }
+    
+    // Para outras mensagens, responder de forma genérica sem chamar LLM
     return {
-      ...draft,
       estado: "itens_pendentes_confirmacao",
       evento_id: draft.evento.id,
-      mensagem: draft.mensagem || "Itens listados. Algo mais?",
-      sugestoes_texto: llmContent ?? undefined,
+      mensagem: "Os itens estão listados. Você pode confirmar, editar ou me perguntar algo sobre o evento.",
+      snapshot: draft,
     };
   }
 
@@ -251,13 +285,60 @@ export const orchestrate = async (
     };
   }
 
-  console.log('[ORCHESTRATE] Caso: resposta padrão');
-  // Se nada claro, resposta breve + exemplos
+  console.log('[ORCHESTRATE] Caso: resposta padrão ou usar LLM');
+  
+  // Tentar interpretar com heurísticas simples primeiro
+  const lower = userText.toLowerCase();
+  const isGreeting = /\b(oi|olá|ola|hey|bom dia|boa tarde|boa noite)\b/i.test(lower);
+  const isHelp = /\b(ajuda|como|funciona|o que|pode fazer)\b/i.test(lower);
+  
+  if (isGreeting) {
+    return {
+      estado: "collecting_core",
+      evento_id: draft?.evento?.id ?? null,
+      mensagem: "Olá! Estou aqui para ajudar a organizar seu evento. Me diga o tipo de evento e quantas pessoas.",
+      suggestions: ["Churrasco para 10", "Festa para 20"],
+      ctas: [],
+    };
+  }
+  
+  if (isHelp) {
+    return {
+      estado: "collecting_core",
+      evento_id: draft?.evento?.id ?? null,
+      mensagem: "Posso ajudar a organizar eventos! Primeiro, me diga o tipo de evento (churrasco, piquenique, jantar, etc.) e quantas pessoas irão participar.",
+      suggestions: ["Churrasco para 10", "Piquenique 8 pessoas"],
+      ctas: [],
+    };
+  }
+  
+  // Se não conseguimos interpretar com heurística, usar LLM apenas como último recurso
+  if (history && history.length > 0) {
+    try {
+      const llmResult = await getLlmSuggestions(
+        "Você é o UNE.AI. Ajude o usuário a organizar eventos. Se não entender o que ele quer, peça claramente o tipo de evento e quantidade de pessoas. Seja breve e direto.",
+        history,
+        0.3
+      );
+      
+      if (llmResult?.content) {
+        return {
+          estado: "collecting_core",
+          evento_id: draft?.evento?.id ?? null,
+          mensagem: llmResult.content,
+          ctas: [],
+        };
+      }
+    } catch (err) {
+      console.warn('[ORCHESTRATE] LLM falhou, usando resposta padrão', err);
+    }
+  }
+  
+  // Fallback final
   return {
     estado: "collecting_core",
     evento_id: draft?.evento?.id ?? null,
-    mensagem:
-      'Entendi. Me diga o tipo de evento e quantas pessoas (ex.: “churrasco para 10”).',
+    mensagem: 'Me diga o tipo de evento e quantas pessoas (ex.: "churrasco para 10").',
     suggestions: ["Churrasco para 10", "Piquenique 8 pessoas"],
     ctas: [],
   };

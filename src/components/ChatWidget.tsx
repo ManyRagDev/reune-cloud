@@ -21,10 +21,22 @@ export default function ChatWidget() {
   const [convState, setConvState] = useState<ConversationState | undefined>(undefined);
   const [lastState, setLastState] = useState<string | undefined>(undefined);
   const [stagnationCount, setStagnationCount] = useState(0);
+  const [hasGreeted, setHasGreeted] = useState(false);
 
   const canShow = !!user && !loading;
   const idempotencyBase = useMemo(() => `${Date.now()}`, []);
   const endRef = useRef<HTMLDivElement | null>(null);
+
+  // Saudação inicial fixa (sem LLM) ao abrir o chat
+  useEffect(() => {
+    if (open && !hasGreeted && messages.length === 0) {
+      setMessages([{
+        role: 'assistant',
+        content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+      }]);
+      setHasGreeted(true);
+    }
+  }, [open, hasGreeted, messages.length]);
 
   useEffect(() => {
     if (open && endRef.current) {
