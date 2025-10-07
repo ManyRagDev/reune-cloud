@@ -23,9 +23,11 @@ export class OllamaProvider implements LlmProvider {
       stream: false,
       options: {
         temperature,
-      },
+      } as Record<string, unknown>,
     };
-    if (maxTokens) body.options.num_predict = maxTokens;
+    if (maxTokens && typeof body.options === 'object' && body.options !== null) {
+      (body.options as Record<string, unknown>).num_predict = maxTokens;
+    }
 
     const url = `${BASE_URL}/api/generate`;
     const res = await fetch(url, {

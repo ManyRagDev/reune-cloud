@@ -1,4 +1,4 @@
-import { EventStatus, UUID } from "@/types/domain";
+import { EventStatus, UUID, Item } from "@/types/domain";
 import { extractSlotsByRules } from "./extractSlots";
 import {
   findDraftEventByUser,
@@ -20,6 +20,9 @@ export interface ChatUiPayload {
   ctas?: { type: string; label: string }[];
   context?: Record<string, any>;
   snapshot?: any;
+  toolCalls?: Array<{ name: string; arguments: Record<string, unknown> }>;
+  tipo_evento?: string;
+  qtd_pessoas?: number;
 }
 
 export const getGreeting = (userId: UUID): ChatUiPayload => {
@@ -64,8 +67,18 @@ export const orchestrate = async (
     // gera lista e salva (RPC)
     const itensGerados = await generateItemList({ tipo_evento, qtd_pessoas });
     console.log('[ORCHESTRATE] Itens gerados:', itensGerados);
-    console.log('[ORCHESTRATE] Itens gerados:', itensGerados);
-    await rpc.items_replace_for_event(evtId, itensGerados);
+    const itensComIds = itensGerados.map(item => ({
+      ...item,
+      id: item.id || crypto.randomUUID(),
+      evento_id: evtId,
+      nome_item: item.nome_item || '',
+      quantidade: item.quantidade || 0,
+      unidade: item.unidade || 'un',
+      valor_estimado: item.valor_estimado || 0,
+      categoria: item.categoria || 'geral',
+      prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
+    })) as Item[];
+    await rpc.items_replace_for_event(evtId, itensComIds);
     await setEventStatus(evtId, "itens_pendentes_confirmacao");
 
     // snapshot final
@@ -91,7 +104,18 @@ export const orchestrate = async (
 
     // gera lista e salva (RPC)
     const itensGerados = await generateItemList({ tipo_evento, qtd_pessoas });
-    await rpc.items_replace_for_event(evtId, itensGerados);
+    const itensComIds = itensGerados.map(item => ({
+      ...item,
+      id: item.id || crypto.randomUUID(),
+      evento_id: evtId,
+      nome_item: item.nome_item || '',
+      quantidade: item.quantidade || 0,
+      unidade: item.unidade || 'un',
+      valor_estimado: item.valor_estimado || 0,
+      categoria: item.categoria || 'geral',
+      prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
+    })) as Item[];
+    await rpc.items_replace_for_event(evtId, itensComIds);
     await setEventStatus(evtId, "itens_pendentes_confirmacao");
 
     // snapshot final
@@ -129,7 +153,18 @@ export const orchestrate = async (
     // gera lista e salva (RPC)
     const itensGerados = await generateItemList({ tipo_evento, qtd_pessoas });
     console.log('[ORCHESTRATE] Itens gerados:', itensGerados);
-    await rpc.items_replace_for_event(evtId, itensGerados);
+    const itensComIds = itensGerados.map(item => ({
+      ...item,
+      id: item.id || crypto.randomUUID(),
+      evento_id: evtId,
+      nome_item: item.nome_item || '',
+      quantidade: item.quantidade || 0,
+      unidade: item.unidade || 'un',
+      valor_estimado: item.valor_estimado || 0,
+      categoria: item.categoria || 'geral',
+      prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
+    })) as Item[];
+    await rpc.items_replace_for_event(evtId, itensComIds);
     await setEventStatus(evtId, "itens_pendentes_confirmacao");
 
     // snapshot final
@@ -168,12 +203,16 @@ export const orchestrate = async (
     ]);
     console.log('[ORCHESTRATE] Resultado LLM:', llmResult);
 
+    const llmContent = llmResult && typeof llmResult === 'object' && 'content' in llmResult 
+      ? (llmResult as { content?: string }).content 
+      : undefined;
+
     return {
       ...draft,
       estado: "itens_pendentes_confirmacao",
       evento_id: draft.evento.id,
       mensagem: draft.mensagem || "Itens listados. Algo mais?",
-      sugestoes_texto: llmResult?.content ?? undefined,
+      sugestoes_texto: llmContent ?? undefined,
     };
   }
 

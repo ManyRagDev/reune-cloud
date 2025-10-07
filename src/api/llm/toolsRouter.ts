@@ -48,19 +48,15 @@ export async function runToolCall(userId: string, call: ToolCall): Promise<RunRe
         const people = qtd_pessoas || plan.evento.qtd_pessoas;
 
         // Gerar itens a partir do perfil (churrasco como default)
-        const base = churrascoProfile.defaults?.suggestedItems || [];
-        const generated: Array<Partial<Item>> = base.map((s) => {
-          const per = estimateQuantityPerPerson(s.name);
-          const qty = Math.round(per * people * 100) / 100; // arredondar 2 casas
-          return {
-            nome_item: s.name,
-            quantidade: qty,
-            unidade: s.unit,
-            valor_estimado: s.estimated_cost ?? 0,
-            categoria: s.category || 'geral',
-            prioridade: s.priority || 'B',
-          };
-        });
+        const base = churrascoProfile.estimate(people);
+        const generated: Array<Partial<Item>> = base.map((s) => ({
+          nome_item: s.nome_item,
+          quantidade: s.quantidade,
+          unidade: s.unidade,
+          valor_estimado: s.valor_estimado ?? 0,
+          categoria: s.categoria || 'geral',
+          prioridade: s.prioridade || 'B',
+        }));
 
         const persisted = await rpc.items_replace_for_event(evento_id, generated as unknown as Item[], { idempotencyKey });
         const finalPlan = await rpc.get_event_plan(evento_id);

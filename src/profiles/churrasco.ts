@@ -27,64 +27,84 @@ export const churrascoProfile = {
 
     const items: SuggestedItem[] = [
       {
-        nome: "Picanha",
-        quantidade: totalMeat * 0.4, // 40% do total de carne
+        nome_item: "Picanha",
+        quantidade: totalMeat * 0.4,
         unidade: "kg",
         categoria: "Carnes",
+        prioridade: 'A',
+        valor_estimado: 0,
       },
       {
-        nome: "Linguiça Toscana",
+        nome_item: "Linguiça Toscana",
         quantidade: totalSausage,
         unidade: "kg",
         categoria: "Carnes",
+        prioridade: 'A',
+        valor_estimado: 0,
       },
       {
-        nome: "Asa de Frango",
-        quantidade: totalMeat * 0.3, // 30% do total de carne
+        nome_item: "Asa de Frango",
+        quantidade: totalMeat * 0.3,
         unidade: "kg",
         categoria: "Carnes",
+        prioridade: 'B',
+        valor_estimado: 0,
       },
       {
-        nome: "Pão de Alho",
+        nome_item: "Pão de Alho",
         quantidade: qtd_pessoas * breadPerPerson,
         unidade: "un",
         categoria: "Acompanhamentos",
+        prioridade: 'B',
+        valor_estimado: 0,
       },
       {
-        nome: "Queijo Coalho",
-        quantidade: qtd_pessoas * 1, // 1 espeto por pessoa
+        nome_item: "Queijo Coalho",
+        quantidade: qtd_pessoas * 1,
         unidade: "un",
         categoria: "Acompanhamentos",
+        prioridade: 'B',
+        valor_estimado: 0,
       },
       {
-        nome: "Cerveja",
+        nome_item: "Cerveja",
         quantidade: qtd_pessoas * beerPerPerson,
         unidade: "L",
         categoria: "Bebidas",
+        prioridade: 'A',
+        valor_estimado: 0,
       },
       {
-        nome: "Refrigerante",
+        nome_item: "Refrigerante",
         quantidade: qtd_pessoas * sodaPerPerson,
         unidade: "L",
         categoria: "Bebidas",
+        prioridade: 'B',
+        valor_estimado: 0,
       },
       {
-        nome: "Água",
-        quantidade: qtd_pessoas * 0.5, // 500ml por pessoa
+        nome_item: "Água",
+        quantidade: qtd_pessoas * 0.5,
         unidade: "L",
         categoria: "Bebidas",
+        prioridade: 'A',
+        valor_estimado: 0,
       },
       {
-        nome: "Carvão",
+        nome_item: "Carvão",
         quantidade: (totalMeat + totalSausage) * charcoalPerKgOfMeat,
         unidade: "kg",
         categoria: "Utensílios",
+        prioridade: 'A',
+        valor_estimado: 0,
       },
       {
-        nome: "Sal Grosso",
+        nome_item: "Sal Grosso",
         quantidade: 1,
         unidade: "kg",
         categoria: "Temperos",
+        prioridade: 'C',
+        valor_estimado: 0,
       },
     ];
 

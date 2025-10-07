@@ -153,7 +153,10 @@ function generateFallbackItems(tipo_evento: string, qtd_pessoas: number): Partia
     baseItems[0].quantidade = Math.max(1, qtd_pessoas * 0.3);
   }
 
-  return baseItems;
+  return baseItems.map(item => ({
+    ...item,
+    prioridade: item.prioridade as 'A' | 'B' | 'C'
+  }));
 }
 
 export async function setEventStatus(eventoId: UUID, status: Event['status']): Promise<void> {

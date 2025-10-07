@@ -1,1 +1,4 @@
 project_id = "tfrogqqqmgfgfybesglq"
+
+[functions.llm-chat]
+verify_jwt = false

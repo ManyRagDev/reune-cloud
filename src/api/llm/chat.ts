@@ -28,6 +28,13 @@ export async function getLlmSuggestions(
 
   try {
     console.log('[LLM] Fazendo requisição para /llm-chat', { idempotencyKey });
+    
+    const options = idempotencyKey ? {
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
+    } : undefined;
+    
     const response = await lovableFunctions.post<LlmChatResponse>(
       '/llm-chat',
       {
@@ -35,11 +42,7 @@ export async function getLlmSuggestions(
         messages,
         temperature,
       },
-      {
-        headers: {
-          'Idempotency-Key': idempotencyKey,
-        },
-      }
+      options as any
     );
     console.log('[LLM] Resposta recebida:', response);
     return response;

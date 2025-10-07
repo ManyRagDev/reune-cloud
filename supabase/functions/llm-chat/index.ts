@@ -5,7 +5,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from 'https://deno.land/x/zod@v3.23.8/mod.ts';
-import { FunctionDeclaration } from 'https://deno.land/x/gemini_tools@v0.0.1/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,14 +26,17 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const MAX_TOOL_ITERS = Number(Deno.env.get('LLM_TOOL_MAX_ITERS') ?? 3);
 
 type GeminiMessage = { role: 'user' | 'model'; parts: { text: string }[] };
+type GeminiFunctionDeclaration = {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+};
 
 // Gemini-specific helpers
 function mapToGeminiRoles(messages: Message[]): GeminiMessage[] {
   return messages.map((msg) => {
     let role: 'user' | 'model' = 'user';
     if (msg.role === 'assistant') role = 'model';
-    // Gemini não tem role 'system' ou 'tool' explícita no mesmo nível. O SDK abstrai, mas na API REST,
-    // o histórico é uma lista plana de 'user' e 'model'. Tools são tratadas de forma especial.
     return {
       role: role,
       parts: [{ text: msg.content }],
@@ -46,7 +48,7 @@ async function streamGemini(
   messages: Message[],
   temperature: number,
   maxTokens?: number,
-  tools?: FunctionDeclaration[],
+  tools?: GeminiFunctionDeclaration[],
 ): Promise<ReadableStream<Uint8Array>> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse`;
   const headers = {
@@ -63,9 +65,7 @@ async function streamGemini(
       temperature,
       maxOutputTokens: maxTokens,
     },
-    // A API REST do Gemini lida com tools de forma um pouco diferente.
-    // Por simplicidade inicial, vamos focar no texto e adicionar tools depois.
-    tools: tools ? [{ function_declarations: tools.map(t => t.function) }] : undefined,
+    tools: tools ? [{ function_declarations: tools }] : undefined,
   };
 
   const res = await fetch(url, {
@@ -300,20 +300,23 @@ type SimpleItem = { id: string; valor_estimado?: number | string; quantidade?: n
 type SimpleParticipant = { id: string; status_convite?: string };
 type Distribution = { id: string; item_id: string; participante_id: string; quantidade_atribuida: number; valor_rateado: number; observacoes: string | null };
 
-function computeCostSplitSimple(items: SimpleItem[], participants: SimpleParticipant[]): Distribution[] {
-  const active = participants.filter((p) => p.status_convite !== 'recusado');
+function computeCostSplitSimple(items: Array<Record<string, unknown>>, participants: Array<Record<string, unknown>>): Distribution[] {
+  const active = participants.filter((p) => (p as SimpleParticipant).status_convite !== 'recusado');
   const base = active.length > 0 ? active : participants;
   const out: Distribution[] = [];
   for (const item of items) {
-    const cost = Number(item.valor_estimado || 0);
-    const qty = Number(item.quantidade || 0);
+    const it = item as SimpleItem;
+    const cost = Number(it.valor_estimado || 0);
+    const qty = Number(it.quantidade || 0);
     const perCost = cost / Math.max(1, base.length);
     const perQty = qty / Math.max(1, base.length);
     for (const p of base) {
+      const part = p as SimpleParticipant;
+      const it = item as SimpleItem;
       out.push({
         id: crypto.randomUUID(),
-        item_id: item.id,
-        participante_id: p.id,
+        item_id: it.id,
+        participante_id: part.id,
         quantidade_atribuida: Number.isFinite(perQty) ? perQty : 0,
         valor_rateado: Number.isFinite(perCost) ? perCost : 0,
         observacoes: null,
@@ -419,9 +422,11 @@ async function ollamaChat(messages: Message[], temperature: number, maxTokens?: 
     model: MODEL,
     prompt,
     stream: false,
-    options: { temperature },
+    options: { temperature } as Record<string, unknown>,
   };
-  if (maxTokens) body.options.num_predict = maxTokens;
+  if (maxTokens && typeof body.options === 'object' && body.options !== null) {
+    (body.options as Record<string, unknown>).num_predict = maxTokens;
+  }
 
   const res = await fetch(`${BASE_URL}/api/generate`, {
     method: 'POST',
@@ -567,7 +572,16 @@ serve(async (req) => {
       : msgs.map((m) => (m.role === 'user' || m.role === 'assistant' ? { ...m, content: maskPII(m.content) } : m));
 
     if (PROVIDER === 'gemini') {
-      const stream = await streamGemini(finalMessages, temperature, maxTokens, tools);
+      const geminiTools = tools?.map(t => {
+        const tool = t as Record<string, unknown>;
+        const func = tool?.function as Record<string, unknown> | undefined;
+        return {
+          name: String(func?.name ?? ''),
+          description: String(func?.description ?? ''),
+          parameters: (func?.parameters as Record<string, unknown>) ?? {},
+        };
+      }) as GeminiFunctionDeclaration[] | undefined;
+      const stream = await streamGemini(finalMessages, temperature, maxTokens, geminiTools);
       return new Response(stream, {
         headers: {
           'Content-Type': 'text/event-stream; charset=utf-8',
@@ -622,17 +636,18 @@ serve(async (req) => {
 
         const perCallKey = idemKey ? `${idemKey}:${call.id ?? iter + 1}` : undefined;
         const toolStart = performance.now();
-        const r = await runToolCall(userId, { name: call.name, arguments: validatedArgs, id: call.id }, token, perCallKey);
+        const argsAsRecord = validatedArgs as Record<string, unknown>;
+        const r = await runToolCall(userId, { name: call.name, arguments: argsAsRecord, id: call.id }, token, perCallKey);
         const toolDuration = Math.round(performance.now() - toolStart);
-        console.debug(JSON.stringify({ route: '/llm/chat', tool: call.name, tool_call_id: call.id, evento_id: validatedArgs?.evento_id, validated: true, iteration: iter + 1, duration_ms: toolDuration, ok: r.ok, error: r.error }));
+        console.debug(JSON.stringify({ route: '/llm/chat', tool: call.name, tool_call_id: call.id, evento_id: argsAsRecord?.evento_id, validated: true, iteration: iter + 1, duration_ms: toolDuration, ok: r.ok, error: r.error }));
 
-        executed.push({ name: call.name, arguments: validatedArgs, id: call.id });
+        executed.push({ name: call.name, arguments: argsAsRecord, id: call.id });
 
         if (!r.ok) {
           if (r.error === 'forbidden') {
-            return errorResponse('forbidden', 'Acesso negado ao evento', 403, { tool: call.name, evento_id: validatedArgs?.evento_id });
+            return errorResponse('forbidden', 'Acesso negado ao evento', 403, { tool: call.name, evento_id: argsAsRecord?.evento_id });
           }
-          return errorResponse('server_error', r.error || 'Falha ao executar ferramenta', 500, { tool: call.name, evento_id: validatedArgs?.evento_id });
+          return errorResponse('server_error', r.error || 'Falha ao executar ferramenta', 500, { tool: call.name, evento_id: argsAsRecord?.evento_id });
         }
 
         // Anexar mensagem de tool com resultado para reenvio ao provedor (multi-turn)
