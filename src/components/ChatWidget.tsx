@@ -9,7 +9,17 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ConversationState } from '@/types/domain';
 import { runToolCall } from '@/api/llm/toolsRouter';
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string };
+type ChatMessage = { 
+  role: 'user' | 'assistant'; 
+  content: string;
+  items?: Array<{
+    nome_item: string;
+    quantidade: number;
+    unidade: string;
+    categoria: string;
+    valor_estimado: number;
+  }>;
+};
 
 export default function ChatWidget() {
   const { user, loading } = useAuth();
@@ -76,7 +86,11 @@ export default function ChatWidget() {
         setLastState(res.estado);
       }
 
-      const assistantMessage: ChatMessage = { role: 'assistant', content: res.mensagem };
+      const assistantMessage: ChatMessage = { 
+        role: 'assistant', 
+        content: res.mensagem,
+        items: res.showItems && res.snapshot?.itens ? res.snapshot.itens : undefined
+      };
       setMessages((prev) => [...prev, assistantMessage]);
 
       // Atualizar evento_id no estado se retornado
@@ -155,10 +169,31 @@ export default function ChatWidget() {
                       className={
                         m.role === 'user'
                           ? 'inline-block bg-primary text-primary-foreground px-3 py-2 rounded-xl'
-                          : 'inline-block bg-accent text-accent-foreground px-3 py-2 rounded-xl'
+                          : 'inline-block bg-accent text-accent-foreground px-3 py-2 rounded-xl max-w-full'
                       }
                     >
-                      {m.content}
+                      <div className="whitespace-pre-wrap">{m.content}</div>
+                      
+                      {/* Renderizar lista de itens se presente */}
+                      {m.items && m.items.length > 0 && (
+                        <div className="mt-3 space-y-2 text-sm">
+                          {m.items.map((item, itemIdx) => (
+                            <div key={itemIdx} className="flex justify-between items-start gap-3 py-1 border-b border-border/30 last:border-0">
+                              <div className="flex-1">
+                                <div className="font-medium">{item.nome_item}</div>
+                                <div className="text-xs opacity-70 capitalize">{item.categoria}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-medium">{item.quantidade} {item.unidade}</div>
+                                <div className="text-xs opacity-70">R$ {item.valor_estimado.toFixed(2)}</div>
+                              </div>
+                            </div>
+                          ))}
+                          <div className="pt-2 font-bold text-right border-t border-border">
+                            Total: R$ {m.items.reduce((sum, item) => sum + item.valor_estimado, 0).toFixed(2)}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
