@@ -1,4 +1,4 @@
-import { lovableFunctions } from '@/db/lovableClient';
+import { supabase } from '@/integrations/supabase/client';
 import { LlmMessage, LlmChatResponse } from '@/types/llm';
 
 /**
@@ -17,35 +17,24 @@ export async function getLlmSuggestions(
 ): Promise<LlmChatResponse | null> {
   console.log('[LLM] Iniciando getLlmSuggestions', { systemPrompt, messagesCount: messages.length, temperature });
   
-  if (!lovableFunctions) {
-    console.error('[LLM] Cliente de Functions não configurado.');
-    return null;
-  }
-
-  const idempotencyKey = idempotencyKeyPayload
-    ? `chat-${JSON.stringify(idempotencyKeyPayload)}`
-    : undefined;
-
   try {
-    console.log('[LLM] Fazendo requisição para /llm-chat', { idempotencyKey });
+    console.log('[LLM] Chamando edge function llm-chat');
     
-    const options = idempotencyKey ? {
-      headers: {
-        'Idempotency-Key': idempotencyKey,
-      },
-    } : undefined;
-    
-    const response = await lovableFunctions.post<LlmChatResponse>(
-      '/llm-chat',
-      {
+    const { data, error } = await supabase.functions.invoke('llm-chat', {
+      body: {
         systemPrompt,
         messages,
         temperature,
       },
-      options as any
-    );
-    console.log('[LLM] Resposta recebida:', response);
-    return response;
+    });
+
+    if (error) {
+      console.error('[LLM] Erro na edge function:', error);
+      return null;
+    }
+
+    console.log('[LLM] Resposta recebida:', data);
+    return data as LlmChatResponse;
   } catch (error) {
     console.error('[LLM] Erro ao chamar a função de chat da LLM:', error);
     if (error instanceof Error) {

@@ -194,7 +194,9 @@ export type Database = {
           is_public: boolean | null
           location: string | null
           max_attendees: number | null
+          qtd_pessoas: number | null
           status: string | null
+          tipo_evento: string | null
           title: string
           updated_at: string | null
           user_id: string
@@ -208,7 +210,9 @@ export type Database = {
           is_public?: boolean | null
           location?: string | null
           max_attendees?: number | null
+          qtd_pessoas?: number | null
           status?: string | null
+          tipo_evento?: string | null
           title?: string
           updated_at?: string | null
           user_id: string
@@ -222,7 +226,9 @@ export type Database = {
           is_public?: boolean | null
           location?: string | null
           max_attendees?: number | null
+          qtd_pessoas?: number | null
           status?: string | null
+          tipo_evento?: string | null
           title?: string
           updated_at?: string | null
           user_id?: string

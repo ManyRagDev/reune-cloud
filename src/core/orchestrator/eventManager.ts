@@ -1,52 +1,123 @@
 import { Event, EventSnapshot, Item, UUID } from "@/types/domain";
 import { getLlmSuggestions } from "@/api/llm/chat";
-
-// Mock data for stubs
-const mockEvent: Event = {
-  id: 'evt_123',
-  usuario_id: 'user_123',
-  nome_evento: 'Rascunho',
-  tipo_evento: 'churrasco',
-  data_evento: new Date().toISOString(),
-  qtd_pessoas: 10,
-  status: 'collecting_core',
-};
-
-const mockItems: Item[] = [];
-
-const mockSnapshot: EventSnapshot = {
-  evento: mockEvent,
-  itens: mockItems,
-  participantes: [],
-  distribuicao: [],
-};
+import { rpc } from "@/api/rpc";
+import { supabase } from "@/integrations/supabase/client";
 
 export async function getPlanSnapshot(eventoId: UUID): Promise<EventSnapshot | null> {
-  console.log(`[Stub] getPlanSnapshot called with eventoId: ${eventoId}`);
-  if (eventoId === 'evt_123') {
-    return Promise.resolve(mockSnapshot);
+  console.log(`[Manager] getPlanSnapshot called with eventoId: ${eventoId}`);
+  try {
+    const snapshot = await rpc.get_event_plan(eventoId);
+    return snapshot as EventSnapshot;
+  } catch (error) {
+    console.error('[Manager] Erro ao buscar snapshot:', error);
+    return null;
   }
-  return Promise.resolve(null);
 }
 
 export async function findDraftEventByUser(userId: UUID): Promise<EventSnapshot | null> {
-  console.log(`[Stub] findDraftEventByUser called with userId: ${userId}`);
-  // Return a draft if you want to simulate finding one
-  return Promise.resolve(null);
+  console.log(`[Manager] findDraftEventByUser called with userId: ${userId}`);
+  try {
+    // Busca eventos do usuário com status 'draft'
+    const { data, error } = await supabase
+      .from('table_reune')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'draft')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.log('[Manager] Nenhum draft encontrado');
+      return null;
+    }
+
+    console.log('[Manager] Draft encontrado:', data);
+
+    // Monta o snapshot a partir dos dados do draft
+    const snapshot: EventSnapshot = {
+      evento: {
+        id: data.id.toString(),
+        usuario_id: data.user_id,
+        nome_evento: data.title,
+        tipo_evento: data.tipo_evento || '',
+        data_evento: data.event_date,
+        qtd_pessoas: data.qtd_pessoas || 0,
+        status: 'collecting_core',
+      },
+      itens: [],
+      participantes: [],
+      distribuicao: [],
+    };
+
+    return snapshot;
+  } catch (error) {
+    console.error('[Manager] Erro ao buscar draft:', error);
+    return null;
+  }
 }
 
 export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID }): Promise<Event> {
-  console.log('[Stub] upsertEvent called with:', event);
-  const newEvent: Event = {
-    id: event.id || `evt_${Math.random().toString(36).substr(2, 9)}`,
-    usuario_id: event.usuario_id,
-    nome_evento: event.nome_evento || 'Rascunho',
-    tipo_evento: event.tipo_evento || 'indefinido',
-    data_evento: event.data_evento || new Date().toISOString(),
-    qtd_pessoas: event.qtd_pessoas || 0,
-    status: event.status || 'collecting_core',
-  };
-  return Promise.resolve(newEvent);
+  console.log('[Manager] upsertEvent called with:', event);
+  
+  try {
+    const eventData: any = {
+      user_id: event.usuario_id,
+      title: event.nome_evento || 'Rascunho',
+      description: '',
+      event_date: event.data_evento ? new Date(event.data_evento).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      event_time: '12:00',
+      status: event.status === 'collecting_core' ? 'draft' : event.status || 'draft',
+      is_public: false,
+      tipo_evento: event.tipo_evento,
+      qtd_pessoas: event.qtd_pessoas,
+    };
+
+    if (event.id) {
+      // Update existing event
+      const eventIdNum = typeof event.id === 'string' ? parseInt(event.id, 10) : event.id;
+      const { data, error } = await supabase
+        .from('table_reune')
+        .update(eventData)
+        .eq('id', eventIdNum)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      return {
+        id: data.id.toString(),
+        usuario_id: data.user_id,
+        nome_evento: data.title,
+        tipo_evento: event.tipo_evento || '',
+        data_evento: data.event_date,
+        qtd_pessoas: event.qtd_pessoas || 0,
+        status: data.status === 'draft' ? 'collecting_core' : data.status as Event['status'],
+      };
+    } else {
+      // Create new event
+      const { data, error } = await supabase
+        .from('table_reune')
+        .insert(eventData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return {
+        id: data.id.toString(),
+        usuario_id: data.user_id,
+        nome_evento: data.title,
+        tipo_evento: event.tipo_evento || '',
+        data_evento: data.event_date,
+        qtd_pessoas: event.qtd_pessoas || 0,
+        status: data.status === 'draft' ? 'collecting_core' : data.status as Event['status'],
+      };
+    }
+  } catch (error) {
+    console.error('[Manager] Erro ao criar/atualizar evento:', error);
+    throw error;
+  }
 }
 
 export async function generateItemList(params: {
@@ -160,6 +231,21 @@ function generateFallbackItems(tipo_evento: string, qtd_pessoas: number): Partia
 }
 
 export async function setEventStatus(eventoId: UUID, status: Event['status']): Promise<void> {
-  console.log(`[Stub] setEventStatus called with eventoId: ${eventoId}, status: ${status}`);
-  return Promise.resolve();
+  console.log(`[Manager] setEventStatus called with eventoId: ${eventoId}, status: ${status}`);
+  try {
+    const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
+    const mappedStatus = status === 'collecting_core' ? 'draft' : status;
+    
+    const { error } = await supabase
+      .from('table_reune')
+      .update({ status: mappedStatus })
+      .eq('id', eventIdNum);
+
+    if (error) {
+      console.error('[Manager] Erro ao atualizar status:', error);
+      throw error;
+    }
+  } catch (error) {
+    console.error('[Manager] Erro ao atualizar status do evento:', error);
+  }
 }
