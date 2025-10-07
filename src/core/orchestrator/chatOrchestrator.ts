@@ -160,6 +160,11 @@ export const orchestrate = async (
     
     // Verificar se já temos data ou se devemos perguntar
     const hasDate = draft?.evento?.data_evento || data_evento;
+    console.log('[ORCHESTRATE] Merge de data:', { 
+      draft_data: draft?.evento?.data_evento, 
+      nova_data: data_evento, 
+      hasDate 
+    });
     
     if (!hasDate) {
       // Perguntar a data antes de prosseguir - NÃO GERAR ITENS AINDA

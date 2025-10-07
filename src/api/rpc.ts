@@ -22,6 +22,12 @@ async function participants_bulk_upsert(
 
 async function items_replace_for_event(evento_id: string, itens: Item[], opts?: Opts): Promise<Item[]> {
   console.debug('[RPC] items_replace_for_event', { evento_id, count: itens.length });
+  
+  // Validação preventiva: garantir que itens é array
+  if (!Array.isArray(itens)) {
+    throw new Error(`items_replace_for_event: payload não é array (recebido: ${typeof itens})`);
+  }
+  
   const { data, error } = await supabase.rpc('items_replace_for_event', { 
     evento_id, 
     itens: itens as any // SDK serializa para JSONB
