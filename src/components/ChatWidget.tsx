@@ -12,6 +12,7 @@ import { runToolCall } from '@/api/llm/toolsRouter';
 type ChatMessage = { 
   role: 'user' | 'assistant'; 
   content: string;
+  suggestedReplies?: string[]; // Quick replies clicáveis
   items?: Array<{
     nome_item: string;
     quantidade: number;
@@ -89,6 +90,7 @@ export default function ChatWidget() {
       const assistantMessage: ChatMessage = { 
         role: 'assistant', 
         content: res.mensagem,
+        suggestedReplies: res.suggestedReplies,
         items: res.showItems && res.snapshot?.itens ? res.snapshot.itens : undefined
       };
       setMessages((prev) => [...prev, assistantMessage]);
@@ -192,6 +194,26 @@ export default function ChatWidget() {
                           <div className="pt-2 font-bold text-right border-t border-border">
                             Total: R$ {m.items.reduce((sum, item) => sum + item.valor_estimado, 0).toFixed(2)}
                           </div>
+                        </div>
+                      )}
+                      
+                      {/* Renderizar sugestões de resposta rápida */}
+                      {m.suggestedReplies && m.suggestedReplies.length > 0 && m.role === 'assistant' && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {m.suggestedReplies.map((reply, replyIdx) => (
+                            <Button
+                              key={replyIdx}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setInput(reply);
+                                setTimeout(() => sendMessage(), 100);
+                              }}
+                              className="text-xs"
+                            >
+                              {reply}
+                            </Button>
+                          ))}
                         </div>
                       )}
                     </div>

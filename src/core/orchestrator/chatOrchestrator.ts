@@ -1,11 +1,14 @@
 import { EventStatus, UUID, Item } from "@/types/domain";
-import { extractSlotsByRules } from "./extractSlots";
+import { analyzeMessage } from "./analyzeMessage";
+import { classifyIntent } from "./classifyIntent";
+import { getRandomTemplate } from "./chatTemplates";
 import {
   findDraftEventByUser,
   generateItemList,
   getPlanSnapshot,
   setEventStatus,
   upsertEvent,
+  finalizeEvent,
 } from "./eventManager";
 import { rpc } from "@/api/rpc";
 import { getLlmSuggestions } from "@/api/llm/chat";
@@ -16,6 +19,7 @@ export interface ChatUiPayload {
   evento_id: UUID | null;
   mensagem: string;
   suggestions?: string[];
+  suggestedReplies?: string[]; // Quick replies clicáveis
   sugestoes_texto?: string;
   ctas?: { type: string; label: string }[];
   context?: Record<string, any>;
@@ -30,9 +34,8 @@ export const getGreeting = (userId: UUID): ChatUiPayload => {
   return {
     estado: "collecting_core",
     evento_id: null,
-    mensagem:
-      "Olá! Para começarmos, me diga qual o tipo de evento e para quantas pessoas será.",
-    suggestions: ["Churrasco para 10", "Festa de aniversário para 25"],
+    mensagem: getRandomTemplate('greeting'),
+    suggestedReplies: ["Jantar para 10", "Churrasco para 15", "Festa para 20"],
     ctas: [],
   };
 };
@@ -52,42 +55,21 @@ export const orchestrate = async (
     : await findDraftEventByUser(userId);
   console.log('[ORCHESTRATE] Draft carregado:', draft);
 
-  // 2) Extrair slots com merge hierárquico (novo > draft)
-  const slots = extractSlotsByRules(userText, {
+  // 2) Análise semântica da mensagem com contexto
+  const analysis = await analyzeMessage(userText, {
     tipo_evento: draft?.evento?.tipo_evento,
     qtd_pessoas: draft?.evento?.qtd_pessoas,
     data_evento: draft?.evento?.data_evento,
   });
-  
-  let { tipo_evento, qtd_pessoas, data_evento, is_confirm } = slots;
-  console.log('[ORCHESTRATE] Slots extraídos:', { tipo_evento, qtd_pessoas, data_evento, is_confirm });
-  
-  // Se não detectou tipo, mas a mensagem é apenas um número e o draft tinha tipo → herdamos o tipo anterior
-  if (!tipo_evento && /^\d+$/.test(userText.trim()) && draft?.evento?.tipo_evento) {
-    console.log('[ORCHESTRATE] Herdando tipo_evento do contexto:', draft.evento.tipo_evento);
-    tipo_evento = draft.evento.tipo_evento;
-  }
-  
-  // 3) Se há draft, atualizar o evento com os novos slots (merge persistente)
-  if (draft?.evento?.id && (tipo_evento || qtd_pessoas || data_evento)) {
-    try {
-      await upsertEvent({
-        id: draft.evento.id,
-        usuario_id: userId,
-        nome_evento: draft.evento.nome_evento || "Rascunho",
-        tipo_evento: tipo_evento || draft.evento.tipo_evento,
-        qtd_pessoas: qtd_pessoas ?? draft.evento.qtd_pessoas,
-        data_evento: data_evento || draft.evento.data_evento,
-        status: draft.evento.status || "collecting_core",
-      });
-      console.log('[ORCHESTRATE] Draft atualizado com novos slots');
-    } catch (err) {
-      console.warn('[ORCHESTRATE] Erro ao atualizar draft:', err);
-    }
-  }
+  console.log('[ORCHESTRATE] Análise semântica:', analysis);
 
-  // 3) PRIORIZAR: Se já tem itens e usuário pede para ver, mostrar ANTES de qualquer lógica de slots
-  if (draft?.evento?.status === "itens_pendentes_confirmacao" && /itens|lista|mostrar|mostra|mostre/i.test(userText)) {
+  // 3) Classificação de intenção
+  const classification = classifyIntent(analysis, draft);
+  console.log('[ORCHESTRATE] Classificação:', classification);
+
+  // 4) PRIORIDADE: Se já tem itens e usuário pede para ver, mostrar ANTES de qualquer lógica
+  if (draft?.evento?.status === "itens_pendentes_confirmacao" && 
+      (analysis.intencao === "mostrar_itens" || /itens|lista|mostrar|mostra|mostre/i.test(userText))) {
     console.log('[ORCHESTRATE] Caso prioritário: mostrar itens existentes');
     const snapshot = await rpc.get_event_plan(draft.evento.id);
     return {
@@ -96,162 +78,230 @@ export const orchestrate = async (
       mensagem: "Aqui está a lista de itens do seu evento:",
       snapshot,
       showItems: true,
+      suggestedReplies: ["Confirmar lista", "Editar itens", "Adicionar participantes"],
     };
   }
 
-  // 4) Decisão por casos:
-  if (force_action && draft?.evento?.tipo_evento && draft?.evento?.qtd_pessoas) {
-    console.log('[ORCHESTRATE] Caso: força ação com slots completos');
-    // Forçar ação se estagnado e com slots
-    const { tipo_evento, qtd_pessoas } = draft.evento;
-    const evtId = draft.evento.id;
-
-    // gera lista e salva (RPC)
-    const itensGerados = await generateItemList({ tipo_evento, qtd_pessoas });
-    console.log('[ORCHESTRATE] Itens gerados:', itensGerados);
-    const itensComIds = itensGerados.map(item => ({
-      ...item,
-      id: item.id || crypto.randomUUID(),
-      evento_id: evtId,
-      nome_item: item.nome_item || '',
-      quantidade: item.quantidade || 0,
-      unidade: item.unidade || 'un',
-      valor_estimado: item.valor_estimado || 0,
-      categoria: item.categoria || 'geral',
-      prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
-    })) as Item[];
-    await rpc.items_replace_for_event(evtId, itensComIds);
-    await setEventStatus(evtId, "itens_pendentes_confirmacao");
-
-    // snapshot final
-    const snapshot = await rpc.get_event_plan(evtId);
-
+  // 5) TRATAMENTO DE ERROS E MENSAGENS FORA DE CONTEXTO
+  if (analysis.intencao === "out_of_domain") {
     return {
-      estado: "itens_pendentes_confirmacao",
-      evento_id: evtId,
-      mensagem: `Ok! Listei os itens para seu **${tipo_evento} para ${qtd_pessoas} pessoas**.`,
+      estado: "collecting_core",
+      evento_id: draft?.evento?.id ?? null,
+      mensagem: getRandomTemplate('erro_fora_escopo'),
+      suggestedReplies: ["Criar evento", "Ver eventos"],
+      ctas: [],
+    };
+  }
+
+  // 6) ENCERRAR CONVERSA
+  if (analysis.intencao === "encerrar_conversa") {
+    return {
+      estado: draft?.evento?.status || "collecting_core",
+      evento_id: draft?.evento?.id ?? null,
+      mensagem: "Foi ótimo te ajudar! Até a próxima 👋",
+      ctas: [],
+    };
+  }
+
+  // 7) CONFIRMAÇÃO - Finalizar evento se já tem itens
+  if (analysis.intencao === "confirmar_evento" && draft?.evento?.status === "itens_pendentes_confirmacao") {
+    console.log('[ORCHESTRATE] Confirmação: finalizando evento');
+    await finalizeEvent(draft.evento.id, draft.evento);
+    
+    const snapshot = await rpc.get_event_plan(draft.evento.id);
+    return {
+      estado: "finalizado",
+      evento_id: draft.evento.id,
+      mensagem: getRandomTemplate('event_finalized'),
       snapshot,
       showItems: true,
       ctas: [
-        { type: "confirm-items", label: "Confirmar lista" },
-        { type: "edit-items", label: "Editar itens" },
-      ],
+        { type: "view-dashboard", label: "Ver Dashboard" }
+      ]
     };
   }
 
-  if (is_confirm && draft?.evento?.tipo_evento && draft?.evento?.qtd_pessoas) {
-    console.log('[ORCHESTRATE] Caso: confirmação semântica com slots completos');
+  // 8) CONFIRMAÇÃO - Gerar itens se slots completos
+  if (analysis.intencao === "confirmar_evento" && 
+      (draft?.evento?.tipo_evento || analysis.categoria_evento || analysis.subtipo_evento) && 
+      (draft?.evento?.qtd_pessoas || analysis.qtd_pessoas)) {
+    console.log('[ORCHESTRATE] Confirmação semântica: gerar itens');
     
-    // Se já tem itens gerados, finalizar evento
-    if (draft?.evento?.status === "itens_pendentes_confirmacao") {
-      console.log('[ORCHESTRATE] Itens já existem - finalizando evento');
-      const { finalizeEvent } = await import('./eventManager');
-      await finalizeEvent(draft.evento.id, draft.evento);
-      
-      const snapshot = await rpc.get_event_plan(draft.evento.id);
-      return {
-        estado: "finalizado",
-        evento_id: draft.evento.id,
-        mensagem: "Evento criado com sucesso! 🎉 Você pode vê-lo no seu dashboard.",
-        snapshot,
-        showItems: true,
-        ctas: [
-          { type: "view-dashboard", label: "Ver Dashboard" }
-        ]
-      };
-    }
+    const tipo = analysis.categoria_evento || analysis.subtipo_evento || draft?.evento?.tipo_evento;
+    const qtd = analysis.qtd_pessoas || draft?.evento?.qtd_pessoas;
+    const menu = analysis.menu || draft?.evento?.menu;
     
-    // Confirmação semântica com slots completos → AGIR (primeira vez)
-    const { tipo_evento, qtd_pessoas } = draft.evento;
-    const evtId = draft.evento.id;
-
-    // gera lista e salva (RPC)
-    const itensGerados = await generateItemList({ tipo_evento, qtd_pessoas });
-    const itensComIds = itensGerados.map(item => ({
-      ...item,
-      id: item.id || crypto.randomUUID(),
-      evento_id: evtId,
-      nome_item: item.nome_item || '',
-      quantidade: item.quantidade || 0,
-      unidade: item.unidade || 'un',
-      valor_estimado: item.valor_estimado || 0,
-      categoria: item.categoria || 'geral',
-      prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
-    })) as Item[];
-    await rpc.items_replace_for_event(evtId, itensComIds);
-    await setEventStatus(evtId, "itens_pendentes_confirmacao");
-
-    // snapshot final
-    const snapshot = await rpc.get_event_plan(evtId);
-
-    return {
-      estado: "itens_pendentes_confirmacao",
-      evento_id: evtId,
-      mensagem: `Ok! Listei os itens para seu **${tipo_evento} para ${qtd_pessoas} pessoas**.`,
-      snapshot,
-      showItems: true,
-      ctas: [
-        { type: "confirm-items", label: "Confirmar lista" },
-        { type: "edit-items", label: "Editar itens" },
-      ],
-    };
-  }
-
-  if (tipo_evento && qtd_pessoas) {
-    console.log('[ORCHESTRATE] Caso: slots completos → verificar se precisa de data');
-    
-    // Verificar se já temos data ou se devemos perguntar
-    const hasDate = draft?.evento?.data_evento || data_evento;
-    console.log('[ORCHESTRATE] Merge de data:', { 
-      draft_data: draft?.evento?.data_evento, 
-      nova_data: data_evento, 
-      hasDate 
-    });
-    
-    if (!hasDate) {
-      // Perguntar a data antes de prosseguir - NÃO GERAR ITENS AINDA
-      const evtId = draft?.evento?.id ?? (
-        await upsertEvent({
-          usuario_id: userId,
-          nome_evento: "Rascunho",
-          tipo_evento,
-          qtd_pessoas,
-          status: "collecting_core",
-        })
-      ).id;
-      
-      console.log('[ORCHESTRATE] Pedindo data para o evento:', evtId);
-      
-      return {
-        estado: "collecting_core",
-        evento_id: evtId,
-        mensagem: `Perfeito! ${tipo_evento} para ${qtd_pessoas} pessoas. Qual será a data do evento?`,
-        suggestions: [],
-        ctas: [],
-        tipo_evento,
-        qtd_pessoas,
-      };
-    }
-    
-    // Temos tipo, quantidade e data → prosseguir com geração de itens
-    console.log('[ORCHESTRATE] Temos todos os dados (tipo, qtd, data) → gerando itens');
     const evtId = draft?.evento?.id ?? (
       await upsertEvent({
         usuario_id: userId,
         nome_evento: "Rascunho",
-        tipo_evento,
-        qtd_pessoas,
-        data_evento,
+        tipo_evento: tipo!,
+        categoria_evento: analysis.categoria_evento,
+        subtipo_evento: analysis.subtipo_evento,
+        menu,
+        qtd_pessoas: qtd!,
         status: "collecting_core",
       })
     ).id;
-    
-    console.log('[ORCHESTRATE] Evento ID:', evtId);
 
-    try {
-      // gera lista e salva (RPC)
-      const itensGerados = await generateItemList({ tipo_evento, qtd_pessoas });
-      console.log('[ORCHESTRATE] Itens gerados:', itensGerados);
+    // Gerar lista de itens
+    const itensGerados = await generateItemList({ tipo_evento: tipo!, qtd_pessoas: qtd!, menu });
+    const itensComIds = itensGerados.map(item => ({
+      ...item,
+      id: item.id || crypto.randomUUID(),
+      evento_id: evtId,
+      nome_item: item.nome_item || '',
+      quantidade: item.quantidade || 0,
+      unidade: item.unidade || 'un',
+      valor_estimado: item.valor_estimado || 0,
+      categoria: item.categoria || 'geral',
+      prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
+    })) as Item[];
+    
+    await rpc.items_replace_for_event(evtId, itensComIds);
+    await setEventStatus(evtId, "itens_pendentes_confirmacao");
+
+    const snapshot = await rpc.get_event_plan(evtId);
+
+    return {
+      estado: "itens_pendentes_confirmacao",
+      evento_id: evtId,
+      mensagem: getRandomTemplate('items_generated', { categoria_evento: tipo, qtd_pessoas: qtd }),
+      snapshot,
+      showItems: true,
+      suggestedReplies: ["Confirmar lista", "Editar itens"],
+      ctas: [
+        { type: "confirm-items", label: "Confirmar lista" },
+        { type: "edit-items", label: "Editar itens" },
+      ],
+    };
+  }
+
+  // 9) CRIAR EVENTO - Coletar informações progressivamente
+  if (analysis.intencao === "criar_evento") {
+    console.log('[ORCHESTRATE] Criando evento');
+    
+    // Extrair dados da análise e merge com draft
+    const categoria = analysis.categoria_evento || draft?.evento?.categoria_evento;
+    const subtipo = analysis.subtipo_evento || draft?.evento?.subtipo_evento;
+    const qtd = analysis.qtd_pessoas || draft?.evento?.qtd_pessoas;
+    const data = analysis.data_evento || draft?.evento?.data_evento;
+    const menu = analysis.menu || draft?.evento?.menu;
+
+    // Caso especial: tem subtipo mas não categoria → perguntar período do dia
+    if (subtipo && !categoria) {
+      console.log('[ORCHESTRATE] Subtipo sem categoria: pedindo período');
+      const evtId = draft?.evento?.id ?? (
+        await upsertEvent({
+          usuario_id: userId,
+          nome_evento: "Rascunho",
+          tipo_evento: subtipo,
+          subtipo_evento: subtipo,
+          qtd_pessoas: qtd,
+          menu,
+          status: "collecting_core",
+        })
+      ).id;
+
+      return {
+        estado: "collecting_core",
+        evento_id: evtId,
+        mensagem: getRandomTemplate('ask_categoria', { subtipo_evento: subtipo }),
+        suggestedReplies: ["Almoço", "Jantar", "Lanche"],
+        ctas: [],
+      };
+    }
+
+    // Tem categoria mas não quantidade → perguntar
+    if ((categoria || subtipo) && !qtd) {
+      console.log('[ORCHESTRATE] Categoria sem quantidade: pedindo qtd');
+      const evtId = draft?.evento?.id ?? (
+        await upsertEvent({
+          usuario_id: userId,
+          nome_evento: "Rascunho",
+          tipo_evento: categoria || subtipo!,
+          categoria_evento: categoria,
+          subtipo_evento: subtipo,
+          menu,
+          status: "collecting_core",
+        })
+      ).id;
+
+      return {
+        estado: "collecting_core",
+        evento_id: evtId,
+        mensagem: getRandomTemplate('ask_qtd', { categoria_evento: categoria || subtipo }),
+        ctas: [],
+      };
+    }
+
+    // Tem tipo e quantidade mas não menu → perguntar
+    if ((categoria || subtipo) && qtd && !menu) {
+      console.log('[ORCHESTRATE] Tem tipo e qtd, pedindo menu');
+      const evtId = draft?.evento?.id ?? (
+        await upsertEvent({
+          usuario_id: userId,
+          nome_evento: "Rascunho",
+          tipo_evento: categoria || subtipo!,
+          categoria_evento: categoria,
+          subtipo_evento: subtipo,
+          qtd_pessoas: qtd,
+          status: "collecting_core",
+        })
+      ).id;
+
+      return {
+        estado: "collecting_core",
+        evento_id: evtId,
+        mensagem: getRandomTemplate('ask_menu'),
+        ctas: [],
+      };
+    }
+
+    // Tem tipo, quantidade e menu mas não data → perguntar
+    if ((categoria || subtipo) && qtd && menu && !data) {
+      console.log('[ORCHESTRATE] Tem tipo, qtd e menu, pedindo data');
+      const evtId = draft?.evento?.id ?? (
+        await upsertEvent({
+          usuario_id: userId,
+          nome_evento: "Rascunho",
+          tipo_evento: categoria || subtipo!,
+          categoria_evento: categoria,
+          subtipo_evento: subtipo,
+          qtd_pessoas: qtd,
+          menu,
+          status: "collecting_core",
+        })
+      ).id;
+
+      return {
+        estado: "collecting_core",
+        evento_id: evtId,
+        mensagem: getRandomTemplate('ask_data', { categoria_evento: categoria || subtipo, qtd_pessoas: qtd }),
+        ctas: [],
+      };
+    }
+
+    // Tem tudo → gerar lista de itens
+    if ((categoria || subtipo) && qtd && menu && data) {
+      console.log('[ORCHESTRATE] Slots completos: gerando itens');
+      const tipo = categoria || subtipo!;
+      
+      const evtId = draft?.evento?.id ?? (
+        await upsertEvent({
+          usuario_id: userId,
+          nome_evento: "Rascunho",
+          tipo_evento: tipo,
+          categoria_evento: categoria,
+          subtipo_evento: subtipo,
+          qtd_pessoas: qtd,
+          menu,
+          data_evento: data,
+          status: "collecting_core",
+        })
+      ).id;
+
+      const itensGerados = await generateItemList({ tipo_evento: tipo, qtd_pessoas: qtd, menu });
       const itensComIds = itensGerados.map(item => ({
         ...item,
         id: item.id || crypto.randomUUID(),
@@ -267,39 +317,63 @@ export const orchestrate = async (
       await rpc.items_replace_for_event(evtId, itensComIds);
       await setEventStatus(evtId, "itens_pendentes_confirmacao");
 
-      // snapshot final
       const snapshot = await rpc.get_event_plan(evtId);
 
       return {
         estado: "itens_pendentes_confirmacao",
         evento_id: evtId,
-        mensagem: `Listei itens e quantidades para **${tipo_evento} de ${qtd_pessoas} pessoas**. Quer revisar antes de dividir?`,
+        mensagem: getRandomTemplate('items_generated', { categoria_evento: tipo, qtd_pessoas: qtd }),
         snapshot,
         showItems: true,
+        suggestedReplies: ["Confirmar lista", "Editar itens"],
         ctas: [
           { type: "confirm-items", label: "Confirmar lista" },
           { type: "edit-items", label: "Editar itens" },
         ],
       };
-    } catch (error) {
-      console.error('[ORCHESTRATE] Erro ao gerar/salvar itens:', error);
-      throw error;
     }
   }
 
-  // Esta guarda foi movida para o início (linha ~91) para ter prioridade
-
-  if (draft?.evento?.status === "itens_pendentes_confirmacao") {
-    console.log('[ORCHESTRATE] Caso: status itens_pendentes_confirmacao - usando LLM com contexto');
+  // 10) DEFINIR MENU
+  if (analysis.intencao === "definir_menu" && analysis.menu) {
+    console.log('[ORCHESTRATE] Definindo menu');
     
-    // SEMPRE usar LLM quando já estamos neste estado para manter fluidez
+    if (draft?.evento?.id) {
+      await upsertEvent({
+        id: draft.evento.id,
+        usuario_id: userId,
+        nome_evento: draft.evento.nome_evento,
+        tipo_evento: draft.evento.tipo_evento,
+        categoria_evento: draft.evento.categoria_evento,
+        subtipo_evento: draft.evento.subtipo_evento,
+        qtd_pessoas: draft.evento.qtd_pessoas,
+        menu: analysis.menu,
+        status: draft.evento.status,
+      });
+    }
+
+    // Se já tem tudo exceto data, perguntar data
+    if (draft?.evento?.qtd_pessoas && !draft?.evento?.data_evento) {
+      return {
+        estado: "collecting_core",
+        evento_id: draft.evento.id,
+        mensagem: getRandomTemplate('menu_confirmed', { menu: analysis.menu }),
+        ctas: [],
+      };
+    }
+  }
+
+  // 11) STATUS: itens_pendentes_confirmacao - usar LLM para resposta contextual
+  if (draft?.evento?.status === "itens_pendentes_confirmacao") {
+    console.log('[ORCHESTRATE] Status itens_pendentes - usando LLM');
+    
     if (history && history.length > 0) {
       try {
         const systemPrompt = `Você é o UNE.AI, assistente de planejamento de eventos.
-O evento atual é um ${draft.evento.tipo_evento} para ${draft.evento.qtd_pessoas} pessoas.
+O evento atual é um ${draft.evento.tipo_evento} para ${draft.evento.qtd_pessoas} pessoas${draft.evento.menu ? ` com menu de ${draft.evento.menu}` : ''}.
 Os itens já foram listados e estão aguardando confirmação do usuário.
 Seja conversacional, prestativo e mantenha o contexto da conversa.
-Se o usuário confirmar, parabenize e pergunte sobre adicionar participantes.
+Se o usuário confirmar, parabenize e informe que o evento foi criado.
 Se pedir para editar, pergunte especificamente o que deseja mudar.`;
 
         const llmResult = await getLlmSuggestions(systemPrompt, history, 0.5);
@@ -310,109 +384,36 @@ Se pedir para editar, pergunte especificamente o que deseja mudar.`;
             evento_id: draft.evento.id,
             mensagem: llmResult.content,
             snapshot: draft,
+            suggestedReplies: ["Confirmar", "Editar", "Ver lista"],
           };
         }
       } catch (err) {
-        console.warn('[ORCHESTRATE] LLM falhou, usando resposta padrão', err);
+        console.warn('[ORCHESTRATE] LLM falhou', err);
       }
     }
     
-    // Fallback heurístico se LLM falhar
-    const lower = userText.toLowerCase();
-    const isConfirming = /\b(sim|ok|confirma|beleza|perfeito|pode seguir|isso|bora|quero)\b/i.test(lower);
-    const isEditing = /\b(editar|mudar|alterar|modificar|ajustar)\b/i.test(lower);
-    
-    if (isConfirming) {
-      return {
-        estado: "itens_pendentes_confirmacao",
-        evento_id: draft.evento.id,
-        mensagem: "Ótimo! Os itens estão confirmados. Agora, quer adicionar participantes para dividir os custos?",
-        snapshot: draft,
-        ctas: [
-          { type: "add-participants", label: "Adicionar participantes" },
-          { type: "view-plan", label: "Ver plano completo" },
-        ],
-      };
-    }
-    
-    if (isEditing) {
-      return {
-        estado: "itens_pendentes_confirmacao",
-        evento_id: draft.evento.id,
-        mensagem: "Sem problemas! Me diga quais itens você quer editar.",
-        snapshot: draft,
-      };
-    }
-    
+    // Fallback
     return {
       estado: "itens_pendentes_confirmacao",
       evento_id: draft.evento.id,
       mensagem: "Os itens estão listados. Você pode confirmar, editar ou me perguntar algo sobre o evento.",
       snapshot: draft,
+      suggestedReplies: ["Confirmar lista", "Editar itens", "Ver lista"],
     };
   }
 
-  if (tipo_evento && !qtd_pessoas) {
-    console.log('[ORCHESTRATE] Caso: só tipo evento - pedindo quantidade');
-    // (3) só tipo → pedir quantidade
-    return {
-      estado: "collecting_core",
-      evento_id: draft?.evento?.id ?? null,
-      mensagem: `Show! Vamos de ${tipo_evento}. Para quantas pessoas?`,
-      ctas: [],
-      context: { tipo_evento },
-    };
-  }
-
-  if (!tipo_evento && qtd_pessoas) {
-    console.log('[ORCHESTRATE] Caso: só quantidade - pedindo tipo');
-    // (4) só quantidade → pedir tipo
-    return {
-      estado: "collecting_core",
-      evento_id: draft?.evento?.id ?? null,
-      mensagem: `Perfeito! São ${qtd_pessoas} pessoas. Qual o tipo de evento?`,
-      ctas: [],
-      context: { qtd_pessoas },
-    };
-  }
-
-  if (force_action) {
-    console.log('[ORCHESTRATE] Caso: força ação sem progresso');
-    return {
-      estado: "collecting_core",
-      evento_id: draft?.evento?.id ?? null,
-      mensagem:
-        "Parece que não estamos progredindo. O que você gostaria de fazer? Me diga o tipo de evento e o número de pessoas, por favor.",
-      ctas: [],
-    };
-  }
-
-  console.log('[ORCHESTRATE] Caso: resposta padrão - tentar LLM com contexto');
+  // 12) RESPOSTA PADRÃO COM LLM
+  console.log('[ORCHESTRATE] Resposta padrão - usando LLM');
   
-  // Heurística APENAS para casos triviais
-  const lower = userText.toLowerCase();
-  const isGreeting = /\b(oi|olá|ola|hey|bom dia|boa tarde|boa noite)\b/i.test(lower) && userText.length < 20;
-  
-  if (isGreeting) {
-    return {
-      estado: "collecting_core",
-      evento_id: draft?.evento?.id ?? null,
-      mensagem: "Olá! Estou aqui para ajudar a organizar seu evento. Me diga o tipo de evento e quantas pessoas.",
-      suggestions: ["Churrasco para 10 pessoas", "Festa para 20 pessoas"],
-      ctas: [],
-    };
-  }
-  
-  // Para TODO o resto: usar LLM com contexto completo
   if (history && history.length > 0) {
     try {
       const contextInfo = draft?.evento 
-        ? `Contexto atual: ${draft.evento.tipo_evento || 'não definido'}, ${draft.evento.qtd_pessoas || 'não definido'} pessoas, data: ${draft.evento.data_evento || 'não definido'}`
+        ? `Contexto atual: ${draft.evento.categoria_evento || draft.evento.tipo_evento || 'não definido'}, ${draft.evento.qtd_pessoas || 'não definido'} pessoas${draft.evento.menu ? `, menu: ${draft.evento.menu}` : ''}, data: ${draft.evento.data_evento || 'não definido'}`
         : 'Nenhum evento em andamento';
       
       const systemPrompt = `Você é o UNE.AI, assistente de planejamento de eventos.
 ${contextInfo}
-Mantenha a conversa fluida e contextual. Se faltam informações (tipo, quantidade ou data), pergunte de forma natural.
+Mantenha a conversa fluida e contextual. Se faltam informações (tipo, quantidade, menu ou data), pergunte de forma natural.
 Seja breve, direto e amigável. Use o contexto da conversa anterior.`;
 
       const llmResult = await getLlmSuggestions(systemPrompt, history, 0.5);
@@ -422,22 +423,21 @@ Seja breve, direto e amigável. Use o contexto da conversa anterior.`;
           estado: "collecting_core",
           evento_id: draft?.evento?.id ?? null,
           mensagem: llmResult.content,
-          tipo_evento: draft?.evento?.tipo_evento,
-          qtd_pessoas: draft?.evento?.qtd_pessoas,
+          suggestedReplies: ["Criar evento", "Ver eventos"],
           ctas: [],
         };
       }
     } catch (err) {
-      console.warn('[ORCHESTRATE] LLM falhou, usando resposta padrão', err);
+      console.warn('[ORCHESTRATE] LLM falhou', err);
     }
   }
   
-  // Fallback final apenas se LLM falhar
+  // 13) FALLBACK FINAL
   return {
     estado: "collecting_core",
     evento_id: draft?.evento?.id ?? null,
-    mensagem: 'Me diga o tipo de evento e quantas pessoas (ex.: "churrasco para 10 pessoas").',
-    suggestions: ["Churrasco para 10 pessoas", "Piquenique para 8 pessoas"],
+    mensagem: 'Me diga o tipo de evento e quantas pessoas (ex.: "jantar para 10 pessoas").',
+    suggestedReplies: ["Jantar para 10", "Churrasco para 15", "Festa para 20"],
     ctas: [],
   };
 };

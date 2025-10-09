@@ -124,6 +124,7 @@ export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID }):
 export async function generateItemList(params: {
   tipo_evento: string;
   qtd_pessoas: number;
+  menu?: string;
 }): Promise<Partial<Item>[]> {
   console.log('[Manager] generateItemList called with:', params);
 
@@ -151,7 +152,7 @@ Sua função é montar uma lista estruturada de itens e quantidades necessários
 
 EVENTO:
 - Tipo: "${params.tipo_evento}"
-- Quantidade de pessoas: ${params.qtd_pessoas}
+- Quantidade de pessoas: ${params.qtd_pessoas}${params.menu ? `\n- Menu: "${params.menu}"` : ''}
 
 Regras de geração:
 1. Pense de forma prática e realista, considerando proporções adequadas à quantidade de pessoas.

@@ -186,48 +186,66 @@ export type Database = {
       }
       table_reune: {
         Row: {
+          categoria_evento: string | null
           created_at: string
           description: string | null
           event_date: string
           event_time: string
+          finalidade_evento: string | null
           id: number
+          inclui_bebidas: boolean | null
+          inclui_entradas: boolean | null
           is_public: boolean | null
           location: string | null
           max_attendees: number | null
+          menu: string | null
           qtd_pessoas: number | null
           status: string | null
+          subtipo_evento: string | null
           tipo_evento: string | null
           title: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          categoria_evento?: string | null
           created_at?: string
           description?: string | null
           event_date?: string
           event_time?: string
+          finalidade_evento?: string | null
           id?: number
+          inclui_bebidas?: boolean | null
+          inclui_entradas?: boolean | null
           is_public?: boolean | null
           location?: string | null
           max_attendees?: number | null
+          menu?: string | null
           qtd_pessoas?: number | null
           status?: string | null
+          subtipo_evento?: string | null
           tipo_evento?: string | null
           title?: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          categoria_evento?: string | null
           created_at?: string
           description?: string | null
           event_date?: string
           event_time?: string
+          finalidade_evento?: string | null
           id?: number
+          inclui_bebidas?: boolean | null
+          inclui_entradas?: boolean | null
           is_public?: boolean | null
           location?: string | null
           max_attendees?: number | null
+          menu?: string | null
           qtd_pessoas?: number | null
           status?: string | null
+          subtipo_evento?: string | null
           tipo_evento?: string | null
           title?: string
           updated_at?: string | null

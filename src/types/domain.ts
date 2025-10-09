@@ -13,8 +13,15 @@ export interface Event {
   usuario_id: UUID;
   nome_evento: string;
   tipo_evento: string;
+  categoria_evento?: string; // almoço, jantar, lanche, piquenique
+  subtipo_evento?: string; // churrasco, feijoada, pizza, fondue
+  finalidade_evento?: string; // aniversário, encontro de amigos, confraternização
+  menu?: string; // prato principal
   data_evento: string; // ISO date-time
+  hora_evento?: string; // horário do evento
   qtd_pessoas: number;
+  inclui_bebidas?: boolean;
+  inclui_entradas?: boolean;
   orcamento_total?: number | null;
   status: EventStatus;
   created_at?: string;
