@@ -60,7 +60,7 @@ export async function findDraftEventByUser(userId: UUID): Promise<EventSnapshot 
 
 export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID }): Promise<Event> {
   console.log('[Manager] upsertEvent called with:', event);
-  
+
   try {
     const eventData: any = {
       user_id: event.usuario_id,
@@ -85,7 +85,7 @@ export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID }):
         .single();
 
       if (error) throw error;
-      
+
       return {
         id: data.id.toString(),
         usuario_id: data.user_id,
@@ -127,7 +127,7 @@ export async function generateItemList(params: {
 }): Promise<Partial<Item>[]> {
   console.log('[Manager] generateItemList called with:', params);
 
-  const systemPrompt = `Você é um especialista em planejamento de eventos.
+  /*const systemPrompt = `Você é um especialista em planejamento de eventos.
 Gere uma lista de itens para um evento do tipo "${params.tipo_evento}" para ${params.qtd_pessoas} pessoas.
 
 Retorne APENAS um array JSON válido, sem markdown ou explicações.
@@ -143,7 +143,51 @@ Cada item deve ter exatamente estes campos (sem campos extras):
 
 Categorias comuns: comida, bebida, descartaveis, decoracao, combustivel.
 Prioridade: A = essencial, B = importante, C = opcional.
-Use a quantidade de pessoas para calcular as quantidades.`;
+Use a quantidade de pessoas para calcular as quantidades.`;*/
+
+  const systemPrompt = `Você é um especialista em planejamento e organização de eventos sociais e corporativos.
+
+Sua função é montar uma lista estruturada de itens e quantidades necessários para o evento descrito abaixo.
+
+EVENTO:
+- Tipo: "${params.tipo_evento}"
+- Quantidade de pessoas: ${params.qtd_pessoas}
+
+Regras de geração:
+1. Pense de forma prática e realista, considerando proporções adequadas à quantidade de pessoas.
+2. Priorize itens realmente necessários para a boa execução do evento.
+3. Inclua comidas, bebidas, descartáveis, combustíveis e decoração apenas se forem adequados ao tipo de evento.
+4. Mantenha as quantidades coerentes com o público informado (não exagere nem reduza demais).
+5. Se o tipo de evento não for totalmente claro, assuma um cenário genérico e seguro.
+
+Formato de saída:
+Retorne APENAS um array JSON **válido** (sem markdown, texto adicional ou comentários).
+Cada item deve seguir EXATAMENTE esta estrutura:
+[
+  {
+    "nome_item": string,
+    "quantidade": number,
+    "unidade": string,
+    "valor_estimado": number,
+    "categoria": "comida" | "bebida" | "descartaveis" | "decoracao" | "combustivel" | "outros",
+    "prioridade": "A" | "B" | "C"
+  }
+]
+
+Definições:
+- **categoria:** classifique corretamente cada item conforme sua natureza.
+- **prioridade:** 
+  - "A" = essencial (itens obrigatórios para o evento acontecer)
+  - "B" = importante (melhoram a experiência, mas o evento ocorre sem eles)
+  - "C" = opcional (complementos ou itens estéticos)
+- **valor_estimado:** use valores aproximados e proporcionais às quantidades.
+- **quantidade:** deve refletir o consumo médio esperado para ${params.qtd_pessoas} pessoas.
+
+Importante:
+- NÃO use markdown.
+- NÃO adicione texto explicativo antes ou depois do JSON.
+- O retorno deve ser apenas o JSON puro.`;
+
 
   const userPrompt = `Evento: ${params.tipo_evento}, Pessoas: ${params.qtd_pessoas}`;
 
@@ -262,7 +306,7 @@ export async function setEventStatus(eventoId: UUID, status: Event['status']): P
   try {
     const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
     const mappedStatus = status === 'collecting_core' ? 'draft' : status;
-    
+
     const { error } = await supabase
       .from('table_reune')
       .update({ status: mappedStatus })
@@ -281,7 +325,7 @@ export async function finalizeEvent(eventoId: UUID, eventData: Partial<Event>): 
   console.log(`[Manager] finalizeEvent called with eventoId: ${eventoId}`);
   try {
     const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
-    
+
     // Gera nome do evento se não houver
     let eventName = eventData.nome_evento || 'Rascunho';
     if (eventName === 'Rascunho' && eventData.tipo_evento && eventData.qtd_pessoas) {
@@ -294,7 +338,7 @@ export async function finalizeEvent(eventoId: UUID, eventData: Partial<Event>): 
 
     const { error } = await supabase
       .from('table_reune')
-      .update({ 
+      .update({
         status: 'active',
         title: eventName
       })
@@ -304,7 +348,7 @@ export async function finalizeEvent(eventoId: UUID, eventData: Partial<Event>): 
       console.error('[Manager] Erro ao finalizar evento:', error);
       throw error;
     }
-    
+
     console.info('[Manager] Evento finalizado com sucesso:', eventName);
   } catch (error) {
     console.error('[Manager] Erro ao finalizar evento:', error);
