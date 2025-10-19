@@ -146,11 +146,11 @@ export default function ChatWidget() {
       {/* Botão flutuante fixo no canto inferior direito */}
       <div className="fixed bottom-6 left-6 z-50">
         <Button
-          variant="floating"
+          variant="ghost"
           size="lg"
           onClick={() => setOpen(true)}
           aria-label="Abrir chat"
-          className="rounded-full shadow-floating p-0 w-16 h-16 overflow-hidden"
+          className="rounded-full p-0 w-16 h-16 overflow-hidden bg-transparent hover:bg-transparent border-0 shadow-none"
         >
           <img src={aiChatIcon} alt="Chat IA" className="w-full h-full object-cover" />
         </Button>
