@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { orchestrate } from '@/core/orchestrator/chatOrchestrator';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ConversationState } from '@/types/domain';
 import { runToolCall } from '@/api/llm/toolsRouter';
+import aiChatIcon from '@/assets/ai-chat-icon.png';
 
 type ChatMessage = { 
   role: 'user' | 'assistant'; 
@@ -149,10 +150,9 @@ export default function ChatWidget() {
           size="lg"
           onClick={() => setOpen(true)}
           aria-label="Abrir chat"
-          className="rounded-full shadow-floating flex items-center gap-2"
+          className="rounded-full shadow-floating p-0 w-16 h-16 overflow-hidden"
         >
-          <MessageSquare className="w-5 h-5" />
-          Chat
+          <img src={aiChatIcon} alt="Chat IA" className="w-full h-full object-cover" />
         </Button>
       </div>
 
