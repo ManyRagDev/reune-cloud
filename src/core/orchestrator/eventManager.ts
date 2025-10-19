@@ -58,7 +58,7 @@ export async function findDraftEventByUser(userId: UUID): Promise<EventSnapshot 
   }
 }
 
-export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID }): Promise<Event> {
+export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID; created_by_ai?: boolean }): Promise<Event> {
   console.log('[Manager] upsertEvent called with:', event);
 
   try {
@@ -72,6 +72,7 @@ export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID }):
       is_public: false,
       tipo_evento: event.tipo_evento,
       qtd_pessoas: event.qtd_pessoas,
+      created_by_ai: event.created_by_ai ?? true, // Eventos criados pelo orquestrador são sempre da IA
     };
 
     if (event.id) {

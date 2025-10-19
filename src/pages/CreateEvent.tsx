@@ -50,7 +50,8 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
           description,
           user_id: user.id,
           is_public: true,
-          status: 'published'
+          status: 'published',
+          created_by_ai: false // Evento criado manualmente pelo usuário
         });
 
       if (error) throw error;
