@@ -112,10 +112,9 @@ const Login = ({ onLogin }: LoginProps) => {
       )}
       <Card className="w-full max-w-md animate-scale-in shadow-floating border-0 bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center pb-8">
-          <div className="flex justify-center mb-4">
-            <img src={reUneLogo} alt="ReUNE Logo" className="h-20 w-auto" />
+          <div className="flex justify-center mb-6">
+            <img src={reUneLogo} alt="ReUNE Logo" className="h-24 w-auto" />
           </div>
-          <CardTitle className="text-4xl font-bold text-primary mb-2 tracking-tight">ReUNE</CardTitle>
           <CardDescription className="text-lg font-medium">
             {isLogin ? 'Faça login na sua conta' : 'Crie sua conta'}
           </CardDescription>
