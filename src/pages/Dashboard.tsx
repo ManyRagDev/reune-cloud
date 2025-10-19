@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Calendar, Clock, MapPin, Users, LogOut, AlertTriangle } from 'lucide-react';
+import { Plus, Calendar, Clock, MapPin, Users, LogOut, AlertTriangle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -66,6 +66,37 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
       toast({
         title: "Erro no logout",
         description: err?.message || "Ocorreu um erro. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm('Tem certeza que deseja deletar este evento? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('table_reune')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Evento deletado!",
+        description: "O evento foi removido com sucesso.",
+      });
+
+      fetchEvents();
+    } catch (error) {
+      const err = error as { message?: string };
+      toast({
+        title: "Erro ao deletar evento",
+        description: err?.message || "Não foi possível deletar o evento.",
         variant: "destructive",
       });
     }
@@ -200,7 +231,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                 <Card 
                   key={event.id} 
                   className={cn(
-                    "cursor-pointer group animate-scale-in",
+                    "cursor-pointer group animate-scale-in relative",
                     getCardColor(index)
                   )}
                   onClick={() => onViewEvent(event.id.toString())}
@@ -214,9 +245,21 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                           {event.title}
                         </CardTitle>
                       </div>
-                      <Badge variant="secondary" className="bg-white/80 text-foreground text-xs px-3 py-1">
-                        {event.isOwner ? 'Organizador' : 'Confirmado'}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="bg-white/80 text-foreground text-xs px-3 py-1">
+                          {event.isOwner ? 'Organizador' : 'Confirmado'}
+                        </Badge>
+                        {event.isOwner && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                            onClick={(e) => handleDeleteEvent(event.id, e)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
