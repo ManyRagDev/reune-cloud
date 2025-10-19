@@ -298,16 +298,33 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   // Função para convidar pessoa (organizador ou convidado comum)
   const handleInvite = async (email: string, name: string, shouldBeOrganizer: boolean) => {
-    // TODO: Implementar lógica de envio de convites
-    // Por enquanto, se for organizador, adiciona direto na tabela de organizadores
-    if (shouldBeOrganizer) {
-      // Aqui seria necessário primeiro criar/encontrar o usuário pelo email
-      // Por simplicidade, vamos simular
-      const mockUserId = `user-${Date.now()}`;
-      return await addOrganizer(mockUserId);
-    } else {
-      // Lógica para convites normais seria implementada aqui
+    if (!event) return { error: 'Evento não encontrado' };
+    if (!session) return { error: 'Autenticação necessária' };
+
+    try {
+      const { data, error } = await supabase.rpc('process_invitation' as any, {
+        _event_id: Number(event.id),
+        _invitee_email: email,
+        _invitee_name: name,
+        _is_organizer: shouldBeOrganizer
+      });
+
+      if (error) throw error;
+
+      const result = data as { user_exists?: boolean; message?: string };
+      
+      // Mensagem apropriada dependendo se o usuário existe ou não
+      if (result?.user_exists) {
+        console.log('✅ Convite enviado via app:', result.message);
+      } else {
+        console.log('📧 Convite registrado:', result?.message);
+      }
+
       return { error: null };
+    } catch (error) {
+      const err = error as { message?: string };
+      console.error('❌ Erro ao processar convite:', err);
+      return { error: err?.message || 'Erro ao enviar convite' };
     }
   };
 
