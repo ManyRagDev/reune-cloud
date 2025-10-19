@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -47,19 +47,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const { user, session } = useAuth();
   const { event, organizers, loading, error, isOrganizer, addOrganizer, removeOrganizer } = useEvent(eventId);
 
-  const [attendees, setAttendees] = useState<Attendee[]>([
-    { id: '1', name: 'Ana Silva', email: 'ana@email.com', status: 'confirmed' },
-    { id: '2', name: 'Carlos Santos', email: 'carlos@email.com', status: 'pending' },
-    { id: '3', name: 'Maria Oliveira', email: 'maria@email.com', status: 'confirmed' }
-  ]);
-
-  const [supplies, setSupplies] = useState<Supply[]>([
-    { id: '1', name: 'Carne (3kg)', assignedTo: ['Ana Silva'] },
-    { id: '2', name: 'Cerveja (2 caixas)', assignedTo: ['Carlos Santos', 'Maria Oliveira'] },
-    { id: '3', name: 'Carvão', assignedTo: [] },
-    { id: '4', name: 'Pão de alho', assignedTo: [] }
-  ]);
-
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [supplies, setSupplies] = useState<Supply[]>([]);
   const [newGuest, setNewGuest] = useState('');
   const [newSupply, setNewSupply] = useState('');
 
@@ -80,6 +69,56 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [showTimePopover, setShowTimePopover] = useState(false);
   const [showLocationPopover, setShowLocationPopover] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Carregar participantes e itens do banco de dados
+  useEffect(() => {
+    if (!event) return;
+
+    const loadEventData = async () => {
+      try {
+        const eventIdNum = Number(eventId);
+        
+        // Carregar participantes
+        const { data: participantsData, error: participantsError } = await supabase
+          .from('event_participants')
+          .select('*')
+          .eq('event_id', eventIdNum);
+
+        if (participantsError) throw participantsError;
+
+        if (participantsData && participantsData.length > 0) {
+          const mappedParticipants: Attendee[] = participantsData.map(p => ({
+            id: p.id.toString(),
+            name: p.nome_participante,
+            email: p.contato || '',
+            status: p.status_convite === 'confirmado' ? 'confirmed' : p.status_convite === 'recusado' ? 'declined' : 'pending'
+          }));
+          setAttendees(mappedParticipants);
+        }
+
+        // Carregar itens
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('event_items')
+          .select('*')
+          .eq('event_id', eventIdNum);
+
+        if (itemsError) throw itemsError;
+
+        if (itemsData && itemsData.length > 0) {
+          const mappedSupplies: Supply[] = itemsData.map(item => ({
+            id: item.id.toString(),
+            name: `${item.nome_item} (${item.quantidade} ${item.unidade})`,
+            assignedTo: []
+          }));
+          setSupplies(mappedSupplies);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar dados do evento:', err);
+      }
+    };
+
+    loadEventData();
+  }, [event, eventId]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
