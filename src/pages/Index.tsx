@@ -7,6 +7,7 @@ import Dashboard from './Dashboard';
 import CreateEvent from './CreateEvent';
 import EventDetails from './EventDetails';
 import ChatWidget from '@/components/ChatWidget';
+import { ThemeToggle } from '@/components/landing/ThemeToggle';
 
 type Screen = 'landing' | 'login' | 'dashboard' | 'createEvent' | 'eventDetails';
 
@@ -126,7 +127,12 @@ const Index = () => {
     }
   };
 
-  return renderScreen();
+  return (
+    <>
+      <ThemeToggle className="fixed bottom-4 right-4 z-50" />
+      {renderScreen()}
+    </>
+  );
 };
 
 export default Index;

@@ -21,8 +21,8 @@ const Login = ({ onLogin }: LoginProps) => {
 
   const isDevMode = import.meta.env.VITE_DEV_MODE === "true";
   const devCredentials = {
-    email: "dev@reune.com",
-    password: "dev123456",
+    email: "teste@reune.com",
+    password: "abc123",
   };
 
   useEffect(() => {

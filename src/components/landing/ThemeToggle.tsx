@@ -1,8 +1,13 @@
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
-export const ThemeToggle = () => {
+type ThemeToggleProps = {
+  className?: string;
+};
+
+export const ThemeToggle = ({ className }: ThemeToggleProps) => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
@@ -21,9 +26,12 @@ export const ThemeToggle = () => {
     document.documentElement.classList.toggle("dark", newTheme === "dark");
   };
 
+  const containerClass = className ?? "fixed bottom-4 left-4 z-50";
+
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className={containerClass}>
       <Button
+        aria-label="Alternar tema"
         variant="outline"
         size="icon"
         onClick={toggleTheme}

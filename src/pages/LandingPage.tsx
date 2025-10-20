@@ -13,7 +13,7 @@ import { ThemeToggle } from "@/components/landing/ThemeToggle";
 const LandingPage = () => {
   return (
     <div className="min-h-screen bg-background">
-      <ThemeToggle />
+      <ThemeToggle className="fixed top-4 right-4 z-50" />
       <Hero />
       <HowItWorks />
       <Benefits />

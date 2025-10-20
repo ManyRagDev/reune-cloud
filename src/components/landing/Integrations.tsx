@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Calendar, FileSpreadsheet, MessageCircle } from "lucide-react";
+import { Calendar, MessageCircle, ShoppingCart, Truck, Store } from "lucide-react";
 
 const integrations = [
-  { name: "WhatsApp", icon: MessageCircle, status: "active" },
-  { name: "Google Calendar", icon: Calendar, status: "active" },
-  { name: "Planilhas", icon: FileSpreadsheet, status: "active" },
+  { name: "WhatsApp", icon: MessageCircle, status: "soon" },
+  { name: "Google Calendar", icon: Calendar, status: "soon" },
+  { name: "iFood", icon: ShoppingCart, status: "soon" },
+  { name: "Zé Delivery", icon: Truck, status: "soon" },
+  { name: "Negócios locais", icon: Store, status: "soon" },
   { name: "Google Chat", icon: MessageCircle, status: "soon" },
   { name: "Slack", icon: MessageCircle, status: "soon" },
 ];
@@ -22,14 +24,14 @@ export const Integrations = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-6 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-7 gap-6 mb-8">
           {integrations.map((integration, index) => (
             <div
               key={index}
               className="relative group animate-fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div className="bg-card rounded-2xl p-6 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-1 w-40">
+              <div className="bg-card rounded-2xl p-6 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-1 w-full">
                 <div className="flex flex-col items-center gap-3">
                   <div className={`w-12 h-12 rounded-lg ${
                     integration.status === "active" 

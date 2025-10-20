@@ -23,14 +23,15 @@ export const FinalCTA = () => {
               </p>
               
               <Button
-                size="lg"
-                onClick={() => navigate("/app")}
-                className="bg-white text-primary hover:bg-white/90 shadow-floating group"
-              >
-                Começar agora — grátis
-                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </div>
+  size="lg"
+  onClick={() => navigate("/app")}
+  className="bg-white text-gray-900 hover:bg-white/90 dark:bg-gray-900 dark:text-white shadow-floating group"
+>
+  Começar agora — grátis
+  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+</Button>
+</div>
+          
 
             {/* Decorative elements */}
             <div className="absolute top-4 left-4 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
