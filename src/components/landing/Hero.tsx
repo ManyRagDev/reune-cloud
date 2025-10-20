@@ -24,8 +24,20 @@ export const Hero = () => {
             </div>
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-              Organize eventos <span className="bg-gradient-warm bg-clip-text ">sem caos</span> — com ajuda de IA.
+              Organize eventos{" "}
+              <span className="bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
+                sem caos
+              </span>{" "}
+              — com ajuda de IA.
             </h1>
+
+            {/*<h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+              Organize eventos{" "}
+              <span className="bg-gradient-warm bg-clip-text text-transparent">
+                sem caos
+              </span>{" "}
+              — com ajuda de IA.
+            </h1>*/}
 
             <p className="text-xl text-muted-foreground max-w-2xl">
               O ReUNE distribui tarefas, confirma presenças e estima custos automaticamente.
