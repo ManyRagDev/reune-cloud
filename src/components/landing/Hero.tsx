@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import mockupImage from "@/assets/reune-app-mockup.png";
 
 export const Hero = () => {
   const navigate = useNavigate();
@@ -77,10 +78,12 @@ export const Hero = () => {
 
           {/* Visual */}
           <div className="relative animate-scale-in">
-            <div className="relative rounded-3xl overflow-hidden shadow-floating">
-              <div className="aspect-[9/16] bg-gradient-cool rounded-3xl flex items-center justify-center">
-                <div className="text-white/20 text-6xl">📱</div>
-              </div>
+            <div className="relative">
+              <img 
+                src={mockupImage} 
+                alt="ReUNE app mockup showing event organization interface"
+                className="w-full max-w-md mx-auto drop-shadow-2xl"
+              />
             </div>
 
             {/* Floating AI badge */}
