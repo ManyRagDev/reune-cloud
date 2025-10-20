@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import LandingPage from './LandingPage';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import CreateEvent from './CreateEvent';
 import EventDetails from './EventDetails';
 import ChatWidget from '@/components/ChatWidget';
 
-type Screen = 'login' | 'dashboard' | 'createEvent' | 'eventDetails';
+type Screen = 'landing' | 'login' | 'dashboard' | 'createEvent' | 'eventDetails';
 
 const Index = () => {
   const { user, loading, enableDevMode } = useAuth();
@@ -28,7 +29,7 @@ const Index = () => {
     if (user) {
       setCurrentScreen('dashboard');
     } else if (!loading) {
-      setCurrentScreen('login');
+      setCurrentScreen('landing');
     }
   }, [user, loading, isDevMode]);
 
@@ -79,6 +80,9 @@ const Index = () => {
     }
 
     switch (currentScreen) {
+      case 'landing':
+        return <LandingPage />;
+      
       case 'login':
         return <Login onLogin={handleLogin} />;
       
