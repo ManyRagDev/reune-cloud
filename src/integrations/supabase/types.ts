@@ -585,6 +585,15 @@ export type Database = {
         Args: { evento_id: string; participantes: Json }
         Returns: Json[]
       }
+      process_invitation: {
+        Args: {
+          _event_id: number
+          _invitee_email: string
+          _invitee_name: string
+          _is_organizer?: boolean
+        }
+        Returns: Json
+      }
       respond_to_suggestion: {
         Args: { _response?: string; _status: string; _suggestion_id: string }
         Returns: Json

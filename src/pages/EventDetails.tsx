@@ -311,13 +311,41 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
       if (error) throw error;
 
-      const result = data as { user_exists?: boolean; message?: string };
+      const result = data as { 
+        user_exists?: boolean; 
+        message?: string;
+        invitation_token?: string;
+        event_data?: {
+          title: string;
+          date: string;
+          time: string;
+        };
+      };
       
-      // Mensagem apropriada dependendo se o usuário existe ou não
-      if (result?.user_exists) {
-        console.log('✅ Convite enviado via app:', result.message);
+      // Se usuário não existe, enviar email
+      if (!result?.user_exists && result?.invitation_token) {
+        console.log('📧 Enviando email de convite...');
+        
+        const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+          body: {
+            invitee_email: email,
+            invitee_name: name,
+            event_title: result.event_data?.title || event.title,
+            event_date: result.event_data?.date || event.event_date,
+            event_time: result.event_data?.time || event.event_time,
+            is_organizer: shouldBeOrganizer,
+            invitation_token: result.invitation_token
+          }
+        });
+
+        if (emailError) {
+          console.error('⚠️ Erro ao enviar email:', emailError);
+          return { error: 'Convite registrado, mas houve erro ao enviar o email' };
+        }
+        
+        console.log('✅ Email enviado com sucesso');
       } else {
-        console.log('📧 Convite registrado:', result?.message);
+        console.log('✅ Convite enviado via app:', result.message);
       }
 
       return { error: null };
