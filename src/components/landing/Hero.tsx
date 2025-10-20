@@ -13,7 +13,7 @@ export const Hero = () => {
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 py-20">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-orange/5 via-background to-cyan/5" />
-      
+
       <div className="container max-w-7xl mx-auto relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Content */}
@@ -24,11 +24,7 @@ export const Hero = () => {
             </div>
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-              Organize eventos{" "}
-              <span className="bg-gradient-warm bg-clip-text text-transparent">
-                sem caos
-              </span>{" "}
-              — com ajuda de IA.
+              Organize eventos <span className="bg-gradient-warm bg-clip-text ">sem caos</span> — com ajuda de IA.
             </h1>
 
             <p className="text-xl text-muted-foreground max-w-2xl">
@@ -37,19 +33,11 @@ export const Hero = () => {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button
-                size="lg"
-                onClick={() => navigate("/app")}
-                className="group"
-              >
+              <Button size="lg" onClick={() => navigate("/app")} className="group">
                 Entrar no ReUNE
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={scrollToDemo}
-              >
+              <Button size="lg" variant="outline" onClick={scrollToDemo}>
                 Ver na prática (30s)
               </Button>
             </div>
@@ -82,7 +70,7 @@ export const Hero = () => {
                 <div className="text-white/20 text-6xl">📱</div>
               </div>
             </div>
-            
+
             {/* Floating AI badge */}
             <div className="absolute -top-4 -right-4 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-floating animate-pulse">
               <Sparkles className="w-5 h-5" />
