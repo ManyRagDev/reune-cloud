@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import mockupImage from "@/assets/reune-app-mockup.png";
+import mockup4k from "@/assets/mockup4k.mp4";
 
 export const Hero = () => {
   const navigate = useNavigate();
@@ -79,10 +79,20 @@ export const Hero = () => {
           {/* Visual */}
           <div className="relative animate-scale-in">
             <div className="relative">
-              <img 
-                src={mockupImage} 
-                alt="ReUNE app mockup showing event organization interface"
-                className="w-full max-w-md mx-auto drop-shadow-2xl"
+              <video
+                src={mockup4k}
+                autoPlay
+                muted
+                playsInline
+                preload="auto"
+                onEnded={(e) => {
+                  const v = e.currentTarget;
+                  v.pause();
+                  try {
+                    v.currentTime = v.duration;
+                  } catch {}
+                }}
+                className="w-full max-w-md mx-auto rounded-2xl drop-shadow-2xl"
               />
             </div>
 
