@@ -9,10 +9,8 @@ export const Footer = () => {
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="space-y-4">
-            <h3 className="text-2xl font-bold bg-gradient-warm bg-clip-text text-transparent">
-              ReUNE
-            </h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="text-2xl font-bold bg-gradient-warm bg-clip-text text-transparent">ReUNE</h3>
+            <p className="bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
               Organize eventos sem caos, com ajuda de IA.
             </p>
           </div>
@@ -61,7 +59,7 @@ export const Footer = () => {
             <h4 className="font-semibold mb-4">Contato</h4>
             <ul className="space-y-2 text-sm mb-4">
               <li>
-                <a 
+                <a
                   href="mailto:contato@reuneapp.com.br"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -69,7 +67,7 @@ export const Footer = () => {
                 </a>
               </li>
             </ul>
-            
+
             <div className="flex gap-3">
               <a
                 href="https://instagram.com"
