@@ -9,7 +9,7 @@ export const Footer = () => {
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="space-y-4">
-            <h3 className="text-sm text-muted-foreground">ReUNE</h3>
+            <h3 className="font-semibold mb-4">ReUNE</h3>
             <p className="text-sm text-muted-foreground">Organize eventos sem caos, com ajuda de IA.</p>
           </div>
 
