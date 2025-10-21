@@ -9,10 +9,8 @@ export const Footer = () => {
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="space-y-4">
-            <h3 className="text-2xl font-bold bg-gradient-warm bg-clip-text text-transparent">ReUNE</h3>
-            <p className="bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
-              Organize eventos sem caos, com ajuda de IA.
-            </p>
+            <h3 className="text-sm text-muted-foreground">ReUNE</h3>
+            <p className="text-sm text-muted-foreground">Organize eventos sem caos, com ajuda de IA.</p>
           </div>
 
           {/* Legal */}
