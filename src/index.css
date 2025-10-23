@@ -78,14 +78,14 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* Dark theme base */
+    /* Dark theme base - cores aprimoradas para melhor destaque */
     --background: 230 10% 11%; /* #1A1B20 */
     --foreground: 0 0% 95%; /* #F2F2F2 */
 
-    --card: 230 10% 11%;
+    --card: 230 10% 13%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 230 10% 11%;
+    --popover: 230 10% 13%;
     --popover-foreground: 0 0% 95%;
 
     /* Keep brand accents, rely on foreground for legibility */
@@ -95,7 +95,7 @@ All colors MUST be HSL.
     --secondary: var(--teal);
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 230 10% 15%;
+    --muted: 230 10% 16%;
     --muted-foreground: 0 0% 70%; /* #B3B3B3 */
 
     --accent: var(--cyan);
@@ -104,8 +104,8 @@ All colors MUST be HSL.
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 230 10% 20%;
-    --input: 230 10% 20%;
+    --border: 230 10% 22%;
+    --input: 230 10% 18%;
     --ring: var(--primary);
 
     /* Sidebar uses dark base */
@@ -118,11 +118,15 @@ All colors MUST be HSL.
     --sidebar-border: 230 10% 16%;
     --sidebar-ring: var(--primary);
 
-    /* Dark palette for logo-light variants (cards) */
+    /* Dark palette for logo-light variants (cards) - cores de destaque */
     --orange-light: 13 61% 20%; /* #522114 */
     --gold-light: 51 61% 20%;  /* #524914 */
     --teal-light: 174 61% 20%;  /* #14524C */
     --cyan-light: 186 61% 20%;  /* #144C52 */
+
+    /* Tags no tema escuro */
+    --tag-background: 0 0% 88%; /* #E0E0E0 */
+    --tag-foreground: 230 10% 11%; /* #1A1B20 */
   }
 }
 
