@@ -46,7 +46,12 @@ export const Benefits = () => {
               className="group bg-card rounded-2xl p-6 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-1 animate-fade-in flex flex-col items-center text-center"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div className="w-16 h-16 rounded-lg bg-gradient-cool flex items-center justify-center mb-5 group-hover:scale-110 transition-transform mx-auto">
+              <div 
+                className="w-16 h-16 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform mx-auto"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(173 100% 24%), hsl(187 100% 42%))'
+                }}
+              >
                 <benefit.icon className="w-10 h-10 text-white" />
               </div>
               

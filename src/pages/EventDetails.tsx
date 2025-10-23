@@ -16,6 +16,7 @@ import { useEvent } from '@/hooks/useEvent';
 import { useAuth } from '@/hooks/useAuth';
 import { InviteGuestDialog } from '@/components/InviteGuestDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { rpc } from '@/api/rpc';
 // Force TypeScript to reload types
 
 interface Attendee {
@@ -137,7 +138,6 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
            confirmation.location === 'confirmed';
   };
 
-  // Funções para confirmar/rejeitar cada item
   const handleConfirmDate = () => {
     setConfirmation(prev => ({ ...prev, date: 'confirmed' }));
   };
@@ -197,19 +197,15 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     }
   };
 
-  // Função para salvar confirmação no Supabase
   const handleSaveConfirmation = async () => {
     if (!user || !session) {
       toast({
         title: "Autenticação necessária",
         description: "Você precisa estar logado para salvar as configurações.",
-        variant: "destructive",
       });
       return;
     }
-    
     if (!event) return;
-
     setSaving(true);
     try {
       const { error } = await supabase
@@ -227,39 +223,25 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           alternative_time: confirmation.time === 'rejected' ? alternativeTime : null,
           alternative_location: confirmation.location === 'rejected' ? alternativeLocation : null,
         });
-
       if (error) throw error;
-
-      toast({
-        title: "Configurações salvas!",
-        description: "Suas preferências foram registradas.",
-      });
-    } catch (error) {
-      const err = error as { message?: string };
+      toast({ title: "Configurações salvas!", description: "Suas preferências foram registradas." });
+    } catch (err: any) {
       console.error('Erro ao salvar:', err);
-      toast({
-        title: "Erro ao salvar",
-        description: err?.message || "Não foi possível salvar suas preferências. Verifique sua autenticação.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao salvar", description: err?.message || "Não foi possível salvar suas preferências. Verifique sua autenticação." });
     } finally {
       setSaving(false);
     }
   };
 
-  // Função para confirmar presença
   const handleConfirmPresence = async () => {
     if (!user || !session) {
       toast({
         title: "Autenticação necessária",
         description: "Você precisa estar logado para confirmar presença.",
-        variant: "destructive",
       });
       return;
     }
-    
     if (!event) return;
-
     setSaving(true);
     try {
       const { error } = await supabase
@@ -272,35 +254,19 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           location_confirmed: true,
           presence_confirmed: true,
         });
-
       if (error) throw error;
-
-      toast({
-        title: "Presença confirmada!",
-        description: "Sua confirmação foi registrada com sucesso.",
-      });
-
-      // Volta ao dashboard após confirmar
-      setTimeout(() => {
-        onBack();
-      }, 1500);
-    } catch (error) {
-      const err = error as { message?: string };
+      toast({ title: "Presença confirmada!", description: "Sua confirmação foi registrada com sucesso." });
+      setTimeout(() => { onBack(); }, 1500);
+    } catch (err: any) {
       console.error('Erro ao confirmar presença:', err);
-      toast({
-        title: "Erro ao confirmar",
-        description: err?.message || "Não foi possível confirmar sua presença. Verifique sua autenticação.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao confirmar", description: err?.message || "Não foi possível confirmar sua presença. Verifique sua autenticação." });
       setSaving(false);
     }
   };
 
-  // Função para convidar pessoa (organizador ou convidado comum)
   const handleInvite = async (email: string, name: string, shouldBeOrganizer: boolean) => {
     if (!event) return { error: 'Evento não encontrado' };
     if (!session) return { error: 'Autenticação necessária' };
-
     try {
       const { data, error } = await supabase.rpc('process_invitation' as any, {
         _event_id: Number(event.id),
@@ -308,24 +274,9 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         _invitee_name: name,
         _is_organizer: shouldBeOrganizer
       });
-
       if (error) throw error;
-
-      const result = data as { 
-        user_exists?: boolean; 
-        message?: string;
-        invitation_token?: string;
-        event_data?: {
-          title: string;
-          date: string;
-          time: string;
-        };
-      };
-      
-      // Se usuário não existe, enviar email
+      const result = data as { user_exists?: boolean; message?: string; invitation_token?: string; event_data?: { title: string; date: string; time: string; } };
       if (!result?.user_exists && result?.invitation_token) {
-        console.log('📧 Enviando email de convite...');
-        
         const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
           body: {
             invitee_email: email,
@@ -337,21 +288,14 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
             invitation_token: result.invitation_token
           }
         });
-
         if (emailError) {
-          console.error('⚠️ Erro ao enviar email:', emailError);
+          console.error('Erro ao enviar email:', emailError);
           return { error: 'Convite registrado, mas houve erro ao enviar o email' };
         }
-        
-        console.log('✅ Email enviado com sucesso');
-      } else {
-        console.log('✅ Convite enviado via app:', result.message);
       }
-
       return { error: null };
-    } catch (error) {
-      const err = error as { message?: string };
-      console.error('❌ Erro ao processar convite:', err);
+    } catch (err: any) {
+      console.error('Erro ao processar convite:', err);
       return { error: err?.message || 'Erro ao enviar convite' };
     }
   };
@@ -405,6 +349,119 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       title: "Funcionalidade em desenvolvimento!",
       description: "Funcionalidade de agendamento de entrega em desenvolvimento!",
     });
+  };
+
+  // Salvar convidados e lista de insumos (organizador)
+  const handleSaveLists = async () => {
+    if (!event) return;
+    setSaving(true);
+    try {
+      const eventoIdStr = String(Number(eventId));
+      const eventoIdNum = Number(eventId);
+      const isAIEvent = Boolean((event as any)?.created_by_ai);
+
+      // Se evento manual, tentar fallback com upsert direto nas tabelas
+      if (!isAIEvent) {
+        // Participantes (fallback manual)
+        const participantsRows = attendees.map(a => ({
+          id: isNaN(Number(a.id)) ? undefined : Number(a.id),
+          event_id: eventoIdNum,
+          nome_participante: a.name,
+          contato: a.email || null,
+          status_convite: a.status === 'confirmed' ? 'confirmado' : a.status === 'declined' ? 'recusado' : 'pendente',
+        }));
+        const { error: partErr } = await supabase
+          .from('event_participants')
+          .upsert(participantsRows, { onConflict: 'id' });
+        if (partErr) throw partErr;
+
+        // Itens (fallback manual)
+        const itemsRows = supplies.map(s => {
+          let nome_item = s.name;
+          let quantidade = 1;
+          let unidade = 'un';
+
+          const match = s.name.match(/^(.*)\s*\(([^)]+)\)\s*$/);
+          if (match) {
+            nome_item = match[1].trim();
+            const parts = match[2].trim().split(/\s+/);
+            const q = Number(parts[0]);
+            if (!isNaN(q)) quantidade = q;
+            unidade = parts.slice(1).join(' ') || 'un';
+          }
+
+          return {
+            id: isNaN(Number(s.id)) ? undefined : Number(s.id),
+            event_id: eventoIdNum,
+            nome_item,
+            quantidade,
+            unidade,
+            valor_estimado: 0,
+            categoria: '',
+            prioridade: 'C',
+          };
+        });
+        const { error: itemsErr } = await supabase
+          .from('event_items')
+          .upsert(itemsRows, { onConflict: 'id' });
+        if (itemsErr) throw itemsErr;
+
+        toast({
+          title: 'Alterações salvas (modo manual)!',
+          description: 'Convidados e insumos foram persistidos diretamente.',
+        });
+        return;
+      }
+
+      // Montar payload de participantes (evento criado pela IA)
+      const participantsPayload = attendees.map(a => ({
+        id: a.id,
+        evento_id: eventoIdStr,
+        nome_participante: a.name,
+        contato: a.email || null,
+        status_convite: a.status === 'confirmed' ? 'confirmado' : a.status === 'declined' ? 'recusado' : 'pendente',
+        preferencias: null,
+        valor_responsavel: null,
+      })) as any;
+
+      await rpc.participants_bulk_upsert(eventoIdStr, participantsPayload);
+
+      // Montar payload de itens
+      const itemsPayload = supplies.map(s => {
+        let nome_item = s.name;
+        let quantidade = 1;
+        let unidade = 'un';
+
+        const match = s.name.match(/^(.*)\s*\(([^)]+)\)\s*$/);
+        if (match) {
+          nome_item = match[1].trim();
+          const parts = match[2].trim().split(/\s+/);
+          const q = Number(parts[0]);
+          if (!isNaN(q)) quantidade = q;
+          unidade = parts.slice(1).join(' ') || 'un';
+        }
+
+        return {
+          id: s.id,
+          evento_id: eventoIdStr,
+          nome_item,
+          quantidade,
+          unidade,
+          valor_estimado: 0,
+          categoria: '',
+          prioridade: 'C' as const,
+        };
+      }) as any;
+
+      await rpc.items_replace_for_event(eventoIdStr, itemsPayload);
+
+      toast({ title: 'Alterações salvas!', description: 'Convidados e insumos foram persistidos.' });
+    } catch (err: any) {
+      console.error('Erro ao salvar listas:', err);
+      toast({ title: 'Falha ao salvar', description: err.message || 'Não foi possível salvar as alterações.' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Loading state
@@ -799,6 +856,25 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Botão de Salvar (organizador) */}
+        {isOrganizer && (
+          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+            <CardContent className="pt-6">
+              <Button 
+                className="w-full"
+                size="lg"
+                disabled={saving}
+                onClick={handleSaveLists}
+              >
+                {saving ? "Salvando..." : "💾 Salvar Alterações"}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Salva convidados e lista de insumos do evento
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Botão de Salvar - apenas para convidados, no final da página */}
         {!isOrganizer && (confirmation.date !== 'pending' || confirmation.time !== 'pending' || confirmation.location !== 'pending') && (

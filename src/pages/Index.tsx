@@ -129,7 +129,7 @@ const Index = () => {
 
   return (
     <>
-      <ThemeToggle className="fixed bottom-4 right-4 z-50" />
+      <ThemeToggle className="fixed top-4 right-4 z-50" />
       {renderScreen()}
     </>
   );

@@ -14,6 +14,7 @@ interface Event {
   max_attendees: number | null;
   is_public: boolean | null;
   status: string | null;
+  created_by_ai?: boolean;
 }
 
 interface EventOrganizer {

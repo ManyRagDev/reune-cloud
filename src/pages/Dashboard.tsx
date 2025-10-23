@@ -216,7 +216,14 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
       <main className="max-w-6xl mx-auto p-6 animate-fade-in">
         <div className="mb-12">
+          <div className="mb-4">
           <h2 className="text-2xl font-semibold mb-6 text-foreground">Meus Eventos</h2>
+            <Button onClick={onCreateEvent} size="default" className="w-full sm:w-auto">
+              <Plus className="w-4 h-4 mr-2" />
+              Criar Novo Evento
+            </Button>
+          </div>
+          
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {events.filter(event => event.isOwner || event.isConfirmed).length === 0 ? (
               <div className="col-span-full text-center py-12">
@@ -232,7 +239,8 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                   key={event.id} 
                   className={cn(
                     "cursor-pointer group animate-scale-in relative",
-                    getCardColor(index)
+                    getCardColor(index),
+                    "dark:shadow-card"
                   )}
                   onClick={() => onViewEvent(event.id.toString())}
                   style={{ animationDelay: `${index * 100}ms` }}
@@ -246,7 +254,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                         </CardTitle>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="bg-white/80 text-foreground text-xs px-3 py-1">
+                        <Badge variant="secondary" className="bg-white/80 text-foreground text-xs px-3 py-1 dark:bg-[#E0E0E0] dark:text-[#1A1B20]">
                           {event.isOwner ? 'Organizador' : 'Confirmado'}
                         </Badge>
                         {event.isOwner && (
@@ -294,7 +302,8 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                   className={cn(
                     "px-6 py-4 rounded-xl cursor-pointer transition-all hover:scale-105 hover:shadow-lg",
                     "border-2 flex items-center gap-3 animate-scale-in",
-                    getCardColor(index + 3)
+                    getCardColor(index + 3),
+                    "dark:shadow-card"
                   )}
                   style={{ animationDelay: `${(index + 3) * 100}ms` }}
                 >
@@ -307,7 +316,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                       </p>
                     </div>
                   </div>
-                  <Badge variant="secondary" className="ml-2 text-xs">
+                  <Badge variant="secondary" className="ml-2 text-xs dark:bg-[#E0E0E0] dark:text-[#1A1B20]">
                     Pendente
                   </Badge>
                 </div>
@@ -317,16 +326,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
         </div>
       </main>
 
-      {/* Floating Action Button */}
-      <Button
-        onClick={onCreateEvent}
-        variant="floating"
-        size="lg"
-        className="fixed bottom-8 right-8 rounded-full w-16 h-16 text-lg animate-scale-in"
-        style={{ animationDelay: '600ms' }}
-      >
-        <Plus className="w-7 h-7" />
-      </Button>
+
     </div>
   );
 };

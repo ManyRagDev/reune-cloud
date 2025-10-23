@@ -46,15 +46,20 @@ export const Templates = () => {
           {templates.map((template, index) => (
             <div
               key={index}
-              className="group bg-card rounded-2xl p-6 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-2 animate-fade-in"
+              className="group bg-card rounded-2xl p-6 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-2 animate-fade-in text-center flex flex-col items-center"
               style={{ animationDelay: `${index * 75}ms` }}
             >
-              <div className="w-16 h-16 rounded-xl bg-gradient-warm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <div 
+                className="w-16 h-16 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform mx-auto"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(16 100% 57%), hsl(45 100% 51%))'
+                }}
+              >
                 <template.icon className="w-8 h-8 text-white" />
               </div>
               
-              <h3 className="text-xl font-semibold mb-2">{template.title}</h3>
-              <p className="text-muted-foreground text-sm mb-6">
+              <h3 className="text-xl font-semibold mb-2 text-center">{template.title}</h3>
+              <p className="text-muted-foreground text-sm mb-6 text-center flex-1">
                 {template.description}
               </p>
 
