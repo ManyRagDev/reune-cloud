@@ -421,7 +421,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
         toast({
           title: "Alterações salvas (modo manual)!",
-          description: "Convidados e insumos foram persistidos diretamente.",
+          description: "",
         });
         return;
       }
