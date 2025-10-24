@@ -35,32 +35,21 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: DashboardProps) => {
-  const { user, devModeActive, disableDevMode } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const userId = user?.id;
 
   const handleLogout = async () => {
     try {
-      if (devModeActive) {
-        // Modo dev: apenas desativa o modo dev
-        disableDevMode();
-        toast({
-          title: "Modo DEV desativado!",
-          description: "Voltando ao login",
-        });
-      } else {
-        // Modo normal: faz logout real do Supabase
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        
-        toast({
-          title: "Logout realizado com sucesso!",
-          description: "Até logo!",
-        });
-      }
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Logout realizado com sucesso!",
+        description: "Até logo!",
+      });
       
       onLogout();
     } catch (error) {
@@ -189,12 +178,6 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
   return (
     <div className="min-h-screen bg-background">
-      {(isDevMode && devModeActive) && (
-        <div className="fixed top-4 right-4 bg-secondary/90 text-secondary-foreground px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium z-50">
-          <AlertTriangle className="w-4 h-4" />
-          LOGADO COMO DEV
-        </div>
-      )}
       <header className="bg-card/50 backdrop-blur-sm border-b border-border/50 px-6 py-8">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4 animate-fade-in">

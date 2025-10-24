@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle } from "lucide-react";
 import reUneLogo from "@/assets/reune-logo.png";
 
 interface LoginProps {
@@ -18,20 +17,6 @@ const Login = ({ onLogin }: LoginProps) => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  const isDevMode = import.meta.env.VITE_DEV_MODE === "true";
-  const devCredentials = {
-    email: "teste@reune.com",
-    password: "abc123",
-  };
-
-  useEffect(() => {
-    if (isDevMode) {
-      setEmail(devCredentials.email);
-      setPassword(devCredentials.password);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDevMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,32 +69,8 @@ const Login = ({ onLogin }: LoginProps) => {
     }
   };
 
-  const handleDevModeLogin = () => {
-    // Primeiro ativa o modo dev
-    const isDevMode = import.meta.env.VITE_DEV_MODE === "true";
-    if (isDevMode) {
-      localStorage.setItem("devModeActive", "true");
-    }
-
-    toast({
-      title: "Modo DEV ativado!",
-      description: "Entrando como desenvolvedor",
-    });
-
-    // Força a navegação
-    setTimeout(() => {
-      onLogin();
-    }, 100);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-turquoise-light/30 to-mint-light/30 flex items-center justify-center p-6">
-      {isDevMode && (
-        <div className="fixed top-4 right-4 bg-yellow-500/90 text-yellow-900 px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium">
-          <AlertTriangle className="w-4 h-4" />
-          MODO DESENVOLVIMENTO
-        </div>
-      )}
       <Card className="w-full max-w-md animate-scale-in shadow-floating border-0 bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center pb-8">
           <div className="flex justify-center mb-6">
@@ -154,18 +115,6 @@ const Login = ({ onLogin }: LoginProps) => {
           >
             {loading ? "Aguarde..." : isLogin ? "Entrar" : "Criar Conta"}
           </Button>
-
-          {isDevMode && (
-            <Button
-              type="button"
-              className="w-full h-12 text-base font-semibold"
-              onClick={handleDevModeLogin}
-              disabled={loading}
-              variant="secondary"
-            >
-              🚀 Entrar como DEV (Bypass Auth)
-            </Button>
-          )}
 
           <div className="text-center pt-4">
             <button

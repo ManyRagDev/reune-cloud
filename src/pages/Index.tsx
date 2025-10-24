@@ -12,27 +12,17 @@ import { ThemeToggle } from '@/components/landing/ThemeToggle';
 type Screen = 'landing' | 'login' | 'dashboard' | 'createEvent' | 'eventDetails';
 
 const Index = () => {
-  const { user, loading, enableDevMode } = useAuth();
+  const { user, loading } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
   const [selectedEventId, setSelectedEventId] = useState<string>('');
-  
-  const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
 
   useEffect(() => {
-    // Verifica se o modo dev está ativo no localStorage
-    const devModeFromStorage = isDevMode && localStorage.getItem('devModeActive') === 'true';
-    
-    if (devModeFromStorage) {
-      setCurrentScreen('dashboard');
-      return;
-    }
-    
     if (user) {
       setCurrentScreen('dashboard');
     } else if (!loading) {
       setCurrentScreen('landing');
     }
-  }, [user, loading, isDevMode]);
+  }, [user, loading]);
 
   const handleLogin = () => {
     setCurrentScreen('dashboard');
@@ -73,11 +63,7 @@ const Index = () => {
     }
 
     if (!user && currentScreen !== 'login') {
-      // Verifica se o modo dev está ativo antes de forçar login
-      const devModeActive = isDevMode && localStorage.getItem('devModeActive') === 'true';
-      if (!devModeActive) {
-        return <Login onLogin={handleLogin} />;
-      }
+      return <Login onLogin={handleLogin} />;
     }
 
     switch (currentScreen) {
