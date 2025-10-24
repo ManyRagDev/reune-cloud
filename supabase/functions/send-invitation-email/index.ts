@@ -222,7 +222,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     const emailResponse = await resend.emails.send({
-      from: 'ReUNE <noreply@reuneapp.com.br>',
+      from: 'ReUNE <convite@reuneapp.com.br>',
       to: [invitee_email],
       subject: `✨ Convite para ${event_title}`,
       html: emailHtml,

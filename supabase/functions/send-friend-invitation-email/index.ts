@@ -31,7 +31,7 @@ const handler = async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "ReUNE <onboarding@resend.dev>",
+        from: "ReUNE <convite@reuneapp.com.br>",
         to: [receiverEmail],
         subject: `${senderName} quer ser seu amigo no ReUNE`,
         html: `
