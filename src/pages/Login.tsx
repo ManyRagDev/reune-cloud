@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft } from "lucide-react";
 import reUneLogo from "@/assets/reune-logo.png";
 
 interface LoginProps {
@@ -73,6 +74,17 @@ const Login = ({ onLogin }: LoginProps) => {
     <div className="min-h-screen bg-gradient-to-br from-turquoise-light/30 to-mint-light/30 flex items-center justify-center p-6">
       <Card className="w-full max-w-md animate-scale-in shadow-floating border-0 bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center pb-8">
+          <div className="flex justify-start mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.location.href = '/'}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </Button>
+          </div>
           <div className="flex justify-center mb-6">
             <img src={reUneLogo} alt="ReUNE Logo" className="h-36 w-auto" />
           </div>
