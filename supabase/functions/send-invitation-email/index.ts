@@ -208,7 +208,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('📧 Enviando convite para:', invitee_email);
 
-    const appUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '') || '';
+    const appUrl = Deno.env.get('VITE_SUPABASE_URL')?.replace('.supabase.co', '').replace('https://', 'https://c5ba500c-836f-49ad-9e3f-b48fec9c1399.lovableproject.com') || 'https://c5ba500c-836f-49ad-9e3f-b48fec9c1399.lovableproject.com';
     const acceptUrl = `${appUrl}/accept-invite?token=${invitation_token}`;
 
     const emailHtml = createEmailTemplate({

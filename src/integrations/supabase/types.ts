@@ -538,6 +538,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_event_invitation: {
+        Args: { _invitation_token: string; _user_id?: string }
+        Returns: Json
+      }
       assign_items_bulk: {
         Args: { _assignments: Json; _event_id: number }
         Returns: Json
