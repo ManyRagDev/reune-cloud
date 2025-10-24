@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +27,19 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
   const [description, setDescription] = useState('');
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showLocationWarning, setShowLocationWarning] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
+
+  // Detectar se localização parece residencial
+  const checkResidentialLocation = (loc: string) => {
+    const residentialPatterns = /(casa|residência|apt|apartamento|rua|avenida|av\.|r\.)/i;
+    return residentialPatterns.test(loc);
+  };
+
+  const handleLocationChange = (value: string) => {
+    setLocation(value);
+    setShowLocationWarning(isPublic && checkResidentialLocation(value));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,9 +65,12 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
           location,
           description,
           user_id: user.id,
-          is_public: true,
+          is_public: isPublic,
           status: 'published',
-          created_by_ai: false // Evento criado manualmente pelo usuário
+          created_by_ai: false, // Evento criado manualmente pelo usuário
+          public_location: isPublic && checkResidentialLocation(location) 
+            ? 'Local a confirmar com organizador' 
+            : null
         })
         .select()
         .single();
@@ -179,9 +196,19 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
                   type="text"
                   placeholder="Ex: Rua das Flores, 123 - Centro"
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={(e) => handleLocationChange(e.target.value)}
                   required
                 />
+                {showLocationWarning && (
+                  <Alert className="mt-2 border-warning bg-warning/10">
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    <AlertDescription className="text-sm text-warning-foreground">
+                      <strong>Atenção:</strong> Você está adicionando um endereço residencial em um evento público. 
+                      Por segurança, apenas a região será exibida para não-convidados. 
+                      O endereço completo ficará visível apenas para você e seus convidados.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
 
               <div>

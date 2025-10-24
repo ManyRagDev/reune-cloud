@@ -477,6 +477,7 @@ export type Database = {
           location: string | null
           max_attendees: number | null
           menu: string | null
+          public_location: string | null
           qtd_pessoas: number | null
           status: string | null
           subtipo_evento: string | null
@@ -500,6 +501,7 @@ export type Database = {
           location?: string | null
           max_attendees?: number | null
           menu?: string | null
+          public_location?: string | null
           qtd_pessoas?: number | null
           status?: string | null
           subtipo_evento?: string | null
@@ -523,6 +525,7 @@ export type Database = {
           location?: string | null
           max_attendees?: number | null
           menu?: string | null
+          public_location?: string | null
           qtd_pessoas?: number | null
           status?: string | null
           subtipo_evento?: string | null
@@ -676,6 +679,7 @@ export type Database = {
         Args: { evento_id: string; itens: Json }
         Returns: Json[]
       }
+      mask_location: { Args: { full_location: string }; Returns: string }
       participants_bulk_upsert: {
         Args: { evento_id: string; participantes: Json }
         Returns: Json[]
