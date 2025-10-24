@@ -644,6 +644,30 @@ export type Database = {
           user_name: string
         }[]
       }
+      get_public_events: {
+        Args: never
+        Returns: {
+          categoria_evento: string
+          created_at: string
+          description: string
+          event_date: string
+          event_time: string
+          finalidade_evento: string
+          id: number
+          inclui_bebidas: boolean
+          inclui_entradas: boolean
+          is_public: boolean
+          location: string
+          max_attendees: number
+          menu: string
+          qtd_pessoas: number
+          status: string
+          subtipo_evento: string
+          tipo_evento: string
+          title: string
+          updated_at: string
+        }[]
+      }
       is_event_organizer: {
         Args: { _event_id: number; _user_id: string }
         Returns: boolean
