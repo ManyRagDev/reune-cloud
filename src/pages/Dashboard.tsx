@@ -99,14 +99,47 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
     try {
       setLoading(true);
       
-      // Busca eventos e confirmações
-      const { data: eventsData, error: eventsError } = await supabase
+      // Busca apenas eventos onde o usuário é criador
+      const { data: ownEvents, error: ownError } = await supabase
         .from('table_reune')
         .select('*')
-        .or(`user_id.eq.${userId},is_public.eq.true`)
+        .eq('user_id', userId)
         .order('event_date', { ascending: true });
 
-      if (eventsError) throw eventsError;
+      if (ownError) throw ownError;
+
+      // Busca eventos onde o usuário foi convidado
+      const { data: invitations, error: invitationsError } = await supabase
+        .from('event_invitations')
+        .select('event_id, status')
+        .eq('participant_email', user?.email || '');
+
+      if (invitationsError) throw invitationsError;
+
+      // Se há convites, buscar os eventos correspondentes
+      let invitedEvents: any[] = [];
+      if (invitations && invitations.length > 0) {
+        const invitedEventIds = invitations.map(inv => inv.event_id);
+        const { data: invitedEventsData, error: invitedError } = await supabase
+          .from('table_reune')
+          .select('*')
+          .in('id', invitedEventIds)
+          .order('event_date', { ascending: true });
+
+        if (invitedError) throw invitedError;
+        invitedEvents = invitedEventsData || [];
+      }
+
+      // Combinar eventos próprios e convidados (sem duplicatas)
+      const allEvents = [...(ownEvents || [])];
+      invitedEvents.forEach(event => {
+        if (!allEvents.find(e => e.id === event.id)) {
+          allEvents.push(event);
+        }
+      });
+
+      // Ordenar por data
+      allEvents.sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
 
       // Busca confirmações do usuário
       const { data: confirmationsData, error: confirmationsError } = await supabase
@@ -121,7 +154,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
         confirmationsData?.map(c => [c.event_id, c.presence_confirmed]) || []
       );
 
-      const eventsWithStatus = eventsData.map(event => ({
+      const eventsWithStatus = allEvents.map(event => ({
         ...event,
         isOwner: event.user_id === userId,
         isConfirmed: confirmationsMap.get(event.id) === true
