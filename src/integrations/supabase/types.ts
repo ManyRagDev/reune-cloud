@@ -284,6 +284,60 @@ export type Database = {
           },
         ]
       }
+      friend_requests: {
+        Row: {
+          created_at: string
+          id: string
+          invitation_token: string | null
+          receiver_email: string
+          receiver_id: string | null
+          responded_at: string | null
+          sender_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invitation_token?: string | null
+          receiver_email: string
+          receiver_id?: string | null
+          responded_at?: string | null
+          sender_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invitation_token?: string | null
+          receiver_email?: string
+          receiver_id?: string | null
+          responded_at?: string | null
+          sender_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      friendships: {
+        Row: {
+          created_at: string
+          id: string
+          user_id_1: string
+          user_id_2: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id_1: string
+          user_id_2: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id_1?: string
+          user_id_2?: string
+        }
+        Relationships: []
+      }
       item_assignments: {
         Row: {
           confirmado: boolean | null
@@ -492,10 +546,7 @@ export type Database = {
         Args: { evento_id: string; rows: Json }
         Returns: Json[]
       }
-      get_distribution_summary: {
-        Args: { evento_id: string }
-        Returns: Json
-      }
+      get_distribution_summary: { Args: { evento_id: string }; Returns: Json }
       get_event_details_safe: {
         Args: { _event_id: number }
         Returns: {
@@ -544,9 +595,15 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_event_plan: {
-        Args: { evento_id: string }
-        Returns: Json
+      get_event_plan: { Args: { evento_id: string }; Returns: Json }
+      get_friends: {
+        Args: { _search?: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          email: string
+          friend_id: string
+        }[]
       }
       get_item_assignments: {
         Args: { _event_id: number }
@@ -559,6 +616,16 @@ export type Database = {
           participant_id: number
           participant_nome: string
           quantidade_atribuida: number
+        }[]
+      }
+      get_pending_friend_requests: {
+        Args: never
+        Returns: {
+          created_at: string
+          request_id: string
+          sender_avatar: string
+          sender_id: string
+          sender_name: string
         }[]
       }
       get_pending_suggestions: {
@@ -594,10 +661,15 @@ export type Database = {
         }
         Returns: Json
       }
+      respond_to_friend_request: {
+        Args: { _accept: boolean; _request_id: string }
+        Returns: Json
+      }
       respond_to_suggestion: {
         Args: { _response?: string; _status: string; _suggestion_id: string }
         Returns: Json
       }
+      send_friend_request: { Args: { _receiver_email: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

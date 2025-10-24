@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { FriendSelector } from '@/components/friends/FriendSelector';
 // TS type refresh
 
 interface CreateEventProps {
@@ -23,6 +24,7 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
+  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,7 +42,7 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
     setLoading(true);
     
     try {
-      const { error } = await supabase
+      const { data: eventData, error } = await supabase
         .from('table_reune')
         .insert({
           title,
@@ -52,13 +54,50 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
           is_public: true,
           status: 'published',
           created_by_ai: false // Evento criado manualmente pelo usuário
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
+      // Se amigos foram selecionados, convidá-los
+      if (selectedFriends.length > 0 && eventData) {
+        const { error: inviteError } = await supabase
+          .from('event_participants')
+          .insert(
+            selectedFriends.map(friendId => ({
+              event_id: eventData.id,
+              nome_participante: friendId, // Será resolvido depois
+              status_convite: 'pendente'
+            }))
+          );
+
+        if (inviteError) {
+          console.error('Erro ao convidar amigos:', inviteError);
+        }
+
+        // Criar notificações para os amigos
+        for (const friendId of selectedFriends) {
+          await supabase.from('notifications').insert({
+            user_id: friendId,
+            event_id: eventData.id,
+            type: 'event_invite',
+            title: `Convite: ${title}`,
+            message: `Você foi convidado para ${title}`,
+            metadata: {
+              event_id: eventData.id,
+              event_date: date,
+              event_time: time
+            }
+          });
+        }
+      }
+
       toast({
         title: "Evento criado com sucesso!",
-        description: "Seu evento foi publicado e já está disponível.",
+        description: selectedFriends.length > 0 
+          ? `Seu evento foi publicado e ${selectedFriends.length} amigo(s) foram convidados.`
+          : "Seu evento foi publicado e já está disponível.",
       });
 
       onCreate();
@@ -156,7 +195,18 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
                 />
               </div>
 
-              <Button 
+              <div>
+                <Label>Convidar Amigos (opcional)</Label>
+                <FriendSelector 
+                  selectedFriends={selectedFriends}
+                  onSelectionChange={setSelectedFriends}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Seus amigos receberão uma notificação do convite
+                </p>
+              </div>
+
+              <Button
                 type="submit" 
                 className="w-full"
                 disabled={loading || !title || !date || !time || !location}

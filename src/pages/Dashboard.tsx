@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import reUneLogo from '@/assets/reune-logo.png';
+import { FriendsDialog } from '@/components/friends/FriendsDialog';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 // Refresh TS types
 
 interface Event {
@@ -202,26 +204,32 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
               <p className="text-muted-foreground font-medium">Olá, {userEmail}!</p>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleLogout}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sair
-          </Button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto p-6 animate-fade-in">
         <div className="mb-12">
-          <div className="mb-4">
-          <h2 className="text-2xl font-semibold mb-6 text-foreground">Meus Eventos</h2>
-            <Button onClick={onCreateEvent} size="default" className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              Criar Novo Evento
-            </Button>
+          <div className="mb-4 flex justify-between items-center">
+            <h2 className="text-2xl font-semibold text-foreground">Meus Eventos</h2>
+            <div className="flex gap-2">
+              <FriendsDialog />
+              <Button onClick={onCreateEvent} size="default">
+                <Plus className="w-4 h-4 mr-2" />
+                Criar Novo Evento
+              </Button>
+            </div>
           </div>
           
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
