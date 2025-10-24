@@ -138,7 +138,7 @@ const createEmailTemplate = (props: {
                 <tr>
                   <td align="center" style="padding: 8px 20px 24px;">
                     <a href="${props.accept_url}" style="display: inline-block; background-color: #0ea5e9; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; line-height: 1.5;">
-                      ✨ Aceitar Convite
+                      🚀 Conhecer o ReUNE
                     </a>
                   </td>
                 </tr>
@@ -150,7 +150,7 @@ const createEmailTemplate = (props: {
                       <tr>
                         <td style="padding: 16px;">
                           <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 20px;">
-                            💡 <strong>Primeira vez no ReUNE?</strong> Ao aceitar o convite, você poderá criar sua conta e começar a organizar eventos de forma simples e eficiente!
+                            💡 <strong>Primeira vez no ReUNE?</strong> Crie sua conta gratuitamente e comece a organizar eventos de forma simples e eficiente!
                           </p>
                         </td>
                       </tr>
@@ -208,9 +208,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('📧 Enviando convite para:', invitee_email);
 
-    const appUrl = Deno.env.get('VITE_SUPABASE_URL')?.replace('.supabase.co', '').replace('https://', 'https://c5ba500c-836f-49ad-9e3f-b48fec9c1399.lovableproject.com') || 'https://c5ba500c-836f-49ad-9e3f-b48fec9c1399.lovableproject.com';
-    const acceptUrl = `${appUrl}/accept-invite?token=${invitation_token}`;
-
     const emailHtml = createEmailTemplate({
       invitee_name,
       event_title,
@@ -218,7 +215,7 @@ const handler = async (req: Request): Promise<Response> => {
       event_time,
       event_location,
       is_organizer,
-      accept_url: acceptUrl,
+      accept_url: 'https://reuneapp.com.br',
     });
 
     const emailResponse = await resend.emails.send({
