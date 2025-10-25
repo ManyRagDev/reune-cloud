@@ -1,269 +1,476 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Search, UserPlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, UserPlus, Check, X, Loader2 } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { UserSearchCard } from "./UserSearchCard";
+import { FriendCard } from "./FriendCard";
+import { FriendRequestCard } from "./FriendRequestCard";
 
 interface Friend {
   friend_id: string;
   display_name: string;
-  avatar_url: string | null;
+  avatar_url?: string;
   email: string;
 }
 
-interface PendingRequest {
+interface FriendRequest {
   request_id: string;
   sender_id: string;
   sender_name: string;
-  sender_avatar: string | null;
+  sender_avatar?: string;
   created_at: string;
 }
 
-export function FriendsDialog() {
+interface SearchResult {
+  id: string;
+  display_name: string;
+  username: string;
+  avatar_url?: string;
+  email: string;
+}
+
+export const FriendsDialog = () => {
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  // Buscar amigos
-  const { data: friends = [], isLoading: loadingFriends } = useQuery({
-    queryKey: ['friends'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_friends');
-      if (error) throw error;
-      return data as Friend[];
-    },
-    enabled: open,
-  });
+  // Buscar amigos ao abrir o dialog
+  useEffect(() => {
+    if (open) {
+      fetchFriends();
+      fetchPendingRequests();
+    }
+  }, [open]);
 
-  // Buscar pedidos pendentes
-  const { data: pendingRequests = [], isLoading: loadingRequests } = useQuery({
-    queryKey: ['pending-friend-requests'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_pending_friend_requests');
-      if (error) throw error;
-      return data as PendingRequest[];
-    },
-    enabled: open,
-  });
+  const fetchFriends = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc("get_friends");
 
-  // Enviar pedido de amizade
-  const sendRequestMutation = useMutation({
-    mutationFn: async (receiverEmail: string) => {
-      const { data, error } = await supabase.rpc('send_friend_request', {
-        _receiver_email: receiverEmail
-      });
-      
       if (error) throw error;
+
+      setFriends(data || []);
+    } catch (error) {
+      const err = error as { message?: string };
+      console.error("Erro ao buscar amigos:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPendingRequests = async () => {
+    try {
+      const { data, error } = await supabase.rpc("get_pending_friend_requests");
+
+      if (error) throw error;
+
+      setPendingRequests(data || []);
+    } catch (error) {
+      const err = error as { message?: string };
+      console.error("Erro ao buscar solicitações:", err);
+    }
+  };
+
+  const searchUser = async () => {
+    if (!searchTerm.trim()) {
+      setSearchResult(null);
+      return;
+    }
+
+    try {
+      setSearching(true);
+      setSearchResult(null);
+
+      // Determinar se é email ou username
+      const isEmail = searchTerm.includes("@");
+      const normalizedSearch = searchTerm.trim().toLowerCase();
       
-      const result = data as any;
-      
-      // Se usuário não existe, enviar email
-      if (!result.user_exists) {
-        await supabase.functions.invoke('send-friend-invitation-email', {
-          body: {
-            receiverEmail,
-            senderName: result.sender_name,
-            invitationToken: result.invitation_token,
+      if (isEmail) {
+        // Buscar perfil por email (via auth.users join)
+        const { data: allProfiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, display_name, username, avatar_url");
+
+        if (profilesError) throw profilesError;
+
+        // Buscar usuário correspondente via auth
+        let foundProfile = null;
+        for (const profile of allProfiles || []) {
+          const { data: { user: authUser } } = await supabase.auth.admin.getUserById(profile.id);
+          if (authUser && authUser.email?.toLowerCase() === normalizedSearch) {
+            foundProfile = {
+              ...profile,
+              email: authUser.email,
+            };
+            break;
           }
+        }
+
+        if (!foundProfile) {
+          toast({
+            title: "Usuário não encontrado",
+            description: "Não existe um usuário cadastrado com esse e-mail.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        setSearchResult(foundProfile);
+      } else {
+        // Buscar por username (remover @ se digitado)
+        const usernameSearch = normalizedSearch.replace(/^@/, "");
+        
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, display_name, username, avatar_url")
+          .ilike("username", usernameSearch)
+          .limit(1)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (!data) {
+          toast({
+            title: "Usuário não encontrado",
+            description: "Não existe um usuário com esse nome de usuário.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Buscar email através de auth
+        const { data: { user: foundUser } } = await supabase.auth.admin.getUserById(data.id);
+
+        setSearchResult({
+          ...data,
+          email: foundUser?.email || "",
         });
       }
-      
-      return result;
-    },
-    onSuccess: (data: any) => {
+    } catch (error) {
+      const err = error as { message?: string };
       toast({
-        title: "Convite enviado!",
-        description: data.user_exists 
-          ? "O usuário receberá uma notificação."
-          : "Um e-mail de convite foi enviado.",
-      });
-      setEmail("");
-      queryClient.invalidateQueries({ queryKey: ['friends'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao enviar convite",
-        description: error.message,
+        title: "Erro na busca",
+        description: err?.message || "Não foi possível buscar o usuário.",
         variant: "destructive",
       });
-    },
-  });
+    } finally {
+      setSearching(false);
+    }
+  };
 
-  // Responder pedido de amizade
-  const respondMutation = useMutation({
-    mutationFn: async ({ requestId, accept }: { requestId: string; accept: boolean }) => {
-      const { data, error } = await supabase.rpc('respond_to_friend_request', {
-        _request_id: requestId,
-        _accept: accept
-      });
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data, variables) => {
-      toast({
-        title: variables.accept ? "Pedido aceito!" : "Pedido recusado",
-        description: variables.accept ? "Agora vocês são amigos." : undefined,
-      });
-      queryClient.invalidateQueries({ queryKey: ['friends'] });
-      queryClient.invalidateQueries({ queryKey: ['pending-friend-requests'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const handleSendRequest = async (recipientEmail: string) => {
+    if (!user) return;
 
-  const handleSendRequest = async () => {
-    if (!email.trim()) {
+    // Verificar se é o próprio usuário
+    if (user.email === recipientEmail) {
       toast({
-        title: "E-mail obrigatório",
-        description: "Por favor, insira um e-mail válido.",
+        title: "Ops!",
+        description: "Você não pode adicionar a si mesmo como amigo.",
         variant: "destructive",
       });
       return;
     }
 
-    sendRequestMutation.mutate(email);
+    try {
+      setActionLoading(recipientEmail);
+
+      const { data, error } = await supabase.rpc("send_friend_request", {
+        _receiver_email: recipientEmail,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Solicitação enviada!",
+        description: "Aguarde a aceitação do seu amigo.",
+      });
+
+      setSearchResult(null);
+      setSearchTerm("");
+      fetchFriends();
+    } catch (error) {
+      const err = error as { message?: string };
+      
+      // Mensagem específica para já serem amigos
+      if (err?.message?.includes("já são amigos")) {
+        toast({
+          title: "Vocês já são amigos",
+          description: "Esta pessoa já está na sua lista de amigos.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao enviar solicitação",
+          description: err?.message || "Tente novamente mais tarde.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    try {
+      setActionLoading(requestId);
+
+      const { error } = await supabase.rpc("respond_to_friend_request", {
+        _request_id: requestId,
+        _accept: true,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Amizade aceita!",
+        description: "Vocês agora são amigos.",
+      });
+
+      fetchFriends();
+      fetchPendingRequests();
+    } catch (error) {
+      const err = error as { message?: string };
+      toast({
+        title: "Erro ao aceitar solicitação",
+        description: err?.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    try {
+      setActionLoading(requestId);
+
+      const { error } = await supabase.rpc("respond_to_friend_request", {
+        _request_id: requestId,
+        _accept: false,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Solicitação recusada",
+        description: "A solicitação foi removida.",
+      });
+
+      fetchPendingRequests();
+    } catch (error) {
+      const err = error as { message?: string };
+      toast({
+        title: "Erro ao recusar solicitação",
+        description: err?.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRemoveFriend = async (friendId: string) => {
+    if (!confirm("Deseja remover este amigo? Esta ação não pode ser desfeita.")) {
+      return;
+    }
+
+    try {
+      setActionLoading(friendId);
+
+      // Deletar amizade usando filtro apropriado
+      const { error } = await supabase
+        .from("friendships")
+        .delete()
+        .or(`and(user_id_1.eq.${user?.id},user_id_2.eq.${friendId}),and(user_id_1.eq.${friendId},user_id_2.eq.${user?.id})`);
+
+      if (error) throw error;
+
+      toast({
+        title: "Amigo removido",
+        description: "A amizade foi desfeita.",
+      });
+
+      fetchFriends();
+    } catch (error) {
+      const err = error as { message?: string };
+      toast({
+        title: "Erro ao remover amigo",
+        description: err?.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const isFriend = (userId: string) => {
+    return friends.some((f) => f.friend_id === userId);
+  };
+
+  const hasPendingRequest = () => {
+    // Placeholder - pode ser implementado se necessário
+    return false;
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Users className="mr-2 h-4 w-4" />
+        <Button variant="outline" size="default">
+          <Users className="w-4 h-4 mr-2" />
           Amigos
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Meus Amigos</DialogTitle>
+          <DialogTitle>Gerenciar Amigos</DialogTitle>
           <DialogDescription>
-            Adicione amigos para facilitar convites para eventos
+            Adicione amigos para facilitar a criação de eventos em grupo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Adicionar amigo */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">Adicionar novo amigo</h3>
-            <div className="flex gap-2">
-              <Input
-                type="email"
-                placeholder="email@exemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendRequest()}
-              />
-              <Button 
-                onClick={handleSendRequest}
-                disabled={sendRequestMutation.isPending}
-              >
-                {sendRequestMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Enviar
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
+        <Tabs defaultValue="search" className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="search">
+              <Search className="w-4 h-4 mr-2" />
+              Buscar
+            </TabsTrigger>
+            <TabsTrigger value="friends">
+              <Users className="w-4 h-4 mr-2" />
+              Amigos ({friends.length})
+            </TabsTrigger>
+            <TabsTrigger value="requests">
+              <UserPlus className="w-4 h-4 mr-2" />
+              Solicitações ({pendingRequests.length})
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Pedidos pendentes */}
-          {pendingRequests.length > 0 && (
+          <TabsContent value="search" className="flex-1 overflow-y-auto space-y-4 mt-4">
             <div className="space-y-2">
-              <h3 className="text-sm font-medium">Pedidos recebidos</h3>
-              <div className="space-y-2">
-                {pendingRequests.map((request) => (
-                  <div
-                    key={request.request_id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        {request.sender_avatar ? (
-                          <img src={request.sender_avatar} alt="" className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                          <Users className="h-5 w-5 text-primary" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium">{request.sender_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(request.created_at).toLocaleDateString('pt-BR')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => respondMutation.mutate({ requestId: request.request_id, accept: true })}
-                        disabled={respondMutation.isPending}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => respondMutation.mutate({ requestId: request.request_id, accept: false })}
-                        disabled={respondMutation.isPending}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <Label htmlFor="search">Buscar por nome de usuário ou e-mail</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="search"
+                  placeholder="Digite @usuario ou email@exemplo.com"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      searchUser();
+                    }
+                  }}
+                />
+                <Button onClick={searchUser} disabled={searching || !searchTerm.trim()}>
+                  {searching ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                </Button>
               </div>
-            </div>
-          )}
-
-          {/* Lista de amigos */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">Meus amigos ({friends.length})</h3>
-            {loadingFriends ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : friends.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Você ainda não tem amigos adicionados
+              <p className="text-xs text-muted-foreground">
+                Digite o nome de usuário (sem @) ou o e-mail completo
               </p>
-            ) : (
-              <div className="space-y-2">
-                {friends.map((friend) => (
-                  <div
-                    key={friend.friend_id}
-                    className="flex items-center gap-3 p-3 border rounded-lg"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      {friend.avatar_url ? (
-                        <img src={friend.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        <Users className="h-5 w-5 text-primary" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium">{friend.display_name}</p>
-                      <p className="text-xs text-muted-foreground">{friend.email}</p>
-                    </div>
-                  </div>
-                ))}
+            </div>
+
+            {searchResult && (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold mb-3">Resultado da busca</h3>
+                <UserSearchCard
+                  userId={searchResult.id}
+                  displayName={searchResult.display_name}
+                  username={searchResult.username}
+                  avatarUrl={searchResult.avatar_url}
+                  email={searchResult.email}
+                  isFriend={isFriend(searchResult.id)}
+                  hasPendingRequest={hasPendingRequest()}
+                  onSendRequest={() => handleSendRequest(searchResult.email)}
+                  loading={actionLoading === searchResult.email}
+                />
               </div>
             )}
-          </div>
-        </div>
+
+            {!searchResult && !searching && searchTerm.trim() === "" && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Digite um nome de usuário ou e-mail para buscar</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="friends" className="flex-1 overflow-y-auto space-y-3 mt-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : friends.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Você ainda não tem amigos adicionados.</p>
+                <p className="text-sm mt-1">Use a busca para encontrar pessoas!</p>
+              </div>
+            ) : (
+              friends.map((friend) => (
+                <FriendCard
+                  key={friend.friend_id}
+                  friendId={friend.friend_id}
+                  displayName={friend.display_name}
+                  avatarUrl={friend.avatar_url}
+                  email={friend.email}
+                  onRemove={() => handleRemoveFriend(friend.friend_id)}
+                  loading={actionLoading === friend.friend_id}
+                />
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="requests" className="flex-1 overflow-y-auto space-y-3 mt-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : pendingRequests.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <UserPlus className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Nenhuma solicitação pendente.</p>
+              </div>
+            ) : (
+              pendingRequests.map((request) => (
+                <FriendRequestCard
+                  key={request.request_id}
+                  requestId={request.request_id}
+                  senderId={request.sender_id}
+                  senderName={request.sender_name}
+                  senderAvatar={request.sender_avatar}
+                  createdAt={request.created_at}
+                  onAccept={() => handleAcceptRequest(request.request_id)}
+                  onReject={() => handleRejectRequest(request.request_id)}
+                  loading={actionLoading === request.request_id}
+                />
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
-}
+};

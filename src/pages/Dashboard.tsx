@@ -11,6 +11,7 @@ import reUneLogo from '@/assets/reune-logo.png';
 import { FriendsDialog } from '@/components/friends/FriendsDialog';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { AccountDialog } from '@/components/AccountDialog';
+import { ProfilePromptDialog } from '@/components/ProfilePromptDialog';
 // Refresh TS types
 
 interface Event {
@@ -41,6 +42,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
+  const [profilePromptOpen, setProfilePromptOpen] = useState(false);
   const userId = user?.id;
 
   const handleLogout = async () => {
@@ -178,6 +180,35 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
+
+  // Verificar se deve exibir o popup de perfil
+  useEffect(() => {
+    const checkProfilePrompt = async () => {
+      if (!userId) return;
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('hide_profile_prompt')
+          .eq('id', userId)
+          .single();
+
+        if (error) throw error;
+
+        // Mostrar popup se a preferência não estiver marcada
+        if (!profile?.hide_profile_prompt) {
+          // Pequeno delay para melhor UX (esperar a tela carregar)
+          setTimeout(() => {
+            setProfilePromptOpen(true);
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar preferência de perfil:', error);
+      }
+    };
+
+    checkProfilePrompt();
+  }, [userId]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -365,6 +396,13 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
         open={accountDialogOpen}
         onOpenChange={setAccountDialogOpen}
         userEmail={userEmail}
+      />
+
+      {/* Popup educacional de perfil */}
+      <ProfilePromptDialog
+        open={profilePromptOpen}
+        onOpenChange={setProfilePromptOpen}
+        onNavigateToProfile={() => setAccountDialogOpen(true)}
       />
     </div>
   );
