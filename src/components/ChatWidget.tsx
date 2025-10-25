@@ -144,7 +144,8 @@ export default function ChatWidget() {
   return (
     <>
       {/* Botão flutuante fixo no canto inferior direito */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* NOTA: Botão oculto visualmente, mas mantendo toda funcionalidade intacta */}
+      <div className="fixed bottom-6 right-6 z-50 hidden">
         <Button
           variant="ghost"
           size="lg"
