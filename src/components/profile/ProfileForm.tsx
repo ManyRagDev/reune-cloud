@@ -93,10 +93,36 @@ export function ProfileForm() {
   
   // Verificar se o usuário já aceitou os termos anteriormente
   const alreadyAcceptedTerms = !!profile?.terms_accepted_at;
+  
+  // Verificar se o username já foi definido (não pode ser alterado)
+  const usernameAlreadySet = !!profile?.username;
 
   // Ref para controlar a última requisição e evitar race conditions
   const lastUsernameCheckRef = useRef<string>('');
   const checkTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Carregar dados do perfil no formulário quando o profile for carregado
+  useEffect(() => {
+    if (profile) {
+      setValue('display_name', profile.display_name || '');
+      setValue('username', profile.username || '');
+      setValue('phone', profile.phone || '');
+      setValue('city', profile.city || '');
+      setValue('state', profile.state || '');
+      setValue('country', profile.country || 'Brasil');
+      setValue('favorite_event_type', profile.favorite_event_type || '');
+      setValue('language', profile.language || 'pt-BR');
+      setValue('bio', profile.bio || '');
+      setValue('allow_search_by_username', profile.allow_search_by_username ?? true);
+      setValue('accept_notifications', profile.accept_notifications ?? false);
+      setValue('terms_accepted', !!profile.terms_accepted_at);
+      
+      // Carregar avatar se existir
+      if (profile.avatar_url) {
+        setAvatarPreview(profile.avatar_url);
+      }
+    }
+  }, [profile, setValue]);
 
   // Verificar disponibilidade de username com debounce e controle de race condition
   const verifyUsernameAvailability = useCallback(async (username: string) => {
@@ -184,8 +210,11 @@ export function ProfileForm() {
     };
     reader.readAsDataURL(file);
 
-    // Upload
-    await uploadAvatar(file);
+    // Upload e atualizar perfil
+    const result = await uploadAvatar(file);
+    if (result.success && result.url) {
+      setAvatarPreview(result.url);
+    }
   };
 
   const onSubmit = async (data: ProfileFormData) => {
@@ -310,7 +339,7 @@ export function ProfileForm() {
               <Input
                 id="username"
                 {...register('username')}
-                disabled={saving}
+                disabled={saving || usernameAlreadySet}
                 className="pr-10"
                 onChange={(e) => {
                   // Normalizar: apenas letras minúsculas e números
@@ -318,12 +347,12 @@ export function ProfileForm() {
                   register('username').onChange(e);
                 }}
               />
-              {checkingUsername && (
+              {!usernameAlreadySet && checkingUsername && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                 </div>
               )}
-              {!checkingUsername && usernameAvailable !== null && watchedUsername && watchedUsername.length >= 3 && (
+              {!usernameAlreadySet && !checkingUsername && usernameAvailable !== null && watchedUsername && watchedUsername.length >= 3 && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {usernameAvailable ? (
                     <Check className="w-4 h-4 text-green-500" />
@@ -336,15 +365,21 @@ export function ProfileForm() {
             {errors.username && (
               <p className="text-sm text-destructive">{errors.username.message}</p>
             )}
-            {!checkingUsername && usernameAvailable === false && watchedUsername && watchedUsername.length >= 3 && (
+            {!usernameAlreadySet && !checkingUsername && usernameAvailable === false && watchedUsername && watchedUsername.length >= 3 && (
               <p className="text-sm text-destructive">Este username já está em uso</p>
             )}
-            {!checkingUsername && usernameAvailable === true && watchedUsername && watchedUsername.length >= 3 && (
+            {!usernameAlreadySet && !checkingUsername && usernameAvailable === true && watchedUsername && watchedUsername.length >= 3 && (
               <p className="text-sm text-green-600">Username disponível!</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Apenas letras (a-z) e números (0-9), 3-20 caracteres
-            </p>
+            {usernameAlreadySet ? (
+              <p className="text-xs text-muted-foreground">
+                Seu nome de usuário não pode ser alterado após o cadastro
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Apenas letras (a-z) e números (0-9), 3-20 caracteres
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
