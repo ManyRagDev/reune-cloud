@@ -9,6 +9,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { ProfileForm } from './profile/ProfileForm';
+import { AddressList } from './profile/AddressList';
 
 interface AccountDialogProps {
   open: boolean;
@@ -51,17 +52,7 @@ export function AccountDialog({ open, onOpenChange, userName, userEmail }: Accou
 
           {/* Conteúdo: Endereços */}
           <TabsContent value="addresses" className="mt-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <MapPin className="w-12 h-12 text-muted-foreground mb-4" />
-                  <h4 className="font-medium text-foreground mb-2">Nenhum endereço cadastrado</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Em breve você poderá gerenciar seus endereços favoritos.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <AddressList />
           </TabsContent>
 
           {/* Conteúdo: Segurança */}
