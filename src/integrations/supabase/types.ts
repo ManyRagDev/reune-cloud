@@ -448,6 +448,7 @@ export type Database = {
           created_at: string | null
           display_name: string | null
           favorite_event_type: string | null
+          hide_profile_prompt: boolean | null
           id: string
           language: string | null
           phone: string | null
@@ -466,6 +467,7 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           favorite_event_type?: string | null
+          hide_profile_prompt?: boolean | null
           id: string
           language?: string | null
           phone?: string | null
@@ -484,6 +486,7 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           favorite_event_type?: string | null
+          hide_profile_prompt?: boolean | null
           id?: string
           language?: string | null
           phone?: string | null
