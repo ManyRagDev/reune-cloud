@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -93,51 +93,78 @@ export function ProfileForm() {
   const watchedUsername = watch('username');
   const termsAccepted = watch('terms_accepted');
 
-  // Carregar dados do perfil
-  useEffect(() => {
-    if (profile) {
-      setValue('display_name', profile.display_name || '');
-      setValue('username', profile.username || '');
-      setValue('phone', profile.phone || '');
-      setValue('city', profile.city || '');
-      setValue('state', profile.state || '');
-      setValue('country', profile.country || 'Brasil');
-      setValue('favorite_event_type', profile.favorite_event_type || '');
-      setValue('language', profile.language || 'pt-BR');
-      setValue('bio', profile.bio || '');
-      setValue('allow_search_by_username', profile.allow_search_by_username ?? true);
-      setValue('accept_notifications', profile.accept_notifications ?? false);
-      setValue('terms_accepted', !!profile.terms_accepted_at);
+  // Ref para controlar a última requisição e evitar race conditions
+  const lastUsernameCheckRef = useRef<string>('');
+  const checkTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Verificar disponibilidade de username com debounce e controle de race condition
+  const verifyUsernameAvailability = useCallback(async (username: string) => {
+    // Normalizar username
+    const normalizedUsername = username.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // Validações básicas
+    if (!normalizedUsername || normalizedUsername.length < 3) {
+      setUsernameAvailable(null);
+      setCheckingUsername(false);
+      return;
+    }
+
+    // Se é o username atual, não precisa verificar
+    if (normalizedUsername === profile?.username) {
+      setUsernameAvailable(true);
+      setCheckingUsername(false);
+      return;
+    }
+
+    // Marcar como verificando
+    setCheckingUsername(true);
+    
+    // Guardar qual username estamos verificando
+    lastUsernameCheckRef.current = normalizedUsername;
+
+    try {
+      const available = await checkUsernameAvailable(normalizedUsername);
       
-      if (profile.avatar_url) {
-        setAvatarPreview(profile.avatar_url);
+      // Apenas atualizar se esta ainda é a última verificação solicitada
+      if (lastUsernameCheckRef.current === normalizedUsername) {
+        setUsernameAvailable(available);
+        setCheckingUsername(false);
+      }
+    } catch (error) {
+      // Apenas atualizar se esta ainda é a última verificação solicitada
+      if (lastUsernameCheckRef.current === normalizedUsername) {
+        setUsernameAvailable(false);
+        setCheckingUsername(false);
       }
     }
-  }, [profile, setValue]);
+  }, [profile?.username, checkUsernameAvailable]);
 
-  // Verificar disponibilidade de username
+  // Efeito com debounce para verificar username
   useEffect(() => {
-    const checkUsername = async () => {
-      if (!watchedUsername || watchedUsername.length < 3) {
-        setUsernameAvailable(null);
-        return;
-      }
+    // Limpar timeout anterior
+    if (checkTimeoutRef.current) {
+      clearTimeout(checkTimeoutRef.current);
+    }
 
-      // Se é o username atual, não precisa verificar
-      if (watchedUsername === profile?.username) {
-        setUsernameAvailable(true);
-        return;
-      }
-
-      setCheckingUsername(true);
-      const available = await checkUsernameAvailable(watchedUsername);
-      setUsernameAvailable(available);
+    // Se não há username, limpar estado
+    if (!watchedUsername) {
+      setUsernameAvailable(null);
       setCheckingUsername(false);
-    };
+      return;
+    }
 
-    const timer = setTimeout(checkUsername, 500);
-    return () => clearTimeout(timer);
-  }, [watchedUsername, profile?.username, checkUsernameAvailable]);
+    // Configurar novo timeout (debounce de 500ms)
+    checkTimeoutRef.current = setTimeout(() => {
+      verifyUsernameAvailability(watchedUsername);
+    }, 500);
+
+    // Cleanup
+    return () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+    };
+  }, [watchedUsername, verifyUsernameAvailability]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -280,6 +307,7 @@ export function ProfileForm() {
                 disabled={saving}
                 className="pr-10"
                 onChange={(e) => {
+                  // Normalizar: apenas letras minúsculas e números
                   e.target.value = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '');
                   register('username').onChange(e);
                 }}
@@ -302,7 +330,7 @@ export function ProfileForm() {
             {errors.username && (
               <p className="text-sm text-destructive">{errors.username.message}</p>
             )}
-            {!checkingUsername && usernameAvailable === false && (
+            {!checkingUsername && usernameAvailable === false && watchedUsername && watchedUsername.length >= 3 && (
               <p className="text-sm text-destructive">Este username já está em uso</p>
             )}
             {!checkingUsername && usernameAvailable === true && watchedUsername && watchedUsername.length >= 3 && (

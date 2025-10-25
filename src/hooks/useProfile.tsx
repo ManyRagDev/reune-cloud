@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
@@ -77,7 +77,7 @@ export const useProfile = () => {
     }
   };
 
-  const checkUsernameAvailable = async (username: string): Promise<boolean> => {
+  const checkUsernameAvailable = useCallback(async (username: string): Promise<boolean> => {
     if (!username || username.length < 3) return false;
 
     try {
@@ -89,7 +89,7 @@ export const useProfile = () => {
     } catch (error) {
       return false;
     }
-  };
+  }, []); // Sem dependências - função estável
 
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return { success: false, error: 'Usuário não autenticado' };
