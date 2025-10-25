@@ -5,11 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, MapPinned, Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { FriendSelector } from '@/components/friends/FriendSelector';
+import { AddressSelector } from '@/components/events/AddressSelector';
+import { Address } from '@/hooks/useAddresses';
 // TS type refresh
 
 interface CreateEventProps {
@@ -29,6 +31,8 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
   const [loading, setLoading] = useState(false);
   const [showLocationWarning, setShowLocationWarning] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [useManualLocation, setUseManualLocation] = useState(false);
 
   // Detectar se localização parece residencial
   const checkResidentialLocation = (loc: string) => {
@@ -39,6 +43,31 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
   const handleLocationChange = (value: string) => {
     setLocation(value);
     setShowLocationWarning(isPublic && checkResidentialLocation(value));
+    // Se o usuário digitar manualmente, limpar o endereço selecionado
+    if (selectedAddressId) {
+      setSelectedAddressId(null);
+    }
+  };
+
+  const handleAddressSelect = (address: Address) => {
+    const formattedAddress = `${address.nickname} — ${address.street}, ${address.number}${address.complement ? ', ' + address.complement : ''}, ${address.city}/${address.state}`;
+    setLocation(formattedAddress);
+    setSelectedAddressId(address.id);
+    setUseManualLocation(false);
+    setShowLocationWarning(isPublic && checkResidentialLocation(formattedAddress));
+    
+    toast({
+      title: "Endereço aplicado",
+      description: `Usando "${address.nickname}" como local do evento.`,
+    });
+  };
+
+  const handleToggleManualLocation = () => {
+    if (!useManualLocation) {
+      setLocation('');
+      setSelectedAddressId(null);
+    }
+    setUseManualLocation(!useManualLocation);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -191,14 +220,49 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
 
               <div>
                 <Label htmlFor="location">Endereço</Label>
-                <Input
-                  id="location"
-                  type="text"
-                  placeholder="Ex: Rua das Flores, 123 - Centro"
-                  value={location}
-                  onChange={(e) => handleLocationChange(e.target.value)}
-                  required
-                />
+                <div className="space-y-3">
+                  {!useManualLocation && (
+                    <AddressSelector 
+                      onAddressSelect={handleAddressSelect}
+                      disabled={loading}
+                    />
+                  )}
+                  
+                  {useManualLocation ? (
+                    <div className="space-y-2">
+                      <Input
+                        id="location"
+                        type="text"
+                        placeholder="Ex: Rua das Flores, 123 - Centro"
+                        value={location}
+                        onChange={(e) => handleLocationChange(e.target.value)}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleToggleManualLocation}
+                        className="text-xs"
+                      >
+                        <Home className="h-3 w-3 mr-1" />
+                        Voltar para endereços salvos
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleToggleManualLocation}
+                      disabled={loading}
+                      className="w-full"
+                    >
+                      <MapPinned className="h-4 w-4 mr-2" />
+                      Digitar endereço manualmente
+                    </Button>
+                  )}
+                </div>
+                
                 {showLocationWarning && (
                   <Alert className="mt-2 border-warning bg-warning/10">
                     <AlertTriangle className="h-4 w-4 text-warning" />
