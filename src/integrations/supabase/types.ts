@@ -439,25 +439,58 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accept_notifications: boolean | null
+          allow_search_by_username: boolean | null
           avatar_url: string | null
+          bio: string | null
+          city: string | null
+          country: string | null
           created_at: string | null
           display_name: string | null
+          favorite_event_type: string | null
           id: string
+          language: string | null
+          phone: string | null
+          state: string | null
+          terms_accepted_at: string | null
           updated_at: string | null
+          username: string | null
         }
         Insert: {
+          accept_notifications?: boolean | null
+          allow_search_by_username?: boolean | null
           avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           display_name?: string | null
+          favorite_event_type?: string | null
           id: string
+          language?: string | null
+          phone?: string | null
+          state?: string | null
+          terms_accepted_at?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Update: {
+          accept_notifications?: boolean | null
+          allow_search_by_username?: boolean | null
           avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           display_name?: string | null
+          favorite_event_type?: string | null
           id?: string
+          language?: string | null
+          phone?: string | null
+          state?: string | null
+          terms_accepted_at?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Relationships: []
       }
@@ -477,6 +510,7 @@ export type Database = {
           location: string | null
           max_attendees: number | null
           menu: string | null
+          public_location: string | null
           qtd_pessoas: number | null
           status: string | null
           subtipo_evento: string | null
@@ -500,6 +534,7 @@ export type Database = {
           location?: string | null
           max_attendees?: number | null
           menu?: string | null
+          public_location?: string | null
           qtd_pessoas?: number | null
           status?: string | null
           subtipo_evento?: string | null
@@ -523,6 +558,7 @@ export type Database = {
           location?: string | null
           max_attendees?: number | null
           menu?: string | null
+          public_location?: string | null
           qtd_pessoas?: number | null
           status?: string | null
           subtipo_evento?: string | null
@@ -530,6 +566,57 @@ export type Database = {
           title?: string
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_addresses: {
+        Row: {
+          city: string
+          complement: string | null
+          country: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          neighborhood: string
+          nickname: string
+          number: string
+          state: string
+          street: string
+          updated_at: string
+          user_id: string
+          zip_code: string
+        }
+        Insert: {
+          city: string
+          complement?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          neighborhood: string
+          nickname: string
+          number: string
+          state: string
+          street: string
+          updated_at?: string
+          user_id: string
+          zip_code: string
+        }
+        Update: {
+          city?: string
+          complement?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          neighborhood?: string
+          nickname?: string
+          number?: string
+          state?: string
+          street?: string
+          updated_at?: string
+          user_id?: string
+          zip_code?: string
         }
         Relationships: []
       }
@@ -545,6 +632,10 @@ export type Database = {
       assign_items_bulk: {
         Args: { _assignments: Json; _event_id: number }
         Returns: Json
+      }
+      check_username_available: {
+        Args: { desired_username: string }
+        Returns: boolean
       }
       distribution_bulk_upsert: {
         Args: { evento_id: string; rows: Json }
@@ -644,6 +735,31 @@ export type Database = {
           user_name: string
         }[]
       }
+      get_profile_completion: { Args: never; Returns: number }
+      get_public_events: {
+        Args: never
+        Returns: {
+          categoria_evento: string
+          created_at: string
+          description: string
+          event_date: string
+          event_time: string
+          finalidade_evento: string
+          id: number
+          inclui_bebidas: boolean
+          inclui_entradas: boolean
+          is_public: boolean
+          location: string
+          max_attendees: number
+          menu: string
+          qtd_pessoas: number
+          status: string
+          subtipo_evento: string
+          tipo_evento: string
+          title: string
+          updated_at: string
+        }[]
+      }
       is_event_organizer: {
         Args: { _event_id: number; _user_id: string }
         Returns: boolean
@@ -652,6 +768,7 @@ export type Database = {
         Args: { evento_id: string; itens: Json }
         Returns: Json[]
       }
+      mask_location: { Args: { full_location: string }; Returns: string }
       participants_bulk_upsert: {
         Args: { evento_id: string; participantes: Json }
         Returns: Json[]

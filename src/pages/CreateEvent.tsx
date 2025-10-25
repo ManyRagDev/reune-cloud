@@ -4,11 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, AlertTriangle, MapPinned, Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { FriendSelector } from '@/components/friends/FriendSelector';
+import { AddressSelector } from '@/components/events/AddressSelector';
+import { Address } from '@/hooks/useAddresses';
 // TS type refresh
 
 interface CreateEventProps {
@@ -26,6 +29,46 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
   const [description, setDescription] = useState('');
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showLocationWarning, setShowLocationWarning] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [useManualLocation, setUseManualLocation] = useState(false);
+
+  // Detectar se localização parece residencial
+  const checkResidentialLocation = (loc: string) => {
+    const residentialPatterns = /(casa|residência|apt|apartamento|rua|avenida|av\.|r\.)/i;
+    return residentialPatterns.test(loc);
+  };
+
+  const handleLocationChange = (value: string) => {
+    setLocation(value);
+    setShowLocationWarning(isPublic && checkResidentialLocation(value));
+    // Se o usuário digitar manualmente, limpar o endereço selecionado
+    if (selectedAddressId) {
+      setSelectedAddressId(null);
+    }
+  };
+
+  const handleAddressSelect = (address: Address) => {
+    const formattedAddress = `${address.nickname} — ${address.street}, ${address.number}${address.complement ? ', ' + address.complement : ''}, ${address.city}/${address.state}`;
+    setLocation(formattedAddress);
+    setSelectedAddressId(address.id);
+    setUseManualLocation(false);
+    setShowLocationWarning(isPublic && checkResidentialLocation(formattedAddress));
+    
+    toast({
+      title: "Endereço aplicado",
+      description: `Usando "${address.nickname}" como local do evento.`,
+    });
+  };
+
+  const handleToggleManualLocation = () => {
+    if (!useManualLocation) {
+      setLocation('');
+      setSelectedAddressId(null);
+    }
+    setUseManualLocation(!useManualLocation);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,9 +94,12 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
           location,
           description,
           user_id: user.id,
-          is_public: true,
+          is_public: isPublic,
           status: 'published',
-          created_by_ai: false // Evento criado manualmente pelo usuário
+          created_by_ai: false, // Evento criado manualmente pelo usuário
+          public_location: isPublic && checkResidentialLocation(location) 
+            ? 'Local a confirmar com organizador' 
+            : null
         })
         .select()
         .single();
@@ -174,14 +220,59 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
 
               <div>
                 <Label htmlFor="location">Endereço</Label>
-                <Input
-                  id="location"
-                  type="text"
-                  placeholder="Ex: Rua das Flores, 123 - Centro"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  required
-                />
+                <div className="space-y-3">
+                  {!useManualLocation && (
+                    <AddressSelector 
+                      onAddressSelect={handleAddressSelect}
+                      disabled={loading}
+                    />
+                  )}
+                  
+                  {useManualLocation ? (
+                    <div className="space-y-2">
+                      <Input
+                        id="location"
+                        type="text"
+                        placeholder="Ex: Rua das Flores, 123 - Centro"
+                        value={location}
+                        onChange={(e) => handleLocationChange(e.target.value)}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleToggleManualLocation}
+                        className="text-xs"
+                      >
+                        <Home className="h-3 w-3 mr-1" />
+                        Voltar para endereços salvos
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleToggleManualLocation}
+                      disabled={loading}
+                      className="w-full"
+                    >
+                      <MapPinned className="h-4 w-4 mr-2" />
+                      Digitar endereço manualmente
+                    </Button>
+                  )}
+                </div>
+                
+                {showLocationWarning && (
+                  <Alert className="mt-2 border-warning bg-warning/10">
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    <AlertDescription className="text-sm text-warning-foreground">
+                      <strong>Atenção:</strong> Você está adicionando um endereço residencial em um evento público. 
+                      Por segurança, apenas a região será exibida para não-convidados. 
+                      O endereço completo ficará visível apenas para você e seus convidados.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
 
               <div>

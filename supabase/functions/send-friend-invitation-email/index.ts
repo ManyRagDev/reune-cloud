@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { FriendInvitationSchema, escapeHtml } from "./utils.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
@@ -20,7 +21,22 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { receiverEmail, senderName, invitationToken }: FriendInvitationRequest = await req.json();
+    const requestBody = await req.json();
+    
+    // Validate input
+    const parsed = FriendInvitationSchema.safeParse(requestBody);
+    if (!parsed.success) {
+      console.error('❌ Validação falhou:', parsed.error.issues);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Dados inválidos', 
+          details: parsed.error.issues 
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    const { receiverEmail, senderName, invitationToken } = parsed.data;
 
     const invitationUrl = `${Deno.env.get("VITE_SUPABASE_URL")}/auth/v1/verify?token=${invitationToken}&type=invite`;
 
@@ -54,7 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               <div class="content">
                 <p>Olá!</p>
-                <p><strong>${senderName}</strong> está convidando você para ser amigo no <strong>ReUNE</strong>, o aplicativo que organiza eventos sem caos!</p>
+                <p><strong>${escapeHtml(senderName)}</strong> está convidando você para ser amigo no <strong>ReUNE</strong>, o aplicativo que organiza eventos sem caos!</p>
                 <p>Com o ReUNE, vocês poderão:</p>
                 <ul>
                   <li>Organizar eventos juntos com ajuda de IA</li>

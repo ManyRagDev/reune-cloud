@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import reUneLogo from '@/assets/reune-logo.png';
 import { FriendsDialog } from '@/components/friends/FriendsDialog';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { AccountDialog } from '@/components/AccountDialog';
 // Refresh TS types
 
 interface Event {
@@ -39,6 +40,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
   const { toast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const userId = user?.id;
 
   const handleLogout = async () => {
@@ -218,6 +220,14 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
             <div>
               <h1 className="text-3xl font-bold text-primary tracking-tight">ReUNE</h1>
               <p className="text-muted-foreground font-medium">Olá, {userEmail}!</p>
+              <Button 
+                variant="link" 
+                size="sm" 
+                onClick={() => setAccountDialogOpen(true)}
+                className="text-sm text-primary hover:text-primary/80 p-0 h-auto font-medium"
+              >
+                Minha Conta →
+              </Button>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -350,7 +360,12 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
         </div>
       </main>
 
-
+      {/* Modal Minha Conta */}
+      <AccountDialog 
+        open={accountDialogOpen}
+        onOpenChange={setAccountDialogOpen}
+        userEmail={userEmail}
+      />
     </div>
   );
 };
