@@ -439,25 +439,58 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accept_notifications: boolean | null
+          allow_search_by_username: boolean | null
           avatar_url: string | null
+          bio: string | null
+          city: string | null
+          country: string | null
           created_at: string | null
           display_name: string | null
+          favorite_event_type: string | null
           id: string
+          language: string | null
+          phone: string | null
+          state: string | null
+          terms_accepted_at: string | null
           updated_at: string | null
+          username: string | null
         }
         Insert: {
+          accept_notifications?: boolean | null
+          allow_search_by_username?: boolean | null
           avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           display_name?: string | null
+          favorite_event_type?: string | null
           id: string
+          language?: string | null
+          phone?: string | null
+          state?: string | null
+          terms_accepted_at?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Update: {
+          accept_notifications?: boolean | null
+          allow_search_by_username?: boolean | null
           avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           display_name?: string | null
+          favorite_event_type?: string | null
           id?: string
+          language?: string | null
+          phone?: string | null
+          state?: string | null
+          terms_accepted_at?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Relationships: []
       }
@@ -548,6 +581,10 @@ export type Database = {
       assign_items_bulk: {
         Args: { _assignments: Json; _event_id: number }
         Returns: Json
+      }
+      check_username_available: {
+        Args: { desired_username: string }
+        Returns: boolean
       }
       distribution_bulk_upsert: {
         Args: { evento_id: string; rows: Json }
@@ -647,6 +684,7 @@ export type Database = {
           user_name: string
         }[]
       }
+      get_profile_completion: { Args: never; Returns: number }
       get_public_events: {
         Args: never
         Returns: {
