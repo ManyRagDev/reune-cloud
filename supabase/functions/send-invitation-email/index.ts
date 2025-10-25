@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { InvitationSchema, escapeHtml } from "./utils.ts";
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
@@ -195,6 +196,22 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const requestBody = await req.json();
+    
+    // Validate input
+    const parsed = InvitationSchema.safeParse(requestBody);
+    if (!parsed.success) {
+      console.error('❌ Validação falhou:', parsed.error.issues);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Dados inválidos', 
+          details: parsed.error.issues 
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
     const { 
       invitee_email, 
       invitee_name, 
@@ -204,16 +221,16 @@ const handler = async (req: Request): Promise<Response> => {
       event_location,
       is_organizer,
       invitation_token 
-    }: InvitationEmailRequest = await req.json();
+    } = parsed.data;
 
     console.log('📧 Enviando convite para:', invitee_email);
 
     const emailHtml = createEmailTemplate({
-      invitee_name,
-      event_title,
+      invitee_name: escapeHtml(invitee_name),
+      event_title: escapeHtml(event_title),
       event_date,
       event_time,
-      event_location,
+      event_location: event_location ? escapeHtml(event_location) : undefined,
       is_organizer,
       accept_url: 'https://reuneapp.com.br',
     });

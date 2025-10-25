@@ -10,4 +10,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.update-user-password]
-verify_jwt = false
+verify_jwt = true
