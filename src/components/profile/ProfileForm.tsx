@@ -38,9 +38,7 @@ const profileSchema = z.object({
   bio: z.string().max(500, 'Bio deve ter no máximo 500 caracteres').optional(),
   allow_search_by_username: z.boolean(),
   accept_notifications: z.boolean(),
-  terms_accepted: z.boolean().refine((val) => val === true, {
-    message: 'Você deve aceitar os termos para continuar',
-  }),
+  terms_accepted: z.boolean(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -92,6 +90,9 @@ export function ProfileForm() {
 
   const watchedUsername = watch('username');
   const termsAccepted = watch('terms_accepted');
+  
+  // Verificar se o usuário já aceitou os termos anteriormente
+  const alreadyAcceptedTerms = !!profile?.terms_accepted_at;
 
   // Ref para controlar a última requisição e evitar race conditions
   const lastUsernameCheckRef = useRef<string>('');
@@ -188,6 +189,11 @@ export function ProfileForm() {
   };
 
   const onSubmit = async (data: ProfileFormData) => {
+    // Validar se termos foram aceitos (apenas se ainda não foram)
+    if (!alreadyAcceptedTerms && !data.terms_accepted) {
+      return;
+    }
+
     setSaving(true);
 
     const updates = {
@@ -506,11 +512,14 @@ export function ProfileForm() {
           <div className="flex items-start space-x-2">
             <Checkbox
               id="terms_accepted"
-              checked={watch('terms_accepted')}
+              checked={alreadyAcceptedTerms || watch('terms_accepted')}
               onCheckedChange={(checked) => setValue('terms_accepted', checked as boolean)}
-              disabled={!!profile?.terms_accepted_at}
+              disabled={alreadyAcceptedTerms}
             />
-            <Label htmlFor="terms_accepted" className="text-sm font-normal cursor-pointer leading-relaxed">
+            <Label 
+              htmlFor="terms_accepted" 
+              className={`text-sm font-normal leading-relaxed ${alreadyAcceptedTerms ? 'cursor-default' : 'cursor-pointer'}`}
+            >
               Li e aceito os{' '}
               <a href="#" className="text-primary hover:underline">
                 Termos de Uso
@@ -521,12 +530,14 @@ export function ProfileForm() {
               </a>
             </Label>
           </div>
-          {errors.terms_accepted && (
-            <p className="text-sm text-destructive">{errors.terms_accepted.message}</p>
+          {!alreadyAcceptedTerms && !termsAccepted && (
+            <p className="text-sm text-muted-foreground">
+              * Você deve aceitar os termos para salvar seu perfil pela primeira vez
+            </p>
           )}
-          {profile?.terms_accepted_at && (
+          {alreadyAcceptedTerms && (
             <p className="text-xs text-muted-foreground">
-              Aceito em {new Date(profile.terms_accepted_at).toLocaleDateString('pt-BR')}
+              ✓ Você já aceitou os Termos de Uso e a Política de Privacidade em {new Date(profile.terms_accepted_at).toLocaleDateString('pt-BR')}
             </p>
           )}
         </CardContent>
@@ -536,7 +547,7 @@ export function ProfileForm() {
       <div className="flex justify-end gap-2">
         <Button
           type="submit"
-          disabled={saving || !termsAccepted || (usernameAvailable === false)}
+          disabled={saving || (!alreadyAcceptedTerms && !termsAccepted) || (usernameAvailable === false)}
           size="lg"
         >
           {saving ? 'Salvando...' : 'Salvar Alterações'}
