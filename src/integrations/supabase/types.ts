@@ -793,7 +793,10 @@ export type Database = {
         Args: { _response?: string; _status: string; _suggestion_id: string }
         Returns: Json
       }
-      send_friend_request: { Args: { _receiver_email: string }; Returns: Json }
+      send_friend_request: {
+        Args: { _receiver_identifier: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

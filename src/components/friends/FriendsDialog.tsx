@@ -101,43 +101,26 @@ export const FriendsDialog = () => {
       setSearching(true);
       setSearchResult(null);
 
-      // Determinar se é email ou username
-      const isEmail = searchTerm.includes("@");
       const normalizedSearch = searchTerm.trim().toLowerCase();
+      const isEmail = normalizedSearch.includes("@") && normalizedSearch.includes(".");
       
       if (isEmail) {
-        // Buscar perfil por email (via auth.users join)
-        const { data: allProfiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, display_name, username, avatar_url");
-
-        if (profilesError) throw profilesError;
-
-        // Buscar usuário correspondente via auth
-        let foundProfile = null;
-        for (const profile of allProfiles || []) {
-          const { data: { user: authUser } } = await supabase.auth.admin.getUserById(profile.id);
-          if (authUser && authUser.email?.toLowerCase() === normalizedSearch) {
-            foundProfile = {
-              ...profile,
-              email: authUser.email,
-            };
-            break;
-          }
-        }
-
-        if (!foundProfile) {
-          toast({
-            title: "Usuário não encontrado",
-            description: "Não existe um usuário cadastrado com esse e-mail.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        setSearchResult(foundProfile);
+        // Para email, apenas validar formato e permitir envio
+        // A função RPC fará a busca real
+        toast({
+          title: "Busca por email",
+          description: "Enviaremos a solicitação para este email se ele existir.",
+        });
+        
+        setSearchResult({
+          id: "", // Não temos o ID ainda
+          display_name: normalizedSearch,
+          username: "",
+          avatar_url: undefined,
+          email: normalizedSearch,
+        });
       } else {
-        // Buscar por username (remover @ se digitado)
+        // Buscar por username (remover @ se houver)
         const usernameSearch = normalizedSearch.replace(/^@/, "");
         
         const { data, error } = await supabase
@@ -158,12 +141,9 @@ export const FriendsDialog = () => {
           return;
         }
 
-        // Buscar email através de auth
-        const { data: { user: foundUser } } = await supabase.auth.admin.getUserById(data.id);
-
         setSearchResult({
           ...data,
-          email: foundUser?.email || "",
+          email: data.username, // Usar username como identificador
         });
       }
     } catch (error) {
@@ -178,24 +158,14 @@ export const FriendsDialog = () => {
     }
   };
 
-  const handleSendRequest = async (recipientEmail: string) => {
+  const handleSendRequest = async (identifier: string) => {
     if (!user) return;
 
-    // Verificar se é o próprio usuário
-    if (user.email === recipientEmail) {
-      toast({
-        title: "Ops!",
-        description: "Você não pode adicionar a si mesmo como amigo.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      setActionLoading(recipientEmail);
+      setActionLoading(identifier);
 
       const { data, error } = await supabase.rpc("send_friend_request", {
-        _receiver_email: recipientEmail,
+        _receiver_identifier: identifier,
       });
 
       if (error) throw error;
@@ -211,11 +181,17 @@ export const FriendsDialog = () => {
     } catch (error) {
       const err = error as { message?: string };
       
-      // Mensagem específica para já serem amigos
+      // Mensagens específicas
       if (err?.message?.includes("já são amigos")) {
         toast({
           title: "Vocês já são amigos",
           description: "Esta pessoa já está na sua lista de amigos.",
+          variant: "destructive",
+        });
+      } else if (err?.message?.includes("Usuário não encontrado")) {
+        toast({
+          title: "Usuário não encontrado",
+          description: "Não foi possível encontrar este usuário.",
           variant: "destructive",
         });
       } else {
@@ -403,8 +379,8 @@ export const FriendsDialog = () => {
                   email={searchResult.email}
                   isFriend={isFriend(searchResult.id)}
                   hasPendingRequest={hasPendingRequest()}
-                  onSendRequest={() => handleSendRequest(searchResult.email)}
-                  loading={actionLoading === searchResult.email}
+                  onSendRequest={() => handleSendRequest(searchResult.username || searchResult.email)}
+                  loading={actionLoading === (searchResult.username || searchResult.email)}
                 />
               </div>
             )}
