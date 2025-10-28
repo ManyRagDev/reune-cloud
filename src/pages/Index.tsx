@@ -75,37 +75,28 @@ const Index = () => {
       
       case 'dashboard':
         return (
-          <>
-            <Dashboard
-              userEmail={user?.email || ''}
-              onCreateEvent={handleCreateEvent}
-              onViewEvent={handleViewEvent}
-              onLogout={handleLogout}
-            />
-            <ChatWidget />
-          </>
+          <Dashboard
+            userEmail={user?.email || ''}
+            onCreateEvent={handleCreateEvent}
+            onViewEvent={handleViewEvent}
+            onLogout={handleLogout}
+          />
         );
       
       case 'createEvent':
         return (
-          <>
-            <CreateEvent
-              onBack={handleBackToDashboard}
-              onCreate={handleEventCreated}
-            />
-            <ChatWidget />
-          </>
+          <CreateEvent
+            onBack={handleBackToDashboard}
+            onCreate={handleEventCreated}
+          />
         );
       
       case 'eventDetails':
         return (
-          <>
-            <EventDetails
-              eventId={selectedEventId}
-              onBack={handleBackToDashboard}
-            />
-            <ChatWidget />
-          </>
+          <EventDetails
+            eventId={selectedEventId}
+            onBack={handleBackToDashboard}
+          />
         );
       
       default:
