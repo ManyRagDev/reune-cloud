@@ -320,183 +320,26 @@ export const orchestrate = async (
     };
   }
 
-  // 8) CONFIRMAÇÃO - Gerar itens se slots completos
-  if (analysis.intencao === "confirmar_evento" && 
-      (draft?.evento?.tipo_evento || analysis.categoria_evento || analysis.subtipo_evento) && 
-      (draft?.evento?.qtd_pessoas || analysis.qtd_pessoas)) {
-    console.log('[ORCHESTRATE] Confirmação semântica: gerar itens');
+  // 8) CONFIRMAÇÃO - Gerar itens com dados acumulados (OTIMIZADO)
+  if (analysis.intencao === "confirmar_evento") {
+    console.log('[ORCHESTRATE] Confirmação detectada - verificando dados disponíveis');
     
-    const tipo = analysis.categoria_evento || analysis.subtipo_evento || draft?.evento?.tipo_evento;
-    const qtd = analysis.qtd_pessoas || draft?.evento?.qtd_pessoas;
-    const menu = analysis.menu || draft?.evento?.menu;
-    
-    const evtId = draft?.evento?.id ?? (
-      await upsertEvent({
-        usuario_id: userId,
-        nome_evento: "Rascunho",
-        tipo_evento: tipo!,
-        categoria_evento: analysis.categoria_evento,
-        subtipo_evento: analysis.subtipo_evento,
-        menu,
-        qtd_pessoas: qtd!,
-        status: "collecting_core",
-      })
-    ).id;
-
-    // Gerar lista de itens
-    const itensGerados = await generateItemList({ tipo_evento: tipo!, qtd_pessoas: qtd!, menu });
-    const itensComIds = itensGerados.map(item => ({
-      ...item,
-      id: item.id || crypto.randomUUID(),
-      evento_id: evtId,
-      nome_item: item.nome_item || '',
-      quantidade: item.quantidade || 0,
-      unidade: item.unidade || 'un',
-      valor_estimado: item.valor_estimado || 0,
-      categoria: item.categoria || 'geral',
-      prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
-    })) as Item[];
-    
-    await rpc.items_replace_for_event(evtId, itensComIds);
-    await setEventStatus(evtId, "itens_pendentes_confirmacao");
-
-    const snapshot = await rpc.get_event_plan(evtId);
-    const itemsMsg = getRandomTemplate('items_generated', { categoria_evento: tipo, qtd_pessoas: qtd });
-
-    await contextManager.saveMessage(userId, 'assistant', itemsMsg, Number(evtId));
-    await contextManager.updateContext(
-      userId,
-      'itens_pendentes_confirmacao',
-      { categoria_evento: tipo, qtd_pessoas: qtd, menu },
-      [],
-      0.9,
-      'confirmar_evento',
-      Number(evtId)
-    );
-
-    return {
-      estado: "itens_pendentes_confirmacao",
-      evento_id: evtId,
-      mensagem: itemsMsg,
-      snapshot,
-      showItems: true,
-      suggestedReplies: ["Confirmar lista", "Editar itens"],
-      ctas: [
-        { type: "confirm-items", label: "Confirmar lista" },
-        { type: "edit-items", label: "Editar itens" },
-      ],
-    };
-  }
-
-  // 9) CRIAR EVENTO - Coletar informações progressivamente
-  if (analysis.intencao === "criar_evento") {
-    console.log('[ORCHESTRATE] Criando evento');
-    
-    // Extrair dados da análise e merge com draft
+    // Merge de todos os dados disponíveis
     const categoria = analysis.categoria_evento || draft?.evento?.categoria_evento;
     const subtipo = analysis.subtipo_evento || draft?.evento?.subtipo_evento;
     const qtd = analysis.qtd_pessoas || draft?.evento?.qtd_pessoas;
-    const data = analysis.data_evento || draft?.evento?.data_evento;
     const menu = analysis.menu || draft?.evento?.menu;
-
-    // Caso especial: tem subtipo mas não categoria → perguntar período do dia
-    if (subtipo && !categoria) {
-      console.log('[ORCHESTRATE] Subtipo sem categoria: pedindo período');
-      const evtId = draft?.evento?.id ?? (
-        await upsertEvent({
-          usuario_id: userId,
-          nome_evento: "Rascunho",
-          tipo_evento: subtipo,
-          subtipo_evento: subtipo,
-          qtd_pessoas: qtd,
-          menu,
-          status: "collecting_core",
-        })
-      ).id;
-
-      return {
-        estado: "collecting_core",
-        evento_id: evtId,
-        mensagem: getRandomTemplate('ask_categoria', { subtipo_evento: subtipo }),
-        suggestedReplies: ["Almoço", "Jantar", "Lanche"],
-        ctas: [],
-      };
+    const data = analysis.data_evento || draft?.evento?.data_evento;
+    
+    // Inferir tipo se necessário
+    let tipo = categoria || subtipo;
+    if (subtipo && !categoria && ['churrasco', 'feijoada', 'pizza'].includes(subtipo)) {
+      tipo = subtipo;
     }
-
-    // Tem categoria mas não quantidade → perguntar
-    if ((categoria || subtipo) && !qtd) {
-      console.log('[ORCHESTRATE] Categoria sem quantidade: pedindo qtd');
-      const evtId = draft?.evento?.id ?? (
-        await upsertEvent({
-          usuario_id: userId,
-          nome_evento: "Rascunho",
-          tipo_evento: categoria || subtipo!,
-          categoria_evento: categoria,
-          subtipo_evento: subtipo,
-          menu,
-          status: "collecting_core",
-        })
-      ).id;
-
-      return {
-        estado: "collecting_core",
-        evento_id: evtId,
-        mensagem: getRandomTemplate('ask_qtd', { categoria_evento: categoria || subtipo }),
-        ctas: [],
-      };
-    }
-
-    // Tem tipo e quantidade mas não menu → perguntar
-    if ((categoria || subtipo) && qtd && !menu) {
-      console.log('[ORCHESTRATE] Tem tipo e qtd, pedindo menu');
-      const evtId = draft?.evento?.id ?? (
-        await upsertEvent({
-          usuario_id: userId,
-          nome_evento: "Rascunho",
-          tipo_evento: categoria || subtipo!,
-          categoria_evento: categoria,
-          subtipo_evento: subtipo,
-          qtd_pessoas: qtd,
-          status: "collecting_core",
-        })
-      ).id;
-
-      return {
-        estado: "collecting_core",
-        evento_id: evtId,
-        mensagem: getRandomTemplate('ask_menu'),
-        ctas: [],
-      };
-    }
-
-    // Tem tipo, quantidade e menu mas não data → perguntar
-    if ((categoria || subtipo) && qtd && menu && !data) {
-      console.log('[ORCHESTRATE] Tem tipo, qtd e menu, pedindo data');
-      const evtId = draft?.evento?.id ?? (
-        await upsertEvent({
-          usuario_id: userId,
-          nome_evento: "Rascunho",
-          tipo_evento: categoria || subtipo!,
-          categoria_evento: categoria,
-          subtipo_evento: subtipo,
-          qtd_pessoas: qtd,
-          menu,
-          status: "collecting_core",
-        })
-      ).id;
-
-      return {
-        estado: "collecting_core",
-        evento_id: evtId,
-        mensagem: getRandomTemplate('ask_data', { categoria_evento: categoria || subtipo, qtd_pessoas: qtd }),
-        ctas: [],
-      };
-    }
-
-    // Tem tudo → gerar lista de itens
-    if ((categoria || subtipo) && qtd && menu && data) {
-      console.log('[ORCHESTRATE] Slots completos: gerando itens');
-      const tipo = categoria || subtipo!;
+    
+    // Se temos tipo e quantidade, podemos gerar itens
+    if (tipo && qtd) {
+      console.log('[ORCHESTRATE] Confirmação com dados suficientes:', { tipo, qtd, menu, data });
       
       const evtId = draft?.evento?.id ?? (
         await upsertEvent({
@@ -505,14 +348,20 @@ export const orchestrate = async (
           tipo_evento: tipo,
           categoria_evento: categoria,
           subtipo_evento: subtipo,
-          qtd_pessoas: qtd,
           menu,
+          qtd_pessoas: qtd,
           data_evento: data,
           status: "collecting_core",
         })
       ).id;
 
-      const itensGerados = await generateItemList({ tipo_evento: tipo, qtd_pessoas: qtd, menu });
+      // Gerar lista de itens
+      const itensGerados = await generateItemList({ 
+        tipo_evento: tipo, 
+        qtd_pessoas: qtd, 
+        menu: menu || undefined 
+      });
+      
       const itensComIds = itensGerados.map(item => ({
         ...item,
         id: item.id || crypto.randomUUID(),
@@ -529,20 +378,245 @@ export const orchestrate = async (
       await setEventStatus(evtId, "itens_pendentes_confirmacao");
 
       const snapshot = await rpc.get_event_plan(evtId);
+      const itemsMsg = getRandomTemplate('items_generated', { 
+        categoria_evento: tipo, 
+        qtd_pessoas: qtd 
+      });
+
+      await contextManager.saveMessage(userId, 'assistant', itemsMsg, Number(evtId));
+      await contextManager.updateContext(
+        userId,
+        'itens_pendentes_confirmacao',
+        { categoria_evento: tipo, subtipo_evento: subtipo, qtd_pessoas: qtd, menu, data_evento: data },
+        [],
+        0.9,
+        'confirmar_evento',
+        Number(evtId)
+      );
 
       return {
         estado: "itens_pendentes_confirmacao",
         evento_id: evtId,
-        mensagem: getRandomTemplate('items_generated', { categoria_evento: tipo, qtd_pessoas: qtd }),
+        mensagem: itemsMsg,
         snapshot,
         showItems: true,
-        suggestedReplies: ["Confirmar lista", "Editar itens"],
+        suggestedReplies: ["Confirmar lista", "Editar itens", "Adicionar participantes"],
         ctas: [
           { type: "confirm-items", label: "Confirmar lista" },
           { type: "edit-items", label: "Editar itens" },
         ],
       };
     }
+    
+    // Se não temos dados suficientes, continuar coletando via fluxo criar_evento
+    console.log('[ORCHESTRATE] Confirmação mas dados insuficientes, redirecionando para criar_evento');
+    analysis.intencao = "criar_evento"; // Redirecionar para fluxo de coleta
+  }
+
+  // 9) CRIAR EVENTO - Coletar informações progressivamente (FLUXO FLEXÍVEL)
+  if (analysis.intencao === "criar_evento") {
+    console.log('[ORCHESTRATE] Criando evento - fluxo flexível');
+    
+    // 🔹 Merge inteligente: acumular TODAS as informações fornecidas
+    const categoria = analysis.categoria_evento || draft?.evento?.categoria_evento;
+    const subtipo = analysis.subtipo_evento || draft?.evento?.subtipo_evento;
+    const qtd = analysis.qtd_pessoas || draft?.evento?.qtd_pessoas;
+    const data = analysis.data_evento || draft?.evento?.data_evento;
+    const menu = analysis.menu || draft?.evento?.menu;
+    
+    // 🔹 Inferir categoria automaticamente se temos subtipo mas não categoria
+    let tipoFinal = categoria || subtipo;
+    let categoriaFinal = categoria;
+    if (subtipo && !categoria) {
+      // Inferir categoria baseado no subtipo
+      if (['churrasco', 'feijoada', 'pizza'].includes(subtipo)) {
+        categoriaFinal = 'almoço'; // subtipos típicos de almoço/jantar
+      }
+      tipoFinal = subtipo; // usar subtipo como tipo principal
+      console.log('[ORCHESTRATE] Categoria inferida:', categoriaFinal, 'para subtipo:', subtipo);
+    }
+
+    // 🔹 Atualizar draft com TODAS as novas informações recebidas
+    let evtId: string;
+    
+    if (draft?.evento?.id) {
+      // Atualizar evento existente
+      await upsertEvent({
+        id: draft.evento.id,
+        usuario_id: userId,
+        nome_evento: draft.evento.nome_evento || "Rascunho",
+        tipo_evento: tipoFinal || draft.evento.tipo_evento || 'evento',
+        categoria_evento: categoriaFinal || draft.evento.categoria_evento,
+        subtipo_evento: subtipo || draft.evento.subtipo_evento,
+        qtd_pessoas: qtd || draft.evento.qtd_pessoas,
+        menu: menu || draft.evento.menu,
+        data_evento: data || draft.evento.data_evento,
+        status: "collecting_core",
+      });
+      evtId = draft.evento.id;
+    } else {
+      // Criar novo evento
+      const newEvent = await upsertEvent({
+        usuario_id: userId,
+        nome_evento: "Rascunho",
+        tipo_evento: tipoFinal || 'evento',
+        categoria_evento: categoriaFinal,
+        subtipo_evento: subtipo,
+        qtd_pessoas: qtd,
+        menu,
+        data_evento: data,
+        status: "collecting_core",
+      });
+      evtId = newEvent.id;
+    }
+
+    // 🔹 Identificar o que está faltando de forma prioritária
+    const missingFields = [];
+    if (!tipoFinal) missingFields.push('tipo');
+    if (!qtd) missingFields.push('quantidade');
+    if (!menu) missingFields.push('menu');
+    if (!data) missingFields.push('data');
+
+    console.log('[ORCHESTRATE] Campos faltantes:', missingFields);
+
+    // 🔹 REGRA ESPECIAL: Se temos tipo e qtd, podemos gerar itens MESMO sem menu/data
+    // Menu e data são opcionais para geração inicial
+    if (tipoFinal && qtd && missingFields.length <= 2) {
+      console.log('[ORCHESTRATE] Dados suficientes para gerar itens (menu/data opcionais)');
+      
+      const itensGerados = await generateItemList({ 
+        tipo_evento: tipoFinal, 
+        qtd_pessoas: qtd, 
+        menu: menu || undefined 
+      });
+      
+      const itensComIds = itensGerados.map(item => ({
+        ...item,
+        id: item.id || crypto.randomUUID(),
+        evento_id: evtId,
+        nome_item: item.nome_item || '',
+        quantidade: item.quantidade || 0,
+        unidade: item.unidade || 'un',
+        valor_estimado: item.valor_estimado || 0,
+        categoria: item.categoria || 'geral',
+        prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
+      })) as Item[];
+      
+      await rpc.items_replace_for_event(evtId, itensComIds);
+      await setEventStatus(evtId, "itens_pendentes_confirmacao");
+
+      const snapshot = await rpc.get_event_plan(evtId);
+      let itemsMsg = getRandomTemplate('items_generated', { 
+        categoria_evento: tipoFinal, 
+        qtd_pessoas: qtd 
+      });
+      
+      // Adicionar lembretes sobre campos opcionais faltantes
+      if (!menu && !data) {
+        itemsMsg += " Depois você pode adicionar o menu e a data se quiser.";
+      } else if (!menu) {
+        itemsMsg += " Depois você pode especificar o menu se desejar.";
+      } else if (!data) {
+        itemsMsg += " Lembre de definir a data do evento quando souber.";
+      }
+
+      await contextManager.saveMessage(userId, 'assistant', itemsMsg, Number(evtId));
+      await contextManager.updateContext(
+        userId,
+        'itens_pendentes_confirmacao',
+        { categoria_evento: tipoFinal, subtipo_evento: subtipo, qtd_pessoas: qtd, menu, data_evento: data },
+        missingFields,
+        0.85,
+        'criar_evento',
+        Number(evtId)
+      );
+
+      return {
+        estado: "itens_pendentes_confirmacao",
+        evento_id: evtId,
+        mensagem: itemsMsg,
+        snapshot,
+        showItems: true,
+        suggestedReplies: ["Confirmar lista", "Editar itens", "Adicionar participantes"],
+        ctas: [
+          { type: "confirm-items", label: "Confirmar lista" },
+          { type: "edit-items", label: "Editar itens" },
+        ],
+      };
+    }
+
+    // 🔹 Perguntar pelo campo mais importante que está faltando
+    if (!tipoFinal) {
+      const msg = getRandomTemplate('ask_tipo_evento');
+      await contextManager.saveMessage(userId, 'assistant', msg, Number(evtId));
+      return {
+        estado: "collecting_core",
+        evento_id: evtId,
+        mensagem: msg,
+        suggestedReplies: ["Churrasco", "Pizza", "Jantar", "Almoço"],
+        ctas: [],
+      };
+    }
+
+    if (!qtd) {
+      const msg = getRandomTemplate('ask_qtd', { categoria_evento: tipoFinal });
+      await contextManager.saveMessage(userId, 'assistant', msg, Number(evtId));
+      return {
+        estado: "collecting_core",
+        evento_id: evtId,
+        mensagem: msg,
+        ctas: [],
+      };
+    }
+
+    // Se chegou aqui mas ainda está faltando algo, avisar
+    if (missingFields.length > 0) {
+      const msg = `Ótimo! Só preciso saber mais algumas coisas: ${missingFields.join(', ')}. Pode me passar?`;
+      await contextManager.saveMessage(userId, 'assistant', msg, Number(evtId));
+      return {
+        estado: "collecting_core",
+        evento_id: evtId,
+        mensagem: msg,
+        ctas: [],
+      };
+    }
+
+    // Fallback: gerar itens com o que temos
+    console.log('[ORCHESTRATE] Gerando itens com dados disponíveis (fallback)');
+    const tipo = tipoFinal!;
+
+    const itensGerados = await generateItemList({ tipo_evento: tipo, qtd_pessoas: qtd, menu });
+    const itensComIds = itensGerados.map(item => ({
+      ...item,
+      id: item.id || crypto.randomUUID(),
+      evento_id: evtId,
+      nome_item: item.nome_item || '',
+      quantidade: item.quantidade || 0,
+      unidade: item.unidade || 'un',
+      valor_estimado: item.valor_estimado || 0,
+      categoria: item.categoria || 'geral',
+      prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
+    })) as Item[];
+    
+    await rpc.items_replace_for_event(evtId, itensComIds);
+    await setEventStatus(evtId, "itens_pendentes_confirmacao");
+
+    const snapshot = await rpc.get_event_plan(evtId);
+
+    await contextManager.saveMessage(userId, 'assistant', getRandomTemplate('items_generated', { categoria_evento: tipo, qtd_pessoas: qtd }), Number(evtId));
+
+    return {
+      estado: "itens_pendentes_confirmacao",
+      evento_id: evtId,
+      mensagem: getRandomTemplate('items_generated', { categoria_evento: tipo, qtd_pessoas: qtd }),
+      snapshot,
+      showItems: true,
+      suggestedReplies: ["Confirmar lista", "Editar itens"],
+      ctas: [
+        { type: "confirm-items", label: "Confirmar lista" },
+        { type: "edit-items", label: "Editar itens" },
+      ],
+    };
   }
 
   // 10) DEFINIR MENU

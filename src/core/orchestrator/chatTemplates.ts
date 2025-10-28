@@ -18,6 +18,13 @@ const templates = {
     "E aí! Vamos planejar seu evento juntos. Me fala: é um jantar, churrasco, festa? E quantas pessoas?",
   ],
 
+  // Perguntas sobre tipo de evento
+  ask_tipo_evento: [
+    "Que tipo de evento você quer organizar?",
+    "Me conta: que tipo de evento vai ser?",
+    "Qual vai ser o estilo do evento?",
+  ],
+
   // Perguntas sobre quantidade
   ask_qtd: [
     "Ótimo! {{categoria_evento}} é uma boa escolha. Quantas pessoas vão?",
