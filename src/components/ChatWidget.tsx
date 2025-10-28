@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Send } from 'lucide-react';
+import { Send, RotateCcw } from 'lucide-react';
 import { orchestrate } from '@/core/orchestrator/chatOrchestrator';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import type { ConversationState } from '@/types/domain';
 import { runToolCall } from '@/api/llm/toolsRouter';
 import aiChatIcon from '@/assets/ai-chat-icon.png';
 import { ConversationMessagesRepository } from '@/db/repositories/conversationMessages';
+import { ContextManager } from '@/core/orchestrator/contextManager';
 
 type ChatMessage = { 
   role: 'user' | 'assistant'; 
@@ -41,6 +42,7 @@ export default function ChatWidget() {
   const canShow = !!user && !loading;
   const idempotencyBase = useMemo(() => `${Date.now()}`, []);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const contextManager = useMemo(() => new ContextManager(), []);
 
   // Carregar histórico ao abrir o chat
   useEffect(() => {
@@ -170,6 +172,35 @@ export default function ChatWidget() {
     }
   };
 
+  const handleRestart = async () => {
+    if (!user?.id) return;
+    
+    try {
+      // Limpar contexto e histórico no banco
+      await contextManager.clearUserContext(user.id);
+      
+      // Resetar estado local
+      setMessages([{
+        role: 'assistant',
+        content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+      }]);
+      setEventoId(undefined);
+      setConvState(undefined);
+      setLastState(undefined);
+      setStagnationCount(0);
+      setHasGreeted(true);
+      hasLoadedHistory.current = false;
+      
+      console.log('[ChatWidget] Chat reiniciado com sucesso');
+    } catch (error) {
+      console.error('[ChatWidget] Erro ao reiniciar chat:', error);
+      setMessages((prev) => [...prev, { 
+        role: 'assistant', 
+        content: 'Ocorreu um erro ao reiniciar o chat. Tente novamente.' 
+      }]);
+    }
+  };
+
   if (!canShow) return null;
 
   return (
@@ -191,7 +222,19 @@ export default function ChatWidget() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="flex flex-col h-full w-full sm:max-w-sm">
           <SheetHeader>
-            <SheetTitle>Assistente UNE.AI</SheetTitle>
+            <div className="flex items-center justify-between">
+              <SheetTitle>Assistente UNE.AI</SheetTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRestart}
+                disabled={sending || isLoadingHistory}
+                aria-label="Reiniciar conversa"
+                title="Reiniciar conversa"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+            </div>
           </SheetHeader>
           <div className="flex-1 mt-4">
             <ScrollArea className="h-[70vh] pr-4">
