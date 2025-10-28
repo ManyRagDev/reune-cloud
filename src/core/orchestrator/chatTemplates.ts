@@ -13,107 +13,114 @@ type TemplateContext = {
 const templates = {
   // Saudações iniciais
   greeting: [
-    "Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.",
-    "Oi! 👋 Que legal te ver aqui! Vamos planejar um evento? Me conta o que você tem em mente.",
-    "Hey! Pronto pra organizar algo incrível? Me diz que tipo de evento você quer fazer!",
+    "Olá! Sou o UNE.AI e vou ajudar a organizar seu evento. Me conta: que tipo de encontro você está planejando e quantas pessoas vão?",
+    "Oi! Vou te ajudar com seu evento. Qual o tipo de reunião e quantas pessoas participam?",
+    "E aí! Vamos planejar seu evento juntos. Me fala: é um jantar, churrasco, festa? E quantas pessoas?",
+  ],
+
+  // Perguntas sobre tipo de evento
+  ask_tipo_evento: [
+    "Que tipo de evento você quer organizar?",
+    "Me conta: que tipo de evento vai ser?",
+    "Qual vai ser o estilo do evento?",
   ],
 
   // Perguntas sobre quantidade
   ask_qtd: [
-    "Show! Vamos de {{categoria_evento}} 🍽️ Quantas pessoas participarão?",
-    "Legal, um {{categoria_evento}}! Quantas pessoas devo considerar?",
-    "Perfeito 👌 E quantas pessoas vão participar?",
+    "Ótimo! {{categoria_evento}} é uma boa escolha. Quantas pessoas vão?",
+    "Combinado! E quantas pessoas participam desse {{categoria_evento}}?",
+    "Perfeito! Quantos amigos vão estar no {{categoria_evento}}?",
   ],
 
   // Perguntas sobre categoria quando só temos subtipo
   ask_categoria: [
-    "Legal, {{subtipo_evento}} entre amigos! Vai ser de dia (mais pra almoço) ou à noite (mais pra jantar)?",
-    "Bacana! {{subtipo_evento}} é ótimo 😋 Será durante o dia ou à noite?",
-    "Show! {{subtipo_evento}} vai ser incrível. É mais um almoço ou jantar?",
+    "Show! {{subtipo_evento}} é ótimo. Vai ser no almoço, jantar ou lanche?",
+    "Perfeito! {{subtipo_evento}} combina. Qual o período: almoço, jantar ou lanche?",
+    "Legal! {{subtipo_evento}} é uma boa pedida. Me diz: almoço, jantar ou lanche?",
   ],
 
   // Perguntas sobre menu
   ask_menu: [
-    "Perfeito! Já pensou no cardápio principal?",
-    "Ótimo! E qual será o menu? Se quiser, posso sugerir algumas opções 😉",
-    "Legal! Tem algo em mente para o cardápio?",
+    "Show! E o que vai ter de comida? Me conta o cardápio.",
+    "Beleza! Qual vai ser o menu? Pode falar o que você tá pensando.",
+    "Vamos lá! O que vocês vão comer? Me diz o cardápio.",
   ],
 
   // Perguntas sobre data
   ask_data: [
-    "Perfeito! {{categoria_evento}} para {{qtd_pessoas}} pessoas. Qual será a data do evento?",
-    "Show! E quando vai ser? Me passa a data 📅",
-    "Ótimo! Qual a data que você está pensando?",
+    "Ótimo! {{categoria_evento}} para {{qtd_pessoas}} pessoas. Qual vai ser a data?",
+    "Show! E quando vai ser? Me passa a data.",
+    "Perfeito! Qual a data que você tá pensando?",
   ],
 
   // Confirmação de evento completo
   confirm_event: [
-    "Perfeito! {{categoria_evento}} para {{qtd_pessoas}} pessoas — posso montar a lista de itens?",
-    "Ótimo 🎉 Um {{categoria_evento}} para {{qtd_pessoas}} pessoas. Vamos gerar os preparativos?",
-    "Show! Tenho tudo que preciso. Posso sugerir a lista de itens agora?",
+    "Beleza! {{categoria_evento}} para {{qtd_pessoas}} pessoas. Vou montar a lista de itens, tá?",
+    "Ótimo! Um {{categoria_evento}} para {{qtd_pessoas}} pessoas. Vamos gerar os preparativos?",
+    "Show! Tenho tudo aqui. Posso sugerir a lista de itens agora?",
   ],
 
   // Menu confirmado
   menu_confirmed: [
-    "Excelente escolha 😋 {{menu}} é demais! Qual será a data do evento?",
-    "Perfeito! {{menu}} vai ficar incrível 🍽️ Me passa a data agora?",
-    "Ótima escolha! {{menu}} combina muito. Quando vai ser?",
+    "Boa escolha! {{menu}} vai ficar ótimo. Qual a data do evento?",
+    "Perfeito! {{menu}} combina muito. Me passa a data agora?",
+    "Legal! {{menu}} é uma boa. Quando vai ser?",
   ],
 
   // Itens gerados
   items_generated: [
-    "Listei itens e quantidades para **{{categoria_evento}} de {{qtd_pessoas}} pessoas**. Quer revisar antes de dividir?",
-    "Pronto! Montei a lista de itens para o seu {{categoria_evento}} 🎉 O que você acha?",
-    "Tá aqui! Lista completa para {{qtd_pessoas}} pessoas. Revisa aí e me diz o que acha!",
+    "Pronto! 🎉 Olha só a lista completa pro {{categoria_evento}} de {{qtd_pessoas}} pessoas. O que achou?",
+    "Feito! ✨ Montei tudo pro {{categoria_evento}} com {{qtd_pessoas}} pessoas. Dá uma conferida!",
+    "Show! 🎊 Aqui está sua lista pro {{categoria_evento}} de {{qtd_pessoas}} pessoas. Tá bom assim?",
   ],
 
   // Itens confirmados
   items_confirmed: [
-    "Ótimo! Os itens estão confirmados. Agora, quer adicionar participantes para dividir os custos?",
-    "Perfeito! Lista aprovada ✅ Vamos adicionar os participantes agora?",
-    "Show! Itens OK. Quer que eu te ajude a dividir entre os participantes?",
+    "Ótimo! Lista aprovada. Quer adicionar os participantes agora?",
+    "Perfeito! ✅ Vamos dividir entre os participantes?",
+    "Show! Itens OK. Bora adicionar a galera?",
   ],
 
   // Evento finalizado
   event_finalized: [
-    "Evento criado com sucesso! 🎉 Você pode vê-lo no seu dashboard.",
-    "Tudo pronto! 🎊 Seu evento está no dashboard agora.",
-    "Feito! ✨ Pode conferir todos os detalhes no dashboard.",
+    "Pronto! 🎊 Evento confirmado. Agora é só aproveitar!",
+    "Feito! ✅ Tudo certo pro seu evento. Pode comemorar!",
+    "Show! 🎉 Evento criado com sucesso. Bom demais!",
   ],
 
   // Erros - Desvio de contexto
   erro_desvio_contexto: [
-    "😄 Ainda não tenho relógio interno, mas posso te ajudar com o evento!",
-    "Haha, boa! Mas quero saber mais sobre o seu evento — o que vai ser?",
-    "😂 Adorei, mas vamos focar no evento? Me conta o que você quer organizar!",
+    "Haha, adorei! Mas vamos focar no evento? Me conta o que você quer organizar.",
+    "Legal! Mas quero saber mais sobre o seu evento. O que vai ser?",
+    "Boa! Mas bora planejar o evento? Me fala mais sobre ele.",
   ],
 
   // Erros - Ambiguidade
   erro_ambiguidade: [
-    "Entendi, mas fiquei na dúvida — é mais um almoço, jantar ou algo diferente?",
-    "Hmm, não tenho certeza se entendi. Pode me dar mais detalhes?",
-    "Quase lá! Pode me explicar melhor o que você tem em mente?",
+    "Entendi, mas fiquei na dúvida. É almoço, jantar ou outro tipo?",
+    "Hmm, não tenho certeza. Pode me dar mais detalhes?",
+    "Quase lá! Me explica melhor o que você tem em mente?",
   ],
 
   // Erros - Dado inválido
   erro_dado_invalido: [
-    "Hmm, essa data parece fora do normal 😅 pode revisar?",
+    "Hmm, esse dado parece estranho. Pode revisar?",
     "Ops! Esse número não parece certo. Vamos tentar de novo?",
-    "😅 Acho que algo não bateu. Pode verificar esse dado?",
+    "Acho que algo não bateu. Pode verificar?",
   ],
 
   // Erros - Ruído textual
   erro_ruido: [
-    "😂 adorei a energia! Agora, bora planejar o evento?",
-    "Haha! Gostei 😄 E aí, qual evento você quer criar?",
-    "😆 Muito bom! Mas me conta: o que vamos organizar hoje?",
+    "Haha, adorei! Agora, bora planejar o evento?",
+    "Legal! E aí, qual evento você quer criar?",
+    "Muito bom! Mas me conta: o que vamos organizar?",
   ],
 
   // Erros - Fora de escopo
   erro_fora_escopo: [
-    "Haha, isso é interessante, mas meu foco é te ajudar com eventos. Quer criar um agora?",
-    "😅 Não sou expert nisso, mas em eventos eu mando bem! Vamos planejar um?",
-    "Essa não é bem minha praia, mas posso te ajudar a organizar eventos incríveis! Bora?",
+    "Opa, não manjo muito disso. Meu negócio é planejar eventos. Vamos voltar pro assunto?",
+    "Hmm, essa fugiu um pouco. Sou especialista em eventos. Bora focar nisso?",
+    "Essa não é minha praia. Mas posso te ajudar com o evento. Vamos lá?",
   ],
 };
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Send } from 'lucide-react';
+import { Send, RotateCcw } from 'lucide-react';
 import { orchestrate } from '@/core/orchestrator/chatOrchestrator';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ConversationState } from '@/types/domain';
 import { runToolCall } from '@/api/llm/toolsRouter';
 import aiChatIcon from '@/assets/ai-chat-icon.png';
+import { ConversationMessagesRepository } from '@/db/repositories/conversationMessages';
+import { ContextManager } from '@/core/orchestrator/contextManager';
 
 type ChatMessage = { 
   role: 'user' | 'assistant'; 
@@ -34,21 +36,60 @@ export default function ChatWidget() {
   const [lastState, setLastState] = useState<string | undefined>(undefined);
   const [stagnationCount, setStagnationCount] = useState(0);
   const [hasGreeted, setHasGreeted] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const hasLoadedHistory = useRef(false);
 
   const canShow = !!user && !loading;
   const idempotencyBase = useMemo(() => `${Date.now()}`, []);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const contextManager = useMemo(() => new ContextManager(), []);
 
-  // Saudação inicial fixa (sem LLM) ao abrir o chat
+  // Carregar histórico ao abrir o chat
   useEffect(() => {
-    if (open && !hasGreeted && messages.length === 0) {
-      setMessages([{
-        role: 'assistant',
-        content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
-      }]);
-      setHasGreeted(true);
-    }
-  }, [open, hasGreeted, messages.length]);
+    const loadHistory = async () => {
+      if (!open || !user?.id || hasLoadedHistory.current) return;
+      
+      setIsLoadingHistory(true);
+      hasLoadedHistory.current = true;
+      
+      try {
+        const messagesRepo = new ConversationMessagesRepository();
+        const savedMessages = await messagesRepo.getByUserId(user.id);
+        
+        if (savedMessages.length > 0) {
+          console.log('[ChatWidget] Histórico carregado:', savedMessages.length, 'mensagens');
+          
+          const chatMessages: ChatMessage[] = savedMessages.map((m) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          }));
+          
+          setMessages(chatMessages);
+        } else if (!hasGreeted) {
+          // Sem histórico, mostrar greeting inicial
+          setMessages([{
+            role: 'assistant',
+            content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+          }]);
+          setHasGreeted(true);
+        }
+      } catch (error) {
+        console.error('[ChatWidget] Erro ao carregar histórico:', error);
+        // Fallback para greeting
+        if (!hasGreeted) {
+          setMessages([{
+            role: 'assistant',
+            content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+          }]);
+          setHasGreeted(true);
+        }
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadHistory();
+  }, [open, user, hasGreeted]);
 
   useEffect(() => {
     if (open && endRef.current) {
@@ -58,26 +99,18 @@ export default function ChatWidget() {
 
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sending || !user?.id) return;
     setSending(true);
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setInput('');
     try {
-      // Construir histórico completo no formato LlmMessage para passar ao orquestrador
-      const llmHistory = messages.map(msg => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      }));
-      
-      // Adicionar a mensagem atual ao histórico
-      llmHistory.push({ role: 'user', content: text });
-
+      // Chamar orquestrador (ele carrega o histórico internamente agora)
       const res = await orchestrate(
         text,
-        user?.id || 'dev',
+        user.id,
         eventoId,
-        stagnationCount >= 2,
-        llmHistory // Passa o histórico COMPLETO para o orquestrador
+        stagnationCount >= 2
+        // histórico não é mais necessário - gerenciado internamente
       );
 
       // Lógica anti-loop
@@ -111,15 +144,15 @@ export default function ChatWidget() {
         }
       }
 
-      // Atualizar estado de conversa (não precisa duplicar histórico, já está em messages)
+      // Atualizar estado de conversa (histórico agora é persistido automaticamente)
       setConvState({
-        conversationId: convState?.conversationId || `chat-${user?.id || 'anon'}`,
+        conversationId: convState?.conversationId || `chat-${user.id}`,
         context: {
           eventoId: res.evento_id || eventoId,
           tipo_evento: res.tipo_evento,
           qtd_pessoas: res.qtd_pessoas,
         },
-        history: llmHistory.concat({ role: 'assistant', content: res.mensagem }),
+        history: [], // Não precisa mais duplicar, está no banco
         lastUpdated: Date.now(),
       });
     } catch (e) {
@@ -139,19 +172,47 @@ export default function ChatWidget() {
     }
   };
 
+  const handleRestart = async () => {
+    if (!user?.id) return;
+    
+    try {
+      // Limpar contexto e histórico no banco
+      await contextManager.clearUserContext(user.id);
+      
+      // Resetar estado local
+      setMessages([{
+        role: 'assistant',
+        content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+      }]);
+      setEventoId(undefined);
+      setConvState(undefined);
+      setLastState(undefined);
+      setStagnationCount(0);
+      setHasGreeted(true);
+      hasLoadedHistory.current = false;
+      
+      console.log('[ChatWidget] Chat reiniciado com sucesso');
+    } catch (error) {
+      console.error('[ChatWidget] Erro ao reiniciar chat:', error);
+      setMessages((prev) => [...prev, { 
+        role: 'assistant', 
+        content: 'Ocorreu um erro ao reiniciar o chat. Tente novamente.' 
+      }]);
+    }
+  };
+
   if (!canShow) return null;
 
   return (
     <>
       {/* Botão flutuante fixo no canto inferior direito */}
-      {/* NOTA: Botão oculto visualmente, mas mantendo toda funcionalidade intacta */}
-      <div className="fixed bottom-6 right-6 z-50 hidden">
+      <div className="fixed bottom-6 right-6 z-50">
         <Button
           variant="ghost"
           size="lg"
           onClick={() => setOpen(true)}
           aria-label="Abrir chat"
-          className="rounded-full p-0 w-16 h-16 overflow-hidden bg-transparent hover:bg-transparent border-0 shadow-none"
+          className="rounded-full p-0 w-16 h-16 overflow-hidden bg-transparent hover:bg-transparent border-0 shadow-none hover:scale-110 transition-transform"
         >
           <img src={aiChatIcon} alt="Chat IA" className="w-full h-full object-cover" />
         </Button>
@@ -161,7 +222,19 @@ export default function ChatWidget() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="flex flex-col h-full w-full sm:max-w-sm">
           <SheetHeader>
-            <SheetTitle>Assistente UNE.AI</SheetTitle>
+            <div className="flex items-center justify-between">
+              <SheetTitle>Assistente UNE.AI</SheetTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRestart}
+                disabled={sending || isLoadingHistory}
+                aria-label="Reiniciar conversa"
+                title="Reiniciar conversa"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+            </div>
           </SheetHeader>
           <div className="flex-1 mt-4">
             <ScrollArea className="h-[70vh] pr-4">

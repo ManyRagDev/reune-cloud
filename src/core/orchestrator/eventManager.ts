@@ -3,6 +3,7 @@ import { getLlmSuggestions } from "@/api/llm/chat";
 import { rpc } from "@/api/rpc";
 import { supabase } from "@/integrations/supabase/client";
 import { parseLlmItemsResponse } from "./itemAdapter";
+import { parseToIsoDate } from "@/core/nlp/date-parser";
 
 export async function getPlanSnapshot(eventoId: UUID): Promise<EventSnapshot | null> {
   console.log(`[Manager] getPlanSnapshot called with eventoId: ${eventoId}`);
@@ -62,17 +63,30 @@ export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID; cr
   console.log('[Manager] upsertEvent called with:', event);
 
   try {
+    // 🔹 Normalizar data para formato ISO se fornecida
+    let eventDate: string;
+    if (event.data_evento) {
+      const parsedDate = parseToIsoDate(event.data_evento);
+      eventDate = parsedDate || new Date().toISOString().split('T')[0];
+      console.log('[Manager] Data normalizada:', { original: event.data_evento, parsed: eventDate });
+    } else {
+      eventDate = new Date().toISOString().split('T')[0];
+    }
+
     const eventData: any = {
       user_id: event.usuario_id,
       title: event.nome_evento || 'Rascunho',
       description: '',
-      event_date: event.data_evento ? new Date(event.data_evento).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      event_date: eventDate,
       event_time: '12:00',
       status: event.status === 'collecting_core' ? 'draft' : event.status || 'draft',
       is_public: false,
       tipo_evento: event.tipo_evento,
       qtd_pessoas: event.qtd_pessoas,
-      created_by_ai: event.created_by_ai ?? true, // Eventos criados pelo orquestrador são sempre da IA
+      created_by_ai: event.created_by_ai ?? true,
+      categoria_evento: (event as any).categoria_evento,
+      subtipo_evento: (event as any).subtipo_evento,
+      menu: (event as any).menu,
     };
 
     if (event.id) {
