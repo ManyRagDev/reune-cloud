@@ -14,6 +14,7 @@ import { rpc } from "@/api/rpc";
 import { getLlmSuggestions } from "@/api/llm/chat";
 import { LlmMessage } from "@/types/llm";
 import { ContextManager } from './contextManager';
+import { getPersonalitySystemPrompt, adjustToneForState } from './personality';
 
 export interface ChatUiPayload {
   estado: EventStatus | "collecting_core";
@@ -419,14 +420,21 @@ export const orchestrate = async (
     
     if (history && history.length > 0) {
       try {
-        const systemPrompt = `Você é o UNE.AI, assistente de planejamento de eventos.
-O evento atual é um ${draft.evento.tipo_evento} para ${draft.evento.qtd_pessoas} pessoas${draft.evento.menu ? ` com menu de ${draft.evento.menu}` : ''}.
-Os itens já foram listados e estão aguardando confirmação do usuário.
-Seja conversacional, prestativo e mantenha o contexto da conversa.
-Se o usuário confirmar, parabenize e informe que o evento foi criado.
-Se pedir para editar, pergunte especificamente o que deseja mudar.`;
+        const basePrompt = getPersonalitySystemPrompt();
+        const contextPrompt = `
+**Contexto Atual:**
+O evento é um ${draft.evento.tipo_evento} para ${draft.evento.qtd_pessoas} pessoas${draft.evento.menu ? ` com menu de ${draft.evento.menu}` : ''}.
+Os itens já foram listados e estão aguardando confirmação.
 
-        const llmResult = await getLlmSuggestions(systemPrompt, history, 0.5);
+**Seu Objetivo:**
+${adjustToneForState('itens_pendentes_confirmacao')}
+Se o usuário confirmar, celebre brevemente. Se pedir para editar, pergunte o que ele quer mudar.`;
+
+        const llmResult = await getLlmSuggestions(
+          basePrompt + '\n\n' + contextPrompt,
+          history,
+          0.7
+        );
         
         if (llmResult?.content) {
           await contextManager.saveMessage(userId, 'assistant', llmResult.content, Number(draft.evento.id));
@@ -463,15 +471,23 @@ Se pedir para editar, pergunte especificamente o que deseja mudar.`;
   if (history && history.length > 0) {
     try {
       const contextInfo = draft?.evento 
-        ? `Contexto atual: ${draft.evento.categoria_evento || draft.evento.tipo_evento || 'não definido'}, ${draft.evento.qtd_pessoas || 'não definido'} pessoas${draft.evento.menu ? `, menu: ${draft.evento.menu}` : ''}, data: ${draft.evento.data_evento || 'não definido'}`
+        ? `${draft.evento.categoria_evento || draft.evento.tipo_evento || 'não definido'}, ${draft.evento.qtd_pessoas || 'não definido'} pessoas${draft.evento.menu ? `, menu: ${draft.evento.menu}` : ''}, data: ${draft.evento.data_evento || 'não definido'}`
         : 'Nenhum evento em andamento';
       
-      const systemPrompt = `Você é o UNE.AI, assistente de planejamento de eventos.
+      const basePrompt = getPersonalitySystemPrompt();
+      const contextPrompt = `
+**Contexto Atual:**
 ${contextInfo}
-Mantenha a conversa fluida e contextual. Se faltam informações (tipo, quantidade, menu ou data), pergunte de forma natural.
-Seja breve, direto e amigável. Use o contexto da conversa anterior.`;
 
-      const llmResult = await getLlmSuggestions(systemPrompt, history, 0.5);
+**Seu Objetivo:**
+${adjustToneForState('collecting_core')}
+Se faltam informações (tipo, quantidade, menu, data), pergunte de forma natural e direta.`;
+
+      const llmResult = await getLlmSuggestions(
+        basePrompt + '\n\n' + contextPrompt,
+        history,
+        0.7
+      );
       
       if (llmResult?.content) {
         await contextManager.saveMessage(userId, 'assistant', llmResult.content, draft?.evento?.id ? Number(draft.evento.id) : undefined);
