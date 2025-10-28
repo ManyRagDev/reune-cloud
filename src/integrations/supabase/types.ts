@@ -67,6 +67,94 @@ export type Database = {
           },
         ]
       }
+      conversation_contexts: {
+        Row: {
+          collected_data: Json | null
+          confidence_level: number | null
+          created_at: string | null
+          evento_id: number | null
+          id: string
+          last_intent: string | null
+          missing_slots: string[] | null
+          state: string
+          summary: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          collected_data?: Json | null
+          confidence_level?: number | null
+          created_at?: string | null
+          evento_id?: number | null
+          id?: string
+          last_intent?: string | null
+          missing_slots?: string[] | null
+          state?: string
+          summary?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          collected_data?: Json | null
+          confidence_level?: number | null
+          created_at?: string | null
+          evento_id?: number | null
+          id?: string
+          last_intent?: string | null
+          missing_slots?: string[] | null
+          state?: string
+          summary?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_contexts_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_messages: {
+        Row: {
+          content: string
+          evento_id: number | null
+          id: string
+          metadata: Json | null
+          role: string
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          evento_id?: number | null
+          id?: string
+          metadata?: Json | null
+          role: string
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          evento_id?: number | null
+          id?: string
+          metadata?: Json | null
+          role?: string
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_messages_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_confirmations: {
         Row: {
           alternative_date: string | null

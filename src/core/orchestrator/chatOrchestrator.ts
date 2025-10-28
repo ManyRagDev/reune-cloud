@@ -13,6 +13,7 @@ import {
 import { rpc } from "@/api/rpc";
 import { getLlmSuggestions } from "@/api/llm/chat";
 import { LlmMessage } from "@/types/llm";
+import { ContextManager } from './contextManager';
 
 export interface ChatUiPayload {
   estado: EventStatus | "collecting_core";
@@ -45,8 +46,22 @@ export const orchestrate = async (
   userId: UUID,
   eventoId?: UUID,
   force_action?: boolean,
-  history?: LlmMessage[]
+  _legacyHistory?: LlmMessage[] // Mantido por compatibilidade, mas não usado
 ): Promise<ChatUiPayload> => {
+  // Inicializar gerenciador de contexto
+  const contextManager = new ContextManager();
+
+  // Carregar contexto e histórico persistido
+  const { context: savedContext, history } = await contextManager.loadUserContext(userId);
+
+  console.log('[Orchestrator] Contexto carregado:', {
+    state: savedContext.state,
+    historyLength: history.length,
+    eventoId: savedContext.evento_id,
+  });
+
+  // Salvar mensagem do usuário
+  await contextManager.saveMessage(userId, 'user', userText, eventoId ? Number(eventoId) : undefined);
   console.log('[ORCHESTRATE] Iniciando orquestração', { userText, userId, eventoId, force_action });
   
   // 1) Carregar rascunho/snapshot (se houver)
@@ -72,10 +87,14 @@ export const orchestrate = async (
       (analysis.intencao === "mostrar_itens" || /itens|lista|mostrar|mostra|mostre/i.test(userText))) {
     console.log('[ORCHESTRATE] Caso prioritário: mostrar itens existentes');
     const snapshot = await rpc.get_event_plan(draft.evento.id);
+    const responseMsg = "Aqui está a lista de itens do seu evento:";
+    
+    await contextManager.saveMessage(userId, 'assistant', responseMsg, Number(draft.evento.id));
+    
     return {
       estado: "itens_pendentes_confirmacao",
       evento_id: draft.evento.id,
-      mensagem: "Aqui está a lista de itens do seu evento:",
+      mensagem: responseMsg,
       snapshot,
       showItems: true,
       suggestedReplies: ["Confirmar lista", "Editar itens", "Adicionar participantes"],
@@ -84,10 +103,13 @@ export const orchestrate = async (
 
   // 5) TRATAMENTO DE ERROS E MENSAGENS FORA DE CONTEXTO
   if (analysis.intencao === "out_of_domain") {
+    const errorMsg = getRandomTemplate('erro_fora_escopo');
+    await contextManager.saveMessage(userId, 'assistant', errorMsg, draft?.evento?.id ? Number(draft.evento.id) : undefined);
+    
     return {
       estado: "collecting_core",
       evento_id: draft?.evento?.id ?? null,
-      mensagem: getRandomTemplate('erro_fora_escopo'),
+      mensagem: errorMsg,
       suggestedReplies: ["Criar evento", "Ver eventos"],
       ctas: [],
     };
@@ -95,10 +117,13 @@ export const orchestrate = async (
 
   // 6) ENCERRAR CONVERSA
   if (analysis.intencao === "encerrar_conversa") {
+    const byeMsg = "Foi ótimo te ajudar! Até a próxima 👋";
+    await contextManager.saveMessage(userId, 'assistant', byeMsg, draft?.evento?.id ? Number(draft.evento.id) : undefined);
+    
     return {
       estado: draft?.evento?.status || "collecting_core",
       evento_id: draft?.evento?.id ?? null,
-      mensagem: "Foi ótimo te ajudar! Até a próxima 👋",
+      mensagem: byeMsg,
       ctas: [],
     };
   }
@@ -109,10 +134,23 @@ export const orchestrate = async (
     await finalizeEvent(draft.evento.id, draft.evento);
     
     const snapshot = await rpc.get_event_plan(draft.evento.id);
+    const finalMsg = getRandomTemplate('event_finalized');
+    
+    await contextManager.saveMessage(userId, 'assistant', finalMsg, Number(draft.evento.id));
+    await contextManager.updateContext(
+      userId,
+      'finalizado',
+      { evento_finalizado: true },
+      [],
+      1.0,
+      'confirmar_evento',
+      Number(draft.evento.id)
+    );
+    
     return {
       estado: "finalizado",
       evento_id: draft.evento.id,
-      mensagem: getRandomTemplate('event_finalized'),
+      mensagem: finalMsg,
       snapshot,
       showItems: true,
       ctas: [
@@ -162,11 +200,23 @@ export const orchestrate = async (
     await setEventStatus(evtId, "itens_pendentes_confirmacao");
 
     const snapshot = await rpc.get_event_plan(evtId);
+    const itemsMsg = getRandomTemplate('items_generated', { categoria_evento: tipo, qtd_pessoas: qtd });
+
+    await contextManager.saveMessage(userId, 'assistant', itemsMsg, Number(evtId));
+    await contextManager.updateContext(
+      userId,
+      'itens_pendentes_confirmacao',
+      { categoria_evento: tipo, qtd_pessoas: qtd, menu },
+      [],
+      0.9,
+      'confirmar_evento',
+      Number(evtId)
+    );
 
     return {
       estado: "itens_pendentes_confirmacao",
       evento_id: evtId,
-      mensagem: getRandomTemplate('items_generated', { categoria_evento: tipo, qtd_pessoas: qtd }),
+      mensagem: itemsMsg,
       snapshot,
       showItems: true,
       suggestedReplies: ["Confirmar lista", "Editar itens"],
@@ -379,6 +429,8 @@ Se pedir para editar, pergunte especificamente o que deseja mudar.`;
         const llmResult = await getLlmSuggestions(systemPrompt, history, 0.5);
         
         if (llmResult?.content) {
+          await contextManager.saveMessage(userId, 'assistant', llmResult.content, Number(draft.evento.id));
+          
           return {
             estado: "itens_pendentes_confirmacao",
             evento_id: draft.evento.id,
@@ -393,10 +445,13 @@ Se pedir para editar, pergunte especificamente o que deseja mudar.`;
     }
     
     // Fallback
+    const fallbackMsg = "Os itens estão listados. Você pode confirmar, editar ou me perguntar algo sobre o evento.";
+    await contextManager.saveMessage(userId, 'assistant', fallbackMsg, Number(draft.evento.id));
+    
     return {
       estado: "itens_pendentes_confirmacao",
       evento_id: draft.evento.id,
-      mensagem: "Os itens estão listados. Você pode confirmar, editar ou me perguntar algo sobre o evento.",
+      mensagem: fallbackMsg,
       snapshot: draft,
       suggestedReplies: ["Confirmar lista", "Editar itens", "Ver lista"],
     };
@@ -419,6 +474,8 @@ Seja breve, direto e amigável. Use o contexto da conversa anterior.`;
       const llmResult = await getLlmSuggestions(systemPrompt, history, 0.5);
       
       if (llmResult?.content) {
+        await contextManager.saveMessage(userId, 'assistant', llmResult.content, draft?.evento?.id ? Number(draft.evento.id) : undefined);
+        
         return {
           estado: "collecting_core",
           evento_id: draft?.evento?.id ?? null,
@@ -433,10 +490,13 @@ Seja breve, direto e amigável. Use o contexto da conversa anterior.`;
   }
   
   // 13) FALLBACK FINAL
+  const fallbackFinalMsg = 'Me diga o tipo de evento e quantas pessoas (ex.: "jantar para 10 pessoas").';
+  await contextManager.saveMessage(userId, 'assistant', fallbackFinalMsg, draft?.evento?.id ? Number(draft.evento.id) : undefined);
+  
   return {
     estado: "collecting_core",
     evento_id: draft?.evento?.id ?? null,
-    mensagem: 'Me diga o tipo de evento e quantas pessoas (ex.: "jantar para 10 pessoas").',
+    mensagem: fallbackFinalMsg,
     suggestedReplies: ["Jantar para 10", "Churrasco para 15", "Festa para 20"],
     ctas: [],
   };
