@@ -175,14 +175,13 @@ export default function ChatWidget() {
   return (
     <>
       {/* Botão flutuante fixo no canto inferior direito */}
-      {/* NOTA: Botão oculto visualmente, mas mantendo toda funcionalidade intacta */}
-      <div className="fixed bottom-6 right-6 z-50 hidden">
+      <div className="fixed bottom-6 right-6 z-50">
         <Button
           variant="ghost"
           size="lg"
           onClick={() => setOpen(true)}
           aria-label="Abrir chat"
-          className="rounded-full p-0 w-16 h-16 overflow-hidden bg-transparent hover:bg-transparent border-0 shadow-none"
+          className="rounded-full p-0 w-16 h-16 overflow-hidden bg-transparent hover:bg-transparent border-0 shadow-none hover:scale-110 transition-transform"
         >
           <img src={aiChatIcon} alt="Chat IA" className="w-full h-full object-cover" />
         </Button>
