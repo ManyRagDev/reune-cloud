@@ -15,6 +15,8 @@ import { getLlmSuggestions } from "@/api/llm/chat";
 import { LlmMessage } from "@/types/llm";
 import { ContextManager } from './contextManager';
 import { getPersonalitySystemPrompt, adjustToneForState } from './personality';
+import { FeedbackManager } from './feedbackManager';
+import { CorrectionDetector } from './correctionDetector';
 
 export interface ChatUiPayload {
   estado: EventStatus | "collecting_core";
@@ -49,8 +51,12 @@ export const orchestrate = async (
   force_action?: boolean,
   _legacyHistory?: LlmMessage[] // Mantido por compatibilidade, mas não usado
 ): Promise<ChatUiPayload> => {
-  // Inicializar gerenciador de contexto
+  const startTime = Date.now();
+  
+  // Inicializar gerenciadores
   const contextManager = new ContextManager();
+  const feedbackManager = new FeedbackManager();
+  const correctionDetector = new CorrectionDetector();
 
   // Carregar contexto e histórico persistido
   const { context: savedContext, history } = await contextManager.loadUserContext(userId);
@@ -79,9 +85,110 @@ export const orchestrate = async (
   });
   console.log('[ORCHESTRATE] Análise semântica:', analysis);
 
+  // 2.5) Detectar correções e confusões
+  const correction = correctionDetector.detectCorrection(userText, analysis, savedContext.collected_data);
+  const isConfused = correctionDetector.detectConfusion(userText);
+
+  if (correction.isCorrection) {
+    console.log('[Orchestrator] Correção detectada:', correction);
+    
+    // Responder empaticamente à correção
+    const correctionResponse = correctionDetector.generateCorrectionResponse(
+      correction.correctedField || 'geral'
+    );
+    
+    await contextManager.saveMessage(
+      userId,
+      'assistant',
+      correctionResponse,
+      draft?.evento?.id ? Number(draft.evento.id) : undefined
+    );
+    
+    // Atualizar contexto com dados corrigidos
+    await contextManager.updateContext(
+      userId,
+      savedContext.state,
+      {
+        ...savedContext.collected_data,
+        [correction.correctedField || 'last_correction']: analysis[correction.correctedField as keyof typeof analysis],
+      },
+      savedContext.missing_slots,
+      analysis.nivel_confianca,
+      analysis.intencao,
+      draft?.evento?.id ? Number(draft.evento.id) : undefined
+    );
+  }
+
+  if (isConfused) {
+    console.log('[Orchestrator] Confusão detectada');
+    
+    // Responder com empatia e clareza
+    const confusionResponse = 'Desculpa se não fui claro. Vou te explicar melhor: estamos planejando o evento passo a passo. Me diz o que você gostaria de fazer?';
+    
+    await contextManager.saveMessage(
+      userId,
+      'assistant',
+      confusionResponse,
+      draft?.evento?.id ? Number(draft.evento.id) : undefined
+    );
+  }
+
   // 3) Classificação de intenção
   const classification = classifyIntent(analysis, draft);
   console.log('[ORCHESTRATE] Classificação:', classification);
+
+  // 3.5) Registrar analytics e verificar se precisa clarificar
+  const responseTimeMs = Date.now() - startTime;
+  await feedbackManager.logInteraction(
+    userId,
+    analysis.intencao,
+    analysis.nivel_confianca,
+    'hybrid',
+    {
+      eventoId: draft?.evento?.id ? Number(draft.evento.id) : undefined,
+      responseTimeMs,
+      metadata: {
+        categoria: analysis.categoria_evento,
+        subtipo: analysis.subtipo_evento,
+        qtd_pessoas: analysis.qtd_pessoas,
+        was_correction: correction.isCorrection,
+        was_confused: isConfused,
+      },
+    }
+  );
+
+  // Verificar se deve clarificar (apenas se não for ação forçada)
+  if (!force_action) {
+    const clarification = await feedbackManager.shouldClarify(
+      userId,
+      analysis.intencao,
+      analysis.nivel_confianca
+    );
+
+    if (clarification.shouldClarify) {
+      console.log('[Orchestrator] Baixa confiança, solicitando clarificação:', clarification.reason);
+      
+      const clarificationMsg = feedbackManager.generateClarificationMessage(
+        analysis.intencao,
+        { ...analysis, ...draft }
+      );
+
+      await contextManager.saveMessage(
+        userId,
+        'assistant',
+        clarificationMsg.message,
+        draft?.evento?.id ? Number(draft.evento.id) : undefined
+      );
+
+      return {
+        estado: draft?.evento?.status || 'collecting_core',
+        evento_id: draft?.evento?.id ?? null,
+        mensagem: clarificationMsg.message,
+        suggestedReplies: clarificationMsg.suggestedReplies,
+        ctas: [],
+      };
+    }
+  }
 
   // 4) PRIORIDADE: Se já tem itens e usuário pede para ver, mostrar ANTES de qualquer lógica
   if (draft?.evento?.status === "itens_pendentes_confirmacao" && 

@@ -67,6 +67,72 @@ export type Database = {
           },
         ]
       }
+      conversation_analytics: {
+        Row: {
+          clarification_needed: boolean | null
+          confidence_level: number
+          created_at: string | null
+          evento_id: number | null
+          id: string
+          intent: string
+          message_id: string | null
+          metadata: Json | null
+          response_time_ms: number | null
+          response_type: string | null
+          tokens_used: number | null
+          user_confused: boolean | null
+          user_corrected: boolean | null
+          user_id: string
+        }
+        Insert: {
+          clarification_needed?: boolean | null
+          confidence_level: number
+          created_at?: string | null
+          evento_id?: number | null
+          id?: string
+          intent: string
+          message_id?: string | null
+          metadata?: Json | null
+          response_time_ms?: number | null
+          response_type?: string | null
+          tokens_used?: number | null
+          user_confused?: boolean | null
+          user_corrected?: boolean | null
+          user_id: string
+        }
+        Update: {
+          clarification_needed?: boolean | null
+          confidence_level?: number
+          created_at?: string | null
+          evento_id?: number | null
+          id?: string
+          intent?: string
+          message_id?: string | null
+          metadata?: Json | null
+          response_time_ms?: number | null
+          response_type?: string | null
+          tokens_used?: number | null
+          user_confused?: boolean | null
+          user_corrected?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_analytics_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_analytics_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_contexts: {
         Row: {
           collected_data: Json | null
@@ -711,6 +777,54 @@ export type Database = {
         }
         Relationships: []
       }
+      user_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          evento_id: number | null
+          feedback_type: string
+          id: string
+          message_id: string | null
+          rating: number | null
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          evento_id?: number | null
+          feedback_type: string
+          id?: string
+          message_id?: string | null
+          rating?: number | null
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          evento_id?: number | null
+          feedback_type?: string
+          id?: string
+          message_id?: string | null
+          rating?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_feedback_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_feedback_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       waitlist_reune: {
         Row: {
           created_at: string
@@ -731,7 +845,20 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      conversation_metrics: {
+        Row: {
+          avg_confidence: number | null
+          avg_response_time_ms: number | null
+          clarification_count: number | null
+          correction_count: number | null
+          date: string | null
+          events_touched: number | null
+          total_interactions: number | null
+          unique_intents: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_event_invitation: {
