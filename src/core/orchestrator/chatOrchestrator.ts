@@ -17,6 +17,8 @@ import { ContextManager } from './contextManager';
 import { getPersonalitySystemPrompt, adjustToneForState } from './personality';
 import { FeedbackManager } from './feedbackManager';
 import { CorrectionDetector } from './correctionDetector';
+import { SituationalAnalyzer } from './situationalAnalyzer';
+import { ProactiveActionsManager } from './proactiveActions';
 
 export interface ChatUiPayload {
   estado: EventStatus | "collecting_core";
@@ -57,6 +59,8 @@ export const orchestrate = async (
   const contextManager = new ContextManager();
   const feedbackManager = new FeedbackManager();
   const correctionDetector = new CorrectionDetector();
+  const situationalAnalyzer = new SituationalAnalyzer();
+  const proactiveActionsManager = new ProactiveActionsManager();
 
   // Carregar contexto e histórico persistido
   const { context: savedContext, history } = await contextManager.loadUserContext(userId);
@@ -76,6 +80,55 @@ export const orchestrate = async (
     ? await getPlanSnapshot(eventoId)
     : await findDraftEventByUser(userId);
   console.log('[ORCHESTRATE] Draft carregado:', draft);
+
+  // 1.5) Análise situacional proativa (antes de processar mensagem)
+  if (!force_action && draft?.evento) {
+    const hasItems = draft.itens && draft.itens.length > 0;
+    const hasParticipants = false; // TODO: implementar quando tivermos participantes
+    const lastInteractionTimestamp = savedContext.updated_at 
+      ? new Date(savedContext.updated_at).getTime() 
+      : undefined;
+
+    const insights = situationalAnalyzer.analyzeContext(
+      draft.evento,
+      savedContext,
+      hasItems,
+      hasParticipants,
+      lastInteractionTimestamp
+    );
+
+    const prioritizedInsights = situationalAnalyzer.prioritizeInsights(insights);
+    const shouldShowProactive = situationalAnalyzer.shouldShowProactiveSuggestion(
+      prioritizedInsights,
+      contextManager.lastProactiveTimestamp
+    );
+
+    if (shouldShowProactive && prioritizedInsights.length > 0) {
+      const topInsight = prioritizedInsights[0];
+      const proactiveAction = proactiveActionsManager.generateProactiveAction(topInsight);
+      
+      // Se não deve executar automaticamente, retornar sugestão proativa
+      if (!proactiveAction.autoExecute) {
+        contextManager.lastProactiveTimestamp = Date.now();
+        const formattedMessage = proactiveActionsManager.formatProactiveMessage(proactiveAction);
+        
+        await contextManager.saveMessage(
+          userId, 
+          'assistant', 
+          formattedMessage,
+          draft.evento.id ? Number(draft.evento.id) : undefined
+        );
+
+        return {
+          estado: draft.evento.status || 'collecting_core',
+          evento_id: draft.evento.id ?? null,
+          mensagem: formattedMessage,
+          suggestedReplies: proactiveAction.actionLabel ? [proactiveAction.actionLabel] : [],
+          ctas: [],
+        };
+      }
+    }
+  }
 
   // 2) Análise semântica da mensagem com contexto
   const analysis = await analyzeMessage(userText, {

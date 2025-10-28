@@ -15,6 +15,7 @@ import {
 export class ContextManager {
   private messagesRepo: ConversationMessagesRepository;
   private contextsRepo: ConversationContextsRepository;
+  public lastProactiveTimestamp?: number;
 
   constructor() {
     this.messagesRepo = new ConversationMessagesRepository();
