@@ -81,8 +81,17 @@ export const orchestrate = async (
     : await findDraftEventByUser(userId);
   console.log('[ORCHESTRATE] Draft carregado:', draft);
 
-  // 1.5) Análise situacional proativa (antes de processar mensagem)
-  if (!force_action && draft?.evento) {
+  // 1.5) Análise situacional proativa (APENAS em casos específicos, não toda mensagem)
+  // Desabilitar proatividade quando usuário acabou de enviar mensagem com dados
+  const shouldSkipProactive = 
+    userText.length > 5 && // Mensagem com conteúdo substancial
+    (
+      /\b(churrasco|pizza|feijoada|jantar|almoço|almoco|festa|evento)\b/i.test(userText) || // Menciona tipo de evento
+      /\b\d+\s*(pessoa|pessoas|convidado|convidados)\b/i.test(userText) || // Menciona quantidade
+      /\b\d{1,2}\/\d{1,2}\b/i.test(userText) // Menciona data
+    );
+
+  if (!force_action && draft?.evento && !shouldSkipProactive) {
     const hasItems = draft.itens && draft.itens.length > 0;
     const hasParticipants = false; // TODO: implementar quando tivermos participantes
     const lastInteractionTimestamp = savedContext.updated_at 
@@ -105,27 +114,31 @@ export const orchestrate = async (
 
     if (shouldShowProactive && prioritizedInsights.length > 0) {
       const topInsight = prioritizedInsights[0];
-      const proactiveAction = proactiveActionsManager.generateProactiveAction(topInsight);
       
-      // Se não deve executar automaticamente, retornar sugestão proativa
-      if (!proactiveAction.autoExecute) {
-        contextManager.lastProactiveTimestamp = Date.now();
-        const formattedMessage = proactiveActionsManager.formatProactiveMessage(proactiveAction);
+      // Só mostrar proatividade para casos REALMENTE proativos (não perguntar dados básicos)
+      if (topInsight.type !== 'incomplete_event' || topInsight.context?.missingFields?.[0] !== 'dados_basicos') {
+        const proactiveAction = proactiveActionsManager.generateProactiveAction(topInsight);
         
-        await contextManager.saveMessage(
-          userId, 
-          'assistant', 
-          formattedMessage,
-          draft.evento.id ? Number(draft.evento.id) : undefined
-        );
+        // Se não deve executar automaticamente, retornar sugestão proativa
+        if (!proactiveAction.autoExecute) {
+          contextManager.lastProactiveTimestamp = Date.now();
+          const formattedMessage = proactiveActionsManager.formatProactiveMessage(proactiveAction);
+          
+          await contextManager.saveMessage(
+            userId, 
+            'assistant', 
+            formattedMessage,
+            draft.evento.id ? Number(draft.evento.id) : undefined
+          );
 
-        return {
-          estado: draft.evento.status || 'collecting_core',
-          evento_id: draft.evento.id ?? null,
-          mensagem: formattedMessage,
-          suggestedReplies: proactiveAction.actionLabel ? [proactiveAction.actionLabel] : [],
-          ctas: [],
-        };
+          return {
+            estado: draft.evento.status || 'collecting_core',
+            evento_id: draft.evento.id ?? null,
+            mensagem: formattedMessage,
+            suggestedReplies: proactiveAction.actionLabel ? [proactiveAction.actionLabel] : [],
+            ctas: [],
+          };
+        }
       }
     }
   }

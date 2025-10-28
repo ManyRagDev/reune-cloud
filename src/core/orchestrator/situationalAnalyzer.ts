@@ -93,9 +93,8 @@ export class SituationalAnalyzer {
     if (!event.qtd_pessoas || event.qtd_pessoas === 0) {
       missing.push('quantidade_pessoas');
     }
-    if (event.status === 'collecting_core') {
-      missing.push('dados_basicos');
-    }
+    // ❌ REMOVIDO: não considerar status como campo faltante
+    // Status é gerenciado internamente, não é um "dado básico" que o usuário fornece
     if (!hasItems && event.status !== 'collecting_core') {
       missing.push('itens');
     }

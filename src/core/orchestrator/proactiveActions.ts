@@ -189,10 +189,8 @@ export class ProactiveActionsManager {
       formattedMessage = `${emoji} ${formattedMessage}`;
     }
 
-    // Adicionar call-to-action se houver
-    if (action.actionLabel && !action.autoExecute) {
-      formattedMessage += `\n\n_${action.actionLabel}_`;
-    }
+    // ❌ REMOVIDO: Não adicionar actionLabel no texto, ele será renderizado como botão
+    // O actionLabel é passado via suggestedReplies no ChatWidget
 
     return formattedMessage;
   }
