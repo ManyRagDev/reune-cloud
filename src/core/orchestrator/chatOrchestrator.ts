@@ -424,6 +424,16 @@ export const orchestrate = async (
     const data = analysis.data_evento || draft?.evento?.data_evento;
     const menu = analysis.menu || draft?.evento?.menu;
     
+    console.log('[ORCHESTRATE] Dados acumulados:', {
+      categoria,
+      subtipo,
+      qtd,
+      data_from_analysis: analysis.data_evento,
+      data_from_draft: draft?.evento?.data_evento,
+      data_final: data,
+      menu
+    });
+    
     // 🔹 Inferir categoria automaticamente se temos subtipo mas não categoria
     let tipoFinal = categoria || subtipo;
     let categoriaFinal = categoria;
@@ -441,6 +451,7 @@ export const orchestrate = async (
     
     if (draft?.evento?.id) {
       // Atualizar evento existente
+      console.log('[ORCHESTRATE] Atualizando evento existente com data:', data || draft.evento.data_evento);
       await upsertEvent({
         id: draft.evento.id,
         usuario_id: userId,
@@ -456,6 +467,7 @@ export const orchestrate = async (
       evtId = draft.evento.id;
     } else {
       // Criar novo evento
+      console.log('[ORCHESTRATE] Criando novo evento com data:', data);
       const newEvent = await upsertEvent({
         usuario_id: userId,
         nome_evento: "Rascunho",

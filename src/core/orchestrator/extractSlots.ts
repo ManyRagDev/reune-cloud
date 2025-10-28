@@ -1,5 +1,6 @@
 // src/core/orchestrator/extractSlots.ts
 import { normalize } from "@/core/nlp/normalize";
+import { parseToIsoDate } from "@/core/nlp/date-parser";
 
 /**
  * Regexs refinados
@@ -56,7 +57,8 @@ export function extractSlotsByRules(
 
   // 5️⃣ Data e hora
   const dateMatch = t.match(DATE_RE);
-  const data_evento = dateMatch?.[1] || draft?.data_evento || null;
+  const rawDate = dateMatch?.[1] || draft?.data_evento || null;
+  const data_evento = rawDate ? parseToIsoDate(rawDate) : null;
 
   const hourMatch = t.match(HOUR_RE);
   const hora_evento = hourMatch?.[1] || null;

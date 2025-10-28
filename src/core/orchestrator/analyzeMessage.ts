@@ -2,6 +2,7 @@
 import { getLlmSuggestions } from "@/api/llm/chat";
 import { LlmMessage } from "@/types/llm";
 import { z } from "zod";
+import { parseToIsoDate } from "@/core/nlp/date-parser";
 
 export interface MessageAnalysis {
   intencao:
@@ -133,6 +134,17 @@ Se algum dado não for encontrado, use null.
         if (!safe.success) throw new Error("Formato inválido do LLM");
 
         const data = safe.data;
+        
+        // 🔹 Normalizar data para ISO
+        const normalizedDate = data.data_evento ? parseToIsoDate(data.data_evento) : null;
+        
+        if (normalizedDate && data.data_evento) {
+          console.log('[analyzeMessage] Data detectada e normalizada:', {
+            original: data.data_evento,
+            normalized: normalizedDate
+          });
+        }
+        
         return {
           intencao: (data.intencao as MessageAnalysis["intencao"]) || "desconhecida",
           categoria_evento: normalize(data.categoria_evento),
@@ -140,7 +152,7 @@ Se algum dado não for encontrado, use null.
           finalidade_evento: normalize(data.finalidade_evento),
           menu: normalize(data.menu),
           qtd_pessoas: data.qtd_pessoas ?? null,
-          data_evento: data.data_evento ?? null,
+          data_evento: normalizedDate,
           hora_evento: data.hora_evento ?? null,
           inclui_bebidas: data.inclui_bebidas ?? null,
           inclui_entradas: data.inclui_entradas ?? null,
@@ -195,6 +207,17 @@ function fallbackAnalysis(text: string, context?: any): MessageAnalysis {
   const inclui_bebidas = /\b(cerveja|refrigerante|vinho|bebida)\b/i.test(lower);
   const inclui_entradas = /\b(salgadinho|petisco|entrada|aperitivo)\b/i.test(lower);
 
+  // 🔹 Normalizar data extraída para ISO
+  const extractedDate = dateMatch ? dateMatch[1] : null;
+  const normalizedDate = extractedDate ? parseToIsoDate(extractedDate) : null;
+
+  if (normalizedDate && extractedDate) {
+    console.log('[fallbackAnalysis] Data detectada e normalizada:', {
+      original: extractedDate,
+      normalized: normalizedDate
+    });
+  }
+
   return {
     intencao,
     categoria_evento: categoriaMatch ? categoriaMatch[1].toLowerCase() : null,
@@ -202,7 +225,7 @@ function fallbackAnalysis(text: string, context?: any): MessageAnalysis {
     finalidade_evento: null,
     menu: menuMatch ? menuMatch[1].toLowerCase() : null,
     qtd_pessoas: qtdMatch ? parseInt(qtdMatch[1], 10) : null,
-    data_evento: dateMatch ? dateMatch[1] : null,
+    data_evento: normalizedDate,
     hora_evento: horaMatch ? horaMatch[1] : null,
     inclui_bebidas,
     inclui_entradas,
