@@ -278,11 +278,11 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
       <main className="max-w-6xl mx-auto p-6 animate-fade-in">
         <div className="mb-12">
-          <div className="mb-4 flex justify-between items-center">
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
             <h2 className="text-2xl font-semibold text-foreground">Meus Eventos</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <FriendsDialog />
-              <Button onClick={onCreateEvent} size="default">
+              <Button onClick={onCreateEvent} size="default" className="flex-1 sm:flex-initial">
                 <Plus className="w-4 h-4 mr-2" />
                 Criar Novo Evento
               </Button>
