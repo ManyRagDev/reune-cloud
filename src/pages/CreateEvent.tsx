@@ -82,6 +82,20 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
       return;
     }
 
+    // Validar se a data não é no passado
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      toast({
+        title: "Data inválida",
+        description: "Não é possível criar eventos em datas passadas. Escolha uma data futura.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     
     try {
