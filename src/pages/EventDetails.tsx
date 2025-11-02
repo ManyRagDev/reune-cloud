@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEvent } from "@/hooks/useEvent";
 import { useAuth } from "@/hooks/useAuth";
-import { InviteGuestDialog } from "@/components/InviteGuestDialog";
+import { OrganizerInviteDialog } from "@/components/events/OrganizerInviteDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { rpc } from "@/api/rpc";
 // Force TypeScript to reload types
@@ -50,8 +50,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
-  const [newGuest, setNewGuest] = useState("");
   const [newSupply, setNewSupply] = useState("");
+  const [friends, setFriends] = useState<{ friend_id: string }[]>([]);
 
   // Estados para confirmação flexível
   const [confirmation, setConfirmation] = useState<EventConfirmation>({
@@ -70,6 +70,25 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [showTimePopover, setShowTimePopover] = useState(false);
   const [showLocationPopover, setShowLocationPopover] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Carregar amigos
+  useEffect(() => {
+    if (!user) return;
+
+    const loadFriends = async () => {
+      try {
+        const { data, error } = await supabase.rpc("get_friends", { _search: null });
+        if (error) throw error;
+        if (data) {
+          setFriends(data.map((f: any) => ({ friend_id: f.friend_id })));
+        }
+      } catch (err) {
+        console.error("Erro ao carregar amigos:", err);
+      }
+    };
+
+    loadFriends();
+  }, [user]);
 
   // Carregar participantes e itens do banco de dados
   useEffect(() => {
@@ -272,9 +291,15 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     }
   };
 
-  const handleInvite = async (email: string, name: string, shouldBeOrganizer: boolean) => {
+  const handleInvite = async (
+    userId: string,
+    email: string,
+    name: string,
+    shouldBeOrganizer: boolean
+  ) => {
     if (!event) return { error: "Evento não encontrado" };
     if (!session) return { error: "Autenticação necessária" };
+    
     try {
       const { data, error } = await supabase.rpc("process_invitation" as any, {
         _event_id: Number(event.id),
@@ -282,13 +307,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         _invitee_name: name,
         _is_organizer: shouldBeOrganizer,
       });
+      
       if (error) throw error;
+      
       const result = data as {
         user_exists?: boolean;
         message?: string;
         invitation_token?: string;
+        invitation_id?: string;
         event_data?: { title: string; date: string; time: string };
       };
+      
+      // Se usuário não existe, enviar email
       if (!result?.user_exists && result?.invitation_token) {
         const { error: emailError } = await supabase.functions.invoke("send-invitation-email", {
           body: {
@@ -301,11 +331,28 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
             invitation_token: result.invitation_token,
           },
         });
+        
         if (emailError) {
           console.error("Erro ao enviar email:", emailError);
-          return { error: "Convite registrado, mas houve erro ao enviar o email" };
+          toast({
+            title: "Aviso",
+            description: "Convite registrado, mas houve erro ao enviar o email",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Convite enviado por email",
+            description: `Um email foi enviado para ${email}`,
+          });
         }
+      } else if (result?.user_exists) {
+        // Usuário existe - notificação já foi criada pelo RPC
+        toast({
+          title: "Convite enviado!",
+          description: `${name} recebeu uma notificação sobre o convite.`,
+        });
       }
+      
       return { error: null };
     } catch (err: any) {
       console.error("Erro ao processar convite:", err);
@@ -313,22 +360,6 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     }
   };
 
-  const addGuest = () => {
-    if (newGuest.trim()) {
-      const newAttendee: Attendee = {
-        id: Date.now().toString(),
-        name: newGuest,
-        email: `${newGuest.toLowerCase().replace(" ", ".")}@email.com`,
-        status: "pending",
-      };
-      setAttendees([...attendees, newAttendee]);
-      setNewGuest("");
-      toast({
-        title: "Convite enviado!",
-        description: `${newGuest} foi convidado(a) para o evento.`,
-      });
-    }
-  };
 
   const addSupply = () => {
     if (newSupply.trim()) {
@@ -716,7 +747,13 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   <UserPlus className="w-5 h-5 mr-2" />
                   Organizadores ({1 + organizers.length})
                 </CardTitle>
-                <InviteGuestDialog onInvite={handleInvite} />
+                <OrganizerInviteDialog
+                  onInvite={handleInvite}
+                  excludeUserIds={[event.user_id, ...organizers.map((o) => o.user_id)]}
+                  friends={friends}
+                  isOrganizer={true}
+                  triggerLabel="Adicionar Organizador"
+                />
               </div>
             </CardHeader>
             <CardContent>
@@ -760,7 +797,15 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   Convidados ({attendees.length})
                 </CardTitle>
               </div>
-              {!isOrganizer && <InviteGuestDialog onInvite={(email, name) => handleInvite(email, name, false)} />}
+              {isOrganizer && (
+                <OrganizerInviteDialog
+                  onInvite={handleInvite}
+                  excludeUserIds={attendees.map((a) => a.id).filter((id) => !id.startsWith("email_"))}
+                  friends={friends}
+                  isOrganizer={false}
+                  triggerLabel="Convidar Participante"
+                />
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -789,19 +834,6 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 </div>
               ))}
 
-              {isOrganizer && (
-                <div className="flex gap-2 mt-4">
-                  <Input
-                    placeholder="Nome do convidado..."
-                    value={newGuest}
-                    onChange={(e) => setNewGuest(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && addGuest()}
-                  />
-                  <Button onClick={addGuest}>
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

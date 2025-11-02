@@ -19,7 +19,7 @@ interface UserInviteSearchProps {
     avatar_url?: string;
     status: "convidado" | "pendente" | "convite_email";
     isFriend: boolean;
-  }) => void;
+  }) => Promise<{ error: string | null }>;
   excludeUserIds: string[];
   friends: { friend_id: string }[];
 }
@@ -125,7 +125,7 @@ export const UserInviteSearch = ({
 
     // Se for email não cadastrado
     if (searchResult.isNonUser) {
-      onUserInvited({
+      const result = await onUserInvited({
         id: searchResult.id,
         name: searchResult.display_name,
         email: searchResult.email,
@@ -133,13 +133,15 @@ export const UserInviteSearch = ({
         isFriend: false,
       });
 
-      toast({
-        title: "Convite por e-mail",
-        description: `Um e-mail de convite será enviado para ${searchResult.email}`,
-      });
+      if (!result.error) {
+        toast({
+          title: "Convite por e-mail",
+          description: `Um e-mail de convite será enviado para ${searchResult.email}`,
+        });
 
-      setSearchInput("");
-      setSearchResult(null);
+        setSearchInput("");
+        setSearchResult(null);
+      }
       return;
     }
 
@@ -166,7 +168,7 @@ export const UserInviteSearch = ({
     }
 
     // Se é amigo, adicionar
-    onUserInvited({
+    const result = await onUserInvited({
       id: searchResult.id,
       name: searchResult.display_name || searchResult.email.split("@")[0],
       email: searchResult.email,
@@ -176,13 +178,15 @@ export const UserInviteSearch = ({
       isFriend: true,
     });
 
-    toast({
-      title: "Convidado adicionado",
-      description: `${searchResult.display_name} foi adicionado à lista.`,
-    });
+    if (!result.error) {
+      toast({
+        title: "Convidado adicionado",
+        description: `${searchResult.display_name} foi adicionado à lista.`,
+      });
 
-    setSearchInput("");
-    setSearchResult(null);
+      setSearchInput("");
+      setSearchResult(null);
+    }
   };
 
   const handleAddFriend = async () => {

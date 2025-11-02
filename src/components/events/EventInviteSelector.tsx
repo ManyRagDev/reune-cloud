@@ -50,8 +50,9 @@ export const EventInviteSelector = ({
     }
   };
 
-  const handleUserInvited = (user: Invitee) => {
+  const handleUserInvited = async (user: Invitee) => {
     onInviteesChange([...selectedInvitees, user]);
+    return { error: null };
   };
 
   const removeInvitee = (inviteeId: string) => {
