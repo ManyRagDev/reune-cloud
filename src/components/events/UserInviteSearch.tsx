@@ -248,7 +248,7 @@ export const UserInviteSearch = ({
           <div className="flex items-center gap-3">
             {!searchResult.isNonUser ? (
               <>
-                <Avatar className="h-10 w-10">
+                <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={searchResult.avatar_url} />
                   <AvatarFallback className="bg-primary/10 text-primary">
                     {searchResult.display_name?.charAt(0) || searchResult.email.charAt(0)}
@@ -263,24 +263,24 @@ export const UserInviteSearch = ({
                   </p>
                 </div>
                 {!isFriend(searchResult.id) && (
-                  <Badge variant="outline" className="border-yellow-500 text-yellow-700 dark:text-yellow-400">
+                  <Badge variant="outline" className="shrink-0 border-yellow-500 text-yellow-700 dark:text-yellow-400 whitespace-nowrap">
                     Não é amigo
                   </Badge>
                 )}
                 {isFriend(searchResult.id) && (
-                  <Badge variant="secondary">Amigo</Badge>
+                  <Badge variant="secondary" className="shrink-0 whitespace-nowrap">Amigo</Badge>
                 )}
               </>
             ) : (
               <>
-                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <div className="h-10 w-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
                   <Mail className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{searchResult.email}</p>
                   <p className="text-sm text-muted-foreground">Não é usuário do app</p>
                 </div>
-                <Badge variant="outline">Convite por e-mail</Badge>
+                <Badge variant="outline" className="shrink-0 whitespace-nowrap">Convite por e-mail</Badge>
               </>
             )}
           </div>
