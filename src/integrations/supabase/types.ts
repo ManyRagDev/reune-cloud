@@ -1026,6 +1026,16 @@ export type Database = {
         Args: { _response?: string; _status: string; _suggestion_id: string }
         Returns: Json
       }
+      search_user_by_identifier: {
+        Args: { _identifier: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          email: string
+          id: string
+          username: string
+        }[]
+      }
       send_friend_request: {
         Args: { _receiver_identifier: string }
         Returns: Json

@@ -48,66 +48,34 @@ export const UserInviteSearch = ({
 
     try {
       const query = searchInput.trim();
-      const isEmail = query.includes("@");
+      
+      // Usar a função RPC para buscar usuário (funciona para email ou username)
+      const { data, error } = await supabase.rpc('search_user_by_identifier', {
+        _identifier: query
+      });
 
-      if (isEmail) {
-        // Buscar por email exato
-        const { data: profiles, error } = await supabase
-          .from("profiles")
-          .select("id, display_name, username, avatar_url")
-          .limit(100);
+      if (error) throw error;
 
-        if (error) throw error;
-
-        // Verificar qual perfil tem esse email
-        for (const profile of profiles || []) {
-          try {
-            const { data: { user } } = await supabase.auth.admin.getUserById(profile.id);
-            if (user && user.email?.toLowerCase() === query.toLowerCase()) {
-              setSearchResult({
-                ...profile,
-                email: user.email,
-              });
-              return;
-            }
-          } catch (err) {
-            continue;
-          }
-        }
-
-        // Se não encontrou usuário, é um email não cadastrado
+      if (data && data.length > 0) {
+        const user = data[0];
         setSearchResult({
-          id: `email_${query}`,
-          email: query,
-          display_name: query.split("@")[0],
-          isNonUser: true,
+          id: user.id,
+          display_name: user.display_name,
+          username: user.username,
+          avatar_url: user.avatar_url,
+          email: user.email,
+          isNonUser: false
         });
       } else {
-        // Buscar por username exato
-        const usernameQuery = query.replace(/^@/, "");
-        
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, display_name, username, avatar_url")
-          .eq("username", usernameQuery)
-          .single();
-
-        if (error) {
-          setNotFound(true);
-          return;
-        }
-
-        if (data) {
-          // Buscar email
-          try {
-            const { data: { user } } = await supabase.auth.admin.getUserById(data.id);
-            setSearchResult({
-              ...data,
-              email: user?.email || "",
-            });
-          } catch {
-            setSearchResult(data);
-          }
+        // Se não encontrou e parece ser email, é um email não cadastrado
+        const isEmail = query.includes("@");
+        if (isEmail) {
+          setSearchResult({
+            id: `email_${query}`,
+            email: query,
+            display_name: query.split("@")[0],
+            isNonUser: true,
+          });
         } else {
           setNotFound(true);
         }
