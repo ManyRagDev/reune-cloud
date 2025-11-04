@@ -66,6 +66,10 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [friends, setFriends] = useState<{ friend_id: string }[]>([]);
   const [currentParticipantId, setCurrentParticipantId] = useState<number | null>(null);
   const [isInvitedGuest, setIsInvitedGuest] = useState(false);
+  const [organizerInfo, setOrganizerInfo] = useState<{ display_name: string | null; email: string | null }>({ 
+    display_name: null, 
+    email: null 
+  });
 
   // Estados para confirmação flexível
   const [confirmation, setConfirmation] = useState<EventConfirmation>({
@@ -127,6 +131,33 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
     checkInvitationStatus();
   }, [event, user, eventId]);
+
+  // Buscar informações do organizador
+  useEffect(() => {
+    if (!event) return;
+
+    const fetchOrganizerInfo = async () => {
+      try {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', event.user_id)
+          .maybeSingle();
+
+        // Se o usuário logado é o organizador, usar seu próprio email
+        const organizerEmail = user?.id === event.user_id ? user.email : null;
+
+        setOrganizerInfo({
+          display_name: profileData?.display_name || null,
+          email: organizerEmail || null,
+        });
+      } catch (err) {
+        console.error('Erro ao buscar informações do organizador:', err);
+      }
+    };
+
+    fetchOrganizerInfo();
+  }, [event, user]);
 
   // Carregar participantes e itens do banco de dados
   useEffect(() => {
@@ -991,17 +1022,12 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 {event && (
                   <div className="flex items-center justify-between p-3 bg-primary/5 border-2 border-primary/20 rounded-lg">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium truncate">
-                          Organizador do evento
-                          {user?.id === event.user_id && (
-                            <span className="text-muted-foreground ml-1">(você)</span>
-                          )}
-                        </p>
-                      </div>
-                      {isOrganizer && (
-                        <p className="text-sm text-muted-foreground truncate">ID: {event.user_id}</p>
-                      )}
+                      <p className="font-medium truncate">
+                        {organizerInfo.display_name || organizerInfo.email || 'Organizador'}
+                        {user?.id === event.user_id && (
+                          <span className="text-muted-foreground ml-1">(você)</span>
+                        )}
+                      </p>
                     </div>
                     <Badge variant="default" className="shrink-0 ml-2">
                       Organizador
@@ -1012,17 +1038,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 {/* Convidados */}
                 {attendees.map((attendee) => {
                   const isCurrentUser = user?.email === attendee.email;
+                  const displayName = attendee.name || attendee.email || 'Participante';
                   
                   return (
                     <div key={attendee.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">
-                          {attendee.name}
+                          {displayName}
                           {isCurrentUser && (
                             <span className="text-muted-foreground ml-1">(você)</span>
                           )}
                         </p>
-                        {isOrganizer && attendee.email && (
+                        {isOrganizer && attendee.email && attendee.name && (
                           <p className="text-sm text-muted-foreground truncate">{attendee.email}</p>
                         )}
                       </div>
