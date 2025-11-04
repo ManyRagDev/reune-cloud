@@ -949,6 +949,7 @@ export type Database = {
           quantidade_atribuida: number
         }[]
       }
+      get_my_email: { Args: never; Returns: string }
       get_pending_friend_requests: {
         Args: never
         Returns: {
