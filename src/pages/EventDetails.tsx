@@ -66,11 +66,11 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [friends, setFriends] = useState<{ friend_id: string }[]>([]);
   const [currentParticipantId, setCurrentParticipantId] = useState<number | null>(null);
   const [isInvitedGuest, setIsInvitedGuest] = useState(false);
-  const [organizerInfo, setOrganizerInfo] = useState<{ display_name: string | null; email: string | null }>({ 
-    display_name: null, 
+  const [organizerInfo, setOrganizerInfo] = useState<{ username: string | null; email: string | null }>({ 
+    username: null, 
     email: null 
   });
-  const [coOrganizersInfo, setCoOrganizersInfo] = useState<Record<string, { display_name: string | null; email: string | null }>>({});
+  const [coOrganizersInfo, setCoOrganizersInfo] = useState<Record<string, { username: string | null; email: string | null }>>({});
 
   // Estados para confirmação flexível
   const [confirmation, setConfirmation] = useState<EventConfirmation>({
@@ -141,7 +141,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       try {
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('display_name')
+          .select('username')
           .eq('id', event.user_id)
           .maybeSingle();
 
@@ -149,7 +149,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         const organizerEmail = user?.id === event.user_id ? user.email : null;
 
         setOrganizerInfo({
-          display_name: profileData?.display_name || null,
+          username: profileData?.username || null,
           email: organizerEmail || null,
         });
       } catch (err) {
@@ -169,14 +169,14 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         const userIds = organizers.map(o => o.user_id);
         const { data: profilesData } = await supabase
           .from('profiles')
-          .select('id, display_name')
+          .select('id, username')
           .in('id', userIds);
 
         if (profilesData) {
-          const infoMap: Record<string, { display_name: string | null; email: string | null }> = {};
+          const infoMap: Record<string, { username: string | null; email: string | null }> = {};
           profilesData.forEach((profile: any) => {
             infoMap[profile.id] = {
-              display_name: profile.display_name || null,
+              username: profile.username || null,
               email: null,
             };
           });
@@ -997,7 +997,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex-1">
                     <p className="font-medium">
-                      {organizerInfo.display_name || organizerInfo.email || 'Criador do evento'}
+                      {organizerInfo.username || organizerInfo.email || 'Criador do evento'}
                       {user?.id === event.user_id && (
                         <span className="text-muted-foreground ml-1">(você)</span>
                       )}
@@ -1010,7 +1010,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 {/* Co-organizadores */}
                 {organizers.map((organizer) => {
                   const info = coOrganizersInfo[organizer.user_id];
-                  const displayName = info?.display_name || 'Co-organizador';
+                  const displayName = info?.username || info?.email || 'Co-organizador';
                   const isCurrentUser = user?.id === organizer.user_id;
 
                   return (
@@ -1069,7 +1069,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   <div className="flex items-center justify-between p-3 bg-primary/5 border-2 border-primary/20 rounded-lg">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">
-                        {organizerInfo.display_name || organizerInfo.email || 'Organizador'}
+                        {organizerInfo.username || organizerInfo.email || 'Organizador'}
                         {user?.id === event.user_id && (
                           <span className="text-muted-foreground ml-1">(você)</span>
                         )}
