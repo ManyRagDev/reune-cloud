@@ -70,6 +70,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     display_name: null, 
     email: null 
   });
+  const [coOrganizersInfo, setCoOrganizersInfo] = useState<Record<string, { display_name: string | null; email: string | null }>>({});
 
   // Estados para confirmação flexível
   const [confirmation, setConfirmation] = useState<EventConfirmation>({
@@ -158,6 +159,36 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
     fetchOrganizerInfo();
   }, [event, user]);
+
+  // Buscar informações dos co-organizadores
+  useEffect(() => {
+    if (!organizers.length) return;
+
+    const fetchCoOrganizersInfo = async () => {
+      try {
+        const userIds = organizers.map(o => o.user_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', userIds);
+
+        if (profilesData) {
+          const infoMap: Record<string, { display_name: string | null; email: string | null }> = {};
+          profilesData.forEach((profile: any) => {
+            infoMap[profile.id] = {
+              display_name: profile.display_name || null,
+              email: null,
+            };
+          });
+          setCoOrganizersInfo(infoMap);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar informações dos co-organizadores:', err);
+      }
+    };
+
+    fetchCoOrganizersInfo();
+  }, [organizers]);
 
   // Carregar participantes e itens do banco de dados
   useEffect(() => {
@@ -964,28 +995,43 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
               <div className="space-y-3">
                 {/* Criador do evento */}
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">Criador do evento</p>
-                    <p className="text-sm text-muted-foreground">ID: {event.user_id}</p>
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {organizerInfo.display_name || organizerInfo.email || 'Criador do evento'}
+                      {user?.id === event.user_id && (
+                        <span className="text-muted-foreground ml-1">(você)</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Criador do evento</p>
                   </div>
                   <Badge variant="default">Organizador Principal</Badge>
                 </div>
 
                 {/* Co-organizadores */}
-                {organizers.map((organizer) => (
-                  <div key={organizer.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Co-organizador</p>
-                      <p className="text-sm text-muted-foreground">ID: {organizer.user_id}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Adicionado em {new Date(organizer.added_at).toLocaleDateString("pt-BR")}
-                      </p>
+                {organizers.map((organizer) => {
+                  const info = coOrganizersInfo[organizer.user_id];
+                  const displayName = info?.display_name || 'Co-organizador';
+                  const isCurrentUser = user?.id === organizer.user_id;
+
+                  return (
+                    <div key={organizer.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {displayName}
+                          {isCurrentUser && (
+                            <span className="text-muted-foreground ml-1">(você)</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Adicionado em {new Date(organizer.added_at).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => removeOrganizer(organizer.id)}>
+                        <UserMinus className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => removeOrganizer(organizer.id)}>
-                      <UserMinus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
