@@ -987,34 +987,66 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {attendees.map((attendee) => (
-                  <div key={attendee.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                {/* Organizador - sempre aparece primeiro */}
+                {event && (
+                  <div className="flex items-center justify-between p-3 bg-primary/5 border-2 border-primary/20 rounded-lg">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{attendee.name}</p>
-                      {isOrganizer && attendee.email && (
-                        <p className="text-sm text-muted-foreground truncate">{attendee.email}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate">
+                          Organizador do evento
+                          {user?.id === event.user_id && (
+                            <span className="text-muted-foreground ml-1">(você)</span>
+                          )}
+                        </p>
+                      </div>
+                      {isOrganizer && (
+                        <p className="text-sm text-muted-foreground truncate">ID: {event.user_id}</p>
                       )}
                     </div>
-                    <Badge
-                      variant={
-                        attendee.status === "confirmado"
-                          ? "default"
-                          : attendee.status === "pendente"
-                            ? "secondary"
-                            : "destructive"
-                      }
-                      className="shrink-0 ml-2"
-                    >
-                      {attendee.status === "confirmado"
-                        ? "Confirmado"
-                        : attendee.status === "pendente"
-                          ? "Pendente"
-                          : "Recusado"}
+                    <Badge variant="default" className="shrink-0 ml-2">
+                      Organizador
                     </Badge>
                   </div>
-                ))}
+                )}
+
+                {/* Convidados */}
+                {attendees.map((attendee) => {
+                  const isCurrentUser = user?.email === attendee.email;
+                  
+                  return (
+                    <div key={attendee.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {attendee.name}
+                          {isCurrentUser && (
+                            <span className="text-muted-foreground ml-1">(você)</span>
+                          )}
+                        </p>
+                        {isOrganizer && attendee.email && (
+                          <p className="text-sm text-muted-foreground truncate">{attendee.email}</p>
+                        )}
+                      </div>
+                      <Badge
+                        variant={
+                          attendee.status === "confirmado"
+                            ? "default"
+                            : attendee.status === "pendente"
+                              ? "secondary"
+                              : "destructive"
+                        }
+                        className="shrink-0 ml-2"
+                      >
+                        {attendee.status === "confirmado"
+                          ? "Confirmado"
+                          : attendee.status === "pendente"
+                            ? "Pendente"
+                            : "Recusado"}
+                      </Badge>
+                    </div>
+                  );
+                })}
                 {attendees.length === 0 && (
-                  <p className="text-center text-muted-foreground py-6">
+                  <p className="text-center text-muted-foreground py-6 mt-3">
                     Nenhum participante convidado ainda
                   </p>
                 )}
