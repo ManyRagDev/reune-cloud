@@ -51,7 +51,7 @@ export const useEvent = (eventId: string) => {
         .from('table_reune')
         .select('*')
         .eq('id', eventIdNumber)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       setEvent(data);

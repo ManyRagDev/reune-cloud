@@ -115,9 +115,9 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           .select('status')
           .eq('event_id', Number(eventId))
           .eq('participant_email', user.email)
-          .single();
+          .maybeSingle();
 
-        if (data && data.status === 'accepted') {
+        if (!error && data && (data.status === 'accepted' || data.status === 'pending')) {
           setIsInvitedGuest(true);
         }
       } catch (err) {
@@ -136,27 +136,37 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       try {
         const eventIdNum = Number(eventId);
 
-        // Carregar participantes
-        const { data: participantsData, error: participantsError } = await supabase
-          .from("event_participants")
-          .select("*")
+        // Carregar participantes a partir de event_invitations
+        const { data: invitationsData, error: invitationsError } = await supabase
+          .from("event_invitations")
+          .select("id, participant_email, participant_name, status")
           .eq("event_id", eventIdNum);
 
-        if (participantsError) throw participantsError;
+        if (invitationsError) throw invitationsError;
 
-        if (participantsData) {
-          const mappedAttendees: Attendee[] = participantsData.map((p: any) => ({
-            id: p.id,
-            name: p.nome_participante,
-            email: p.contato || undefined,
-            status: p.status_convite,
+        if (invitationsData) {
+          const mappedAttendees: Attendee[] = invitationsData.map((inv: any) => ({
+            id: inv.id,
+            name: inv.participant_name,
+            email: inv.participant_email,
+            status: inv.status === 'accepted' ? 'confirmado' : inv.status === 'declined' ? 'recusado' : 'pendente',
           }));
           setAttendees(mappedAttendees);
           
-          // Encontrar o participant_id do usuário atual
-          const myParticipant = participantsData.find((p: any) => p.contato === user.email);
-          if (myParticipant) {
-            setCurrentParticipantId(myParticipant.id);
+          // Encontrar o ID da invitation do usuário atual
+          const myInvitation = invitationsData.find((inv: any) => inv.participant_email === user.email);
+          if (myInvitation) {
+            // Buscar o participant_id na tabela event_participants baseado no email
+            const { data: participantData } = await supabase
+              .from("event_participants")
+              .select("id")
+              .eq("event_id", eventIdNum)
+              .eq("contato", user.email)
+              .maybeSingle();
+            
+            if (participantData) {
+              setCurrentParticipantId(participantData.id);
+            }
           }
         }
 
@@ -186,16 +196,13 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           const mappedSupplies: Supply[] = itemsData.map((item: any) => {
             const itemAssignments = (assignmentsData || [])
               .filter((a: any) => a.item_id === item.id)
-              .map((a: any) => {
-                const participant = participantsData?.find((p: any) => p.id === a.participant_id);
-                return {
-                  id: a.id,
-                  participant_id: a.participant_id,
-                  participant_name: participant?.nome_participante || "Desconhecido",
-                  quantidade_atribuida: a.quantidade_atribuida,
-                  confirmado: a.confirmado,
-                };
-              });
+              .map((a: any) => ({
+                id: a.id,
+                participant_id: a.participant_id,
+                participant_name: "Participante",
+                quantidade_atribuida: a.quantidade_atribuida,
+                confirmado: a.confirmado,
+              }));
 
             return {
               id: item.id,
@@ -219,14 +226,14 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     // Configurar realtime
     const eventIdNum = Number(eventId);
     
-    const participantsChannel = supabase
-      .channel(`participants_${eventIdNum}`)
+    const invitationsChannel = supabase
+      .channel(`invitations_${eventIdNum}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'event_participants',
+          table: 'event_invitations',
           filter: `event_id=eq.${eventIdNum}`
         },
         () => {
@@ -268,7 +275,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(participantsChannel);
+      supabase.removeChannel(invitationsChannel);
       supabase.removeChannel(itemsChannel);
       supabase.removeChannel(assignmentsChannel);
     };
