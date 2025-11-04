@@ -20,16 +20,28 @@ import { rpc } from "@/api/rpc";
 // Force TypeScript to reload types
 
 interface Attendee {
-  id: string;
+  id: number;
   name: string;
-  email: string;
-  status: "confirmed" | "pending" | "declined";
+  email?: string;
+  status: "pendente" | "confirmado" | "recusado";
 }
 
 interface Supply {
-  id: string;
+  id: number;
   name: string;
-  assignedTo: string[];
+  quantidade: number;
+  unidade: string;
+  categoria: string;
+  prioridade: string;
+  assignments: ItemAssignment[];
+}
+
+interface ItemAssignment {
+  id: string;
+  participant_id: number;
+  participant_name: string;
+  quantidade_atribuida: number;
+  confirmado: boolean;
 }
 
 interface EventDetailsProps {
@@ -52,6 +64,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [newSupply, setNewSupply] = useState("");
   const [friends, setFriends] = useState<{ friend_id: string }[]>([]);
+  const [currentParticipantId, setCurrentParticipantId] = useState<number | null>(null);
+  const [isInvitedGuest, setIsInvitedGuest] = useState(false);
 
   // Estados para confirmação flexível
   const [confirmation, setConfirmation] = useState<EventConfirmation>({
@@ -90,9 +104,33 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     loadFriends();
   }, [user]);
 
+  // Verificar se usuário é convidado confirmado
+  useEffect(() => {
+    if (!event || !user) return;
+
+    const checkInvitationStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('event_invitations')
+          .select('status')
+          .eq('event_id', Number(eventId))
+          .eq('participant_email', user.email)
+          .single();
+
+        if (data && data.status === 'accepted') {
+          setIsInvitedGuest(true);
+        }
+      } catch (err) {
+        console.error('Erro ao verificar status de convite:', err);
+      }
+    };
+
+    checkInvitationStatus();
+  }, [event, user, eventId]);
+
   // Carregar participantes e itens do banco de dados
   useEffect(() => {
-    if (!event) return;
+    if (!event || !user) return;
 
     const loadEventData = async () => {
       try {
@@ -106,22 +144,23 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
         if (participantsError) throw participantsError;
 
-        if (participantsData && participantsData.length > 0) {
-          const mappedParticipants: Attendee[] = participantsData.map((p) => ({
-            id: p.id.toString(),
+        if (participantsData) {
+          const mappedAttendees: Attendee[] = participantsData.map((p: any) => ({
+            id: p.id,
             name: p.nome_participante,
-            email: p.contato || "",
-            status:
-              p.status_convite === "confirmado"
-                ? "confirmed"
-                : p.status_convite === "recusado"
-                  ? "declined"
-                  : "pending",
+            email: p.contato || undefined,
+            status: p.status_convite,
           }));
-          setAttendees(mappedParticipants);
+          setAttendees(mappedAttendees);
+          
+          // Encontrar o participant_id do usuário atual
+          const myParticipant = participantsData.find((p: any) => p.contato === user.email);
+          if (myParticipant) {
+            setCurrentParticipantId(myParticipant.id);
+          }
         }
 
-        // Carregar itens
+        // Carregar itens com suas atribuições
         const { data: itemsData, error: itemsError } = await supabase
           .from("event_items")
           .select("*")
@@ -129,12 +168,45 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
         if (itemsError) throw itemsError;
 
-        if (itemsData && itemsData.length > 0) {
-          const mappedSupplies: Supply[] = itemsData.map((item) => ({
-            id: item.id.toString(),
-            name: `${item.nome_item} (${item.quantidade} ${item.unidade})`,
-            assignedTo: [],
-          }));
+        // Carregar atribuições
+        const { data: assignmentsData, error: assignmentsError } = await supabase
+          .from("item_assignments")
+          .select(`
+            id,
+            item_id,
+            participant_id,
+            quantidade_atribuida,
+            confirmado
+          `)
+          .eq("event_id", eventIdNum);
+
+        if (assignmentsError) throw assignmentsError;
+
+        if (itemsData) {
+          const mappedSupplies: Supply[] = itemsData.map((item: any) => {
+            const itemAssignments = (assignmentsData || [])
+              .filter((a: any) => a.item_id === item.id)
+              .map((a: any) => {
+                const participant = participantsData?.find((p: any) => p.id === a.participant_id);
+                return {
+                  id: a.id,
+                  participant_id: a.participant_id,
+                  participant_name: participant?.nome_participante || "Desconhecido",
+                  quantidade_atribuida: a.quantidade_atribuida,
+                  confirmado: a.confirmado,
+                };
+              });
+
+            return {
+              id: item.id,
+              name: item.nome_item,
+              quantidade: item.quantidade,
+              unidade: item.unidade,
+              categoria: item.categoria,
+              prioridade: item.prioridade,
+              assignments: itemAssignments,
+            };
+          });
           setSupplies(mappedSupplies);
         }
       } catch (err) {
@@ -143,7 +215,64 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     };
 
     loadEventData();
-  }, [event, eventId]);
+
+    // Configurar realtime
+    const eventIdNum = Number(eventId);
+    
+    const participantsChannel = supabase
+      .channel(`participants_${eventIdNum}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_participants',
+          filter: `event_id=eq.${eventIdNum}`
+        },
+        () => {
+          loadEventData();
+        }
+      )
+      .subscribe();
+
+    const itemsChannel = supabase
+      .channel(`items_${eventIdNum}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_items',
+          filter: `event_id=eq.${eventIdNum}`
+        },
+        () => {
+          loadEventData();
+        }
+      )
+      .subscribe();
+
+    const assignmentsChannel = supabase
+      .channel(`assignments_${eventIdNum}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'item_assignments',
+          filter: `event_id=eq.${eventIdNum}`
+        },
+        () => {
+          loadEventData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(participantsChannel);
+      supabase.removeChannel(itemsChannel);
+      supabase.removeChannel(assignmentsChannel);
+    };
+  }, [event, eventId, user]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -363,31 +492,99 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   const addSupply = () => {
     if (newSupply.trim()) {
-      const newItem: Supply = {
-        id: Date.now().toString(),
-        name: newSupply,
-        assignedTo: [],
-      };
-      setSupplies([...supplies, newItem]);
+      setSupplies([
+        ...supplies,
+        {
+          id: Date.now(),
+          name: newSupply,
+          quantidade: 1,
+          unidade: 'un',
+          categoria: 'geral',
+          prioridade: 'B',
+          assignments: [],
+        },
+      ]);
       setNewSupply("");
     }
   };
 
-  const toggleSupplyAssignment = (supplyId: string, userName: string) => {
-    setSupplies(
-      supplies.map((supply) => {
-        if (supply.id === supplyId) {
-          const isAssigned = supply.assignedTo.includes(userName);
-          return {
-            ...supply,
-            assignedTo: isAssigned
-              ? supply.assignedTo.filter((name) => name !== userName)
-              : [...supply.assignedTo, userName],
-          };
-        }
-        return supply;
-      }),
-    );
+  const toggleSupplyAssignment = async (supplyId: number) => {
+    if (!currentParticipantId) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar confirmado como participante para se responsabilizar por itens.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const supply = supplies.find(s => s.id === supplyId);
+      if (!supply) return;
+
+      const myAssignment = supply.assignments.find(a => a.participant_id === currentParticipantId);
+
+      if (myAssignment) {
+        // Remover atribuição
+        const { error } = await supabase
+          .from('item_assignments')
+          .delete()
+          .eq('id', myAssignment.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Responsabilidade removida",
+          description: "Você não é mais responsável por este item.",
+        });
+      } else {
+        // Adicionar atribuição
+        const { error } = await supabase
+          .from('item_assignments')
+          .insert({
+            event_id: Number(eventId),
+            item_id: supplyId,
+            participant_id: currentParticipantId,
+            quantidade_atribuida: supply.quantidade,
+            confirmado: false,
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: "Responsabilidade assumida",
+          description: "Você agora é responsável por este item!",
+        });
+      }
+    } catch (err: any) {
+      console.error('Erro ao alterar atribuição:', err);
+      toast({
+        title: "Erro",
+        description: err.message || "Não foi possível alterar a atribuição.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getSupplyStatus = (supply: Supply) => {
+    if (!supply.assignments.length) return 'available';
+    const myAssignment = supply.assignments.find(a => a.participant_id === currentParticipantId);
+    if (myAssignment) return 'mine';
+    return 'taken';
+  };
+
+  const getSupplyStatusText = (supply: Supply) => {
+    const status = getSupplyStatus(supply);
+    if (status === 'available') return 'Disponível';
+    if (status === 'mine') return 'Você se responsabilizou';
+    return `Responsável: ${supply.assignments.map(a => a.participant_name).join(', ')}`;
+  };
+
+  const getSupplyStatusVariant = (supply: Supply): "default" | "secondary" | "outline" => {
+    const status = getSupplyStatus(supply);
+    if (status === 'available') return 'outline';
+    if (status === 'mine') return 'default';
+    return 'secondary';
   };
 
   const handleScheduleDelivery = () => {
@@ -414,7 +611,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           event_id: eventoIdNum,
           nome_participante: a.name,
           contato: a.email || null,
-          status_convite: a.status === "confirmed" ? "confirmado" : a.status === "declined" ? "recusado" : "pendente",
+          status_convite: a.status === "confirmado" ? "confirmado" : a.status === "recusado" ? "recusado" : "pendente",
         }));
         const { error: partErr } = await supabase
           .from("event_participants")
@@ -422,31 +619,15 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         if (partErr) throw partErr;
 
         // Itens (fallback manual)
-        const itemsRows = supplies.map((s) => {
-          let nome_item = s.name;
-          let quantidade = 1;
-          let unidade = "un";
-
-          const match = s.name.match(/^(.*)\s*\(([^)]+)\)\s*$/);
-          if (match) {
-            nome_item = match[1].trim();
-            const parts = match[2].trim().split(/\s+/);
-            const q = Number(parts[0]);
-            if (!isNaN(q)) quantidade = q;
-            unidade = parts.slice(1).join(" ") || "un";
-          }
-
-          return {
-            id: isNaN(Number(s.id)) ? undefined : Number(s.id),
-            event_id: eventoIdNum,
-            nome_item,
-            quantidade,
-            unidade,
-            valor_estimado: 0,
-            categoria: "",
-            prioridade: "C",
-          };
-        });
+        const itemsRows = supplies.map((s) => ({
+          id: isNaN(Number(s.id)) ? undefined : Number(s.id),
+          event_id: eventoIdNum,
+          nome_item: s.name,
+          quantidade: s.quantidade,
+          unidade: s.unidade,
+          categoria: s.categoria,
+          prioridade: s.prioridade,
+        }));
         const { error: itemsErr } = await supabase.from("event_items").upsert(itemsRows, { onConflict: "id" });
         if (itemsErr) throw itemsErr;
 
@@ -463,7 +644,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         evento_id: eventoIdStr,
         nome_participante: a.name,
         contato: a.email || null,
-        status_convite: a.status === "confirmed" ? "confirmado" : a.status === "declined" ? "recusado" : "pendente",
+        status_convite: a.status,
         preferencias: null,
         valor_responsavel: null,
       })) as any;
@@ -471,31 +652,16 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       await rpc.participants_bulk_upsert(eventoIdStr, participantsPayload);
 
       // Montar payload de itens
-      const itemsPayload = supplies.map((s) => {
-        let nome_item = s.name;
-        let quantidade = 1;
-        let unidade = "un";
-
-        const match = s.name.match(/^(.*)\s*\(([^)]+)\)\s*$/);
-        if (match) {
-          nome_item = match[1].trim();
-          const parts = match[2].trim().split(/\s+/);
-          const q = Number(parts[0]);
-          if (!isNaN(q)) quantidade = q;
-          unidade = parts.slice(1).join(" ") || "un";
-        }
-
-        return {
-          id: s.id,
-          evento_id: eventoIdStr,
-          nome_item,
-          quantidade,
-          unidade,
-          valor_estimado: 0,
-          categoria: "",
-          prioridade: "C" as const,
-        };
-      }) as any;
+      const itemsPayload = supplies.map((s) => ({
+        id: s.id,
+        evento_id: eventoIdStr,
+        nome_item: s.name,
+        quantidade: s.quantidade,
+        unidade: s.unidade,
+        valor_estimado: 0,
+        categoria: s.categoria,
+        prioridade: s.prioridade,
+      })) as any;
 
       await rpc.items_replace_for_event(eventoIdStr, itemsPayload);
 
@@ -787,117 +953,162 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           </Card>
         )}
 
-        {/* Attendees */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Convidados ({attendees.length})
-                </CardTitle>
-              </div>
-              {isOrganizer && (
-                <OrganizerInviteDialog
-                  onInvite={handleInvite}
-                  excludeUserIds={attendees.map((a) => a.id).filter((id) => !id.startsWith("email_"))}
-                  friends={friends}
-                  isOrganizer={false}
-                  triggerLabel="Convidar Participante"
-                />
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {attendees.map((attendee) => (
-                <div key={attendee.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{attendee.name}</p>
-                    <p className="text-sm text-muted-foreground">{attendee.email}</p>
-                  </div>
-                  <Badge
-                    variant={
-                      attendee.status === "confirmed"
-                        ? "default"
-                        : attendee.status === "pending"
-                          ? "secondary"
-                          : "destructive"
-                    }
-                  >
-                    {attendee.status === "confirmed"
-                      ? "Confirmado"
-                      : attendee.status === "pending"
-                        ? "Pendente"
-                        : "Recusado"}
-                  </Badge>
+        {/* Attendees - Visível para organizadores e convidados confirmados */}
+        {(isOrganizer || isInvitedGuest) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Users className="w-5 h-5 mr-2" />
+                    Participantes ({attendees.length})
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Lista de pessoas convidadas para o evento
+                  </CardDescription>
                 </div>
-              ))}
-
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Supplies List */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center">
-                <Package className="w-5 h-5 mr-2" />
-                Lista de Insumos
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {supplies.map((supply) => (
-                <div key={supply.id} className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{supply.name}</h4>
-                      {supply.assignedTo.length > 0 && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Responsáveis: {supply.assignedTo.join(", ")}
-                        </p>
+                {isOrganizer && (
+                  <OrganizerInviteDialog
+                    onInvite={handleInvite}
+                    excludeUserIds={[]}
+                    friends={friends}
+                    isOrganizer={false}
+                    triggerLabel="Convidar Participante"
+                  />
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {attendees.map((attendee) => (
+                  <div key={attendee.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{attendee.name}</p>
+                      {isOrganizer && attendee.email && (
+                        <p className="text-sm text-muted-foreground truncate">{attendee.email}</p>
                       )}
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleScheduleDelivery} className="ml-4">
-                      Agendar Entrega
+                    <Badge
+                      variant={
+                        attendee.status === "confirmado"
+                          ? "default"
+                          : attendee.status === "pendente"
+                            ? "secondary"
+                            : "destructive"
+                      }
+                      className="shrink-0 ml-2"
+                    >
+                      {attendee.status === "confirmado"
+                        ? "Confirmado"
+                        : attendee.status === "pendente"
+                          ? "Pendente"
+                          : "Recusado"}
+                    </Badge>
+                  </div>
+                ))}
+                {attendees.length === 0 && (
+                  <p className="text-center text-muted-foreground py-6">
+                    Nenhum participante convidado ainda
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Supplies List - Visível para organizadores e convidados confirmados */}
+        {(isOrganizer || isInvitedGuest) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center">
+                  <Package className="w-5 h-5 mr-2" />
+                  Lista de Insumos ({supplies.length})
+                </CardTitle>
+              </div>
+              <CardDescription className="mt-1">
+                {isInvitedGuest && !isOrganizer
+                  ? "Escolha os itens que você pode levar"
+                  : "Gerencie os itens necessários para o evento"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {supplies.map((supply) => (
+                  <div
+                    key={supply.id}
+                    className={`p-4 border-2 rounded-lg transition-all ${
+                      getSupplyStatus(supply) === 'mine'
+                        ? 'border-primary bg-primary/5'
+                        : getSupplyStatus(supply) === 'taken'
+                          ? 'border-muted bg-muted/30'
+                          : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{supply.name}</h4>
+                          <Badge variant={getSupplyStatusVariant(supply)} className="text-xs">
+                            {getSupplyStatusText(supply)}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {supply.quantidade} {supply.unidade}
+                        </p>
+                      </div>
+                    </div>
+
+                    {(isInvitedGuest || isOrganizer) && currentParticipantId && (
+                      <div className="flex items-center space-x-2 pt-2 border-t">
+                        <Checkbox
+                          id={`supply-${supply.id}`}
+                          checked={getSupplyStatus(supply) === 'mine'}
+                          onCheckedChange={() => toggleSupplyAssignment(supply.id)}
+                          disabled={getSupplyStatus(supply) === 'taken'}
+                        />
+                        <label
+                          htmlFor={`supply-${supply.id}`}
+                          className={`text-sm font-medium leading-none ${
+                            getSupplyStatus(supply) === 'taken'
+                              ? 'cursor-not-allowed opacity-70'
+                              : 'cursor-pointer'
+                          }`}
+                        >
+                          {getSupplyStatus(supply) === 'mine'
+                            ? 'Desistir deste item'
+                            : getSupplyStatus(supply) === 'taken'
+                              ? 'Item já foi escolhido'
+                              : 'Me responsabilizar por este item'}
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {supplies.length === 0 && (
+                  <p className="text-center text-muted-foreground py-6">
+                    Nenhum item adicionado ainda
+                  </p>
+                )}
+
+                {isOrganizer && (
+                  <div className="flex gap-2 mt-4">
+                    <Input
+                      placeholder="Adicionar item..."
+                      value={newSupply}
+                      onChange={(e) => setNewSupply(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && addSupply()}
+                    />
+                    <Button onClick={addSupply}>
+                      <Plus className="w-4 h-4" />
                     </Button>
                   </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`supply-${supply.id}`}
-                      checked={supply.assignedTo.includes("Você")}
-                      onCheckedChange={() => toggleSupplyAssignment(supply.id, "Você")}
-                    />
-                    <label
-                      htmlFor={`supply-${supply.id}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Me responsabilizar por este item
-                    </label>
-                  </div>
-                </div>
-              ))}
-
-              {isOrganizer && (
-                <div className="flex gap-2 mt-4">
-                  <Input
-                    placeholder="Adicionar item..."
-                    value={newSupply}
-                    onChange={(e) => setNewSupply(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && addSupply()}
-                  />
-                  <Button onClick={addSupply}>
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Botão de Salvar (organizador) */}
         {isOrganizer && (
