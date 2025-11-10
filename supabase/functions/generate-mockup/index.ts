@@ -6,13 +6,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface CustomTexts {
+  headline?: string;
+  subheadline?: string;
+  featureTitle?: string;
+  problemText?: string;
+  solutionText?: string;
+  daysRemaining?: string;
+  color1?: string;
+  color2?: string;
+}
+
+interface RequestBody {
+  mockupType: string;
+  format: string;
+  customTexts: CustomTexts;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { mockupType, format, customTexts } = await req.json();
+    const { mockupType, format, customTexts } = await req.json() as RequestBody;
     console.log('[generate-mockup] Recebido:', { mockupType, format, customTexts });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -85,8 +102,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[generate-mockup] Erro:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     return new Response(
-      JSON.stringify({ error: 'generation_failed', message: error.message }),
+      JSON.stringify({ error: 'generation_failed', message: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
@@ -101,7 +119,7 @@ function getDimensions(format: string): { width: number; height: number } {
   return dims[format as keyof typeof dims] || dims.feed;
 }
 
-function buildPrompt(mockupType: string, format: string, customTexts: any): string {
+function buildPrompt(mockupType: string, format: string, customTexts: CustomTexts): string {
   const aspectRatio = format === 'story' ? '9:16 vertical' : format === 'linkedin' ? '16:9 horizontal' : '4:5 for Instagram feed';
   
   const baseColors = {
