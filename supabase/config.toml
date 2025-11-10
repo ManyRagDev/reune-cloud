@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.update-user-password]
 verify_jwt = true
+
+[functions.generate-mockup]
+verify_jwt = false
