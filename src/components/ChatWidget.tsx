@@ -98,7 +98,16 @@ export default function ChatWidget() {
     setSending(true);
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setInput('');
+    
     try {
+      // Salvar mensagem do usuário no banco
+      await contextManager.saveMessage(
+        user.id, 
+        'user', 
+        text, 
+        eventoId ? Number(eventoId) : undefined
+      );
+
       // Chamar endpoint externo
       const response = await fetch('https://studio--studio-3500643630-eaa37.us-central1.hosted.app/api/chat', {
         method: 'POST',
@@ -132,20 +141,82 @@ export default function ChatWidget() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // Atualizar evento_id se retornado
-      if (data.eventoId || data.evento_id) {
-        setEventoId(data.eventoId || data.evento_id);
+      // Processar evento criado/atualizado
+      const newEventoId = data.eventoId || data.evento_id;
+      if (newEventoId && newEventoId !== eventoId) {
+        console.log('[ChatWidget] Novo evento detectado:', newEventoId);
+        
+        // Se há dados do evento retornados, criar/atualizar no Supabase
+        if (data.evento || data.event) {
+          const eventoData = data.evento || data.event;
+          const { supabase } = await import('@/integrations/supabase/client');
+          
+          // Verificar se evento já existe
+          const { data: existingEvent } = await supabase
+            .from('table_reune')
+            .select('id')
+            .eq('id', newEventoId)
+            .single();
+
+          if (!existingEvent) {
+            // Criar novo evento
+            const { error: eventError } = await supabase
+              .from('table_reune')
+              .insert([{
+                id: newEventoId,
+                user_id: user.id,
+                title: eventoData.title || eventoData.titulo || 'Novo Evento',
+                description: eventoData.description || eventoData.descricao,
+                event_date: eventoData.event_date || eventoData.data_evento || new Date().toISOString().split('T')[0],
+                event_time: eventoData.event_time || eventoData.hora_evento || '12:00',
+                location: eventoData.location || eventoData.localizacao,
+                tipo_evento: eventoData.tipo_evento,
+                qtd_pessoas: eventoData.qtd_pessoas,
+                categoria_evento: eventoData.categoria_evento,
+                subtipo_evento: eventoData.subtipo_evento,
+                finalidade_evento: eventoData.finalidade_evento,
+                created_by_ai: true,
+                status: 'active'
+              }]);
+
+            if (eventError) {
+              console.error('[ChatWidget] Erro ao criar evento:', eventError);
+            } else {
+              console.log('[ChatWidget] Evento criado com sucesso:', newEventoId);
+            }
+          }
+        }
+        
+        setEventoId(newEventoId);
       }
 
-      // Salvar mensagem no banco para histórico
-      if (user?.id) {
-        await contextManager.saveMessage(
-          user.id, 
-          'assistant', 
-          assistantMessage.content, 
-          eventoId ? Number(eventoId) : undefined
-        );
+      // Processar itens retornados
+      if (assistantMessage.items && assistantMessage.items.length > 0 && (newEventoId || eventoId)) {
+        console.log('[ChatWidget] Salvando itens no banco:', assistantMessage.items.length);
+        const { supabase } = await import('@/integrations/supabase/client');
+        
+        const eventIdToUse = newEventoId || eventoId;
+        
+        // Usar função RPC para substituir itens (apenas para eventos criados pela IA)
+        const { error: itemsError } = await supabase.rpc('items_replace_for_event', {
+          evento_id: String(eventIdToUse),
+          itens: assistantMessage.items
+        });
+
+        if (itemsError) {
+          console.error('[ChatWidget] Erro ao salvar itens:', itemsError);
+        } else {
+          console.log('[ChatWidget] Itens salvos com sucesso');
+        }
       }
+
+      // Salvar mensagem do assistente no banco
+      await contextManager.saveMessage(
+        user.id, 
+        'assistant', 
+        assistantMessage.content, 
+        (newEventoId || eventoId) ? Number(newEventoId || eventoId) : undefined
+      );
 
     } catch (e) {
       console.error('[ChatWidget] Erro ao enviar mensagem:', e);
