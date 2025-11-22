@@ -2,12 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Send, RotateCcw } from 'lucide-react';
-import { orchestrate } from '@/core/orchestrator/chatOrchestrator';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { ConversationState } from '@/types/domain';
-import { runToolCall } from '@/api/llm/toolsRouter';
 import aiChatIcon from '@/assets/ai-chat-icon.png';
 import { ConversationMessagesRepository } from '@/db/repositories/conversationMessages';
 import { ContextManager } from '@/core/orchestrator/contextManager';
@@ -32,8 +29,6 @@ export default function ChatWidget() {
   const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [eventoId, setEventoId] = useState<string | undefined>(undefined);
-  const [convState, setConvState] = useState<ConversationState | undefined>(undefined);
-  const [lastState, setLastState] = useState<string | undefined>(undefined);
   const [stagnationCount, setStagnationCount] = useState(0);
   const [hasGreeted, setHasGreeted] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -104,57 +99,54 @@ export default function ChatWidget() {
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setInput('');
     try {
-      // Chamar orquestrador (ele carrega o histórico internamente agora)
-      const res = await orchestrate(
-        text,
-        user.id,
-        eventoId,
-        stagnationCount >= 2
-        // histórico não é mais necessário - gerenciado internamente
-      );
+      // Chamar endpoint externo
+      const response = await fetch('https://studio--studio-3500643630-eaa37.us-central1.hosted.app/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: text,
+          userId: user.id,
+          eventoId: eventoId,
+          history: messages.map(m => ({
+            role: m.role,
+            content: m.content
+          }))
+        }),
+      });
 
-      // Lógica anti-loop
-      if (res.estado === lastState) {
-        setStagnationCount((prev) => prev + 1);
-      } else {
-        setStagnationCount(0);
-        setLastState(res.estado);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      const data = await response.json();
+      console.log('[ChatWidget] Resposta do endpoint:', data);
+
+      // Adaptar resposta do endpoint para o formato esperado
       const assistantMessage: ChatMessage = { 
         role: 'assistant', 
-        content: res.mensagem,
-        suggestedReplies: res.suggestedReplies,
-        items: res.showItems && res.snapshot?.itens ? res.snapshot.itens : undefined
+        content: data.message || data.mensagem || 'Desculpe, não consegui processar sua mensagem.',
+        suggestedReplies: data.suggestedReplies || data.suggested_replies,
+        items: data.items || data.itens
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // Atualizar evento_id no estado se retornado
-      if (res.evento_id) setEventoId(res.evento_id);
-
-      // Executar chamadas de ferramenta retornadas, se existirem
-      if (Array.isArray(res.toolCalls) && res.toolCalls.length > 0) {
-        for (const tc of res.toolCalls) {
-          try {
-            const args = { ...(tc.arguments || {}), evento_id: res.evento_id || eventoId };
-            await runToolCall(user?.id || 'dev', { name: tc.name, arguments: args });
-          } catch (err) {
-            console.warn('[ChatWidget] Falha ao executar tool call', tc?.name, err);
-          }
-        }
+      // Atualizar evento_id se retornado
+      if (data.eventoId || data.evento_id) {
+        setEventoId(data.eventoId || data.evento_id);
       }
 
-      // Atualizar estado de conversa (histórico agora é persistido automaticamente)
-      setConvState({
-        conversationId: convState?.conversationId || `chat-${user.id}`,
-        context: {
-          eventoId: res.evento_id || eventoId,
-          tipo_evento: res.tipo_evento,
-          qtd_pessoas: res.qtd_pessoas,
-        },
-        history: [], // Não precisa mais duplicar, está no banco
-        lastUpdated: Date.now(),
-      });
+      // Salvar mensagem no banco para histórico
+      if (user?.id) {
+        await contextManager.saveMessage(
+          user.id, 
+          'assistant', 
+          assistantMessage.content, 
+          eventoId ? Number(eventoId) : undefined
+        );
+      }
+
     } catch (e) {
       console.error('[ChatWidget] Erro ao enviar mensagem:', e);
       let errorMessage = 'Ocorreu um erro ao processar sua solicitação. Tente novamente.';
@@ -185,8 +177,6 @@ export default function ChatWidget() {
         content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
       }]);
       setEventoId(undefined);
-      setConvState(undefined);
-      setLastState(undefined);
       setStagnationCount(0);
       setHasGreeted(true);
       hasLoadedHistory.current = false;
