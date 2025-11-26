@@ -66,6 +66,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [friends, setFriends] = useState<{ friend_id: string }[]>([]);
   const [currentParticipantId, setCurrentParticipantId] = useState<number | null>(null);
   const [isInvitedGuest, setIsInvitedGuest] = useState(false);
+  const [isConfirmedGuest, setIsConfirmedGuest] = useState(false);
   const [organizerInfo, setOrganizerInfo] = useState<{ username: string | null; email: string | null }>({ 
     username: null, 
     email: null 
@@ -122,8 +123,14 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           .eq('participant_email', user.email)
           .maybeSingle();
 
-        if (!error && data && (data.status === 'accepted' || data.status === 'pending')) {
-          setIsInvitedGuest(true);
+        if (!error && data) {
+          if (data.status === 'accepted') {
+            setIsInvitedGuest(true);
+            setIsConfirmedGuest(true);
+          } else if (data.status === 'pending') {
+            setIsInvitedGuest(true);
+            setIsConfirmedGuest(false);
+          }
         }
       } catch (err) {
         console.error('Erro ao verificar status de convite:', err);
@@ -1171,7 +1178,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                       </div>
                     </div>
 
-                    {(isInvitedGuest || isOrganizer) && currentParticipantId && (
+                    {(isConfirmedGuest || isOrganizer) && currentParticipantId && (
                       <div className="flex items-center space-x-2 pt-2 border-t">
                         <Checkbox
                           id={`supply-${supply.id}`}
@@ -1204,7 +1211,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   </p>
                 )}
 
-                {isOrganizer && (
+                {/* Mostrar campo de adicionar item para organizadores e convidados confirmados */}
+                {(isOrganizer || isConfirmedGuest) && (
                   <div className="flex gap-2 mt-4">
                     <Input
                       placeholder="Adicionar item..."
