@@ -1567,9 +1567,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/event/${eventId}/secret-santa/participants`)}
+                          onClick={() => navigate(`/event/${eventId}/secret-santa/admin`)}
                         >
                           Gerenciar
+                        </Button>
+                      )}
+                      {!isOrganizer && secretSantaData.has_drawn && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => navigate(`/event/${eventId}/secret-santa/my-result`)}
+                        >
+                          Ver Meu Resultado
                         </Button>
                       )}
                     </div>
