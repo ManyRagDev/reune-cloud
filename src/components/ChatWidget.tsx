@@ -32,6 +32,7 @@ export default function ChatWidget() {
   const [stagnationCount, setStagnationCount] = useState(0);
   const [hasGreeted, setHasGreeted] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const hasLoadedHistory = useRef(false);
 
   const canShow = !!user && !loading;
@@ -96,6 +97,7 @@ export default function ChatWidget() {
     const text = input.trim();
     if (!text || sending || !user?.id) return;
     setSending(true);
+    setIsTyping(true);
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setInput('');
     
@@ -172,6 +174,7 @@ export default function ChatWidget() {
           suggestedReplies: data.suggestedReplies || data.suggested_replies,
           items: data.items || data.itens
         };
+        setIsTyping(false);
         setMessages((prev) => [...prev, assistantMessage]);
 
         // Processar evento criado/atualizado
@@ -261,6 +264,7 @@ export default function ChatWidget() {
     } catch (e) {
       console.error('[ChatWidget] Erro ao enviar mensagem:', e);
       
+      setIsTyping(false);
       // Remover mensagem do usuário em caso de erro fatal
       setMessages((prev) => prev.slice(0, -1));
       
@@ -413,6 +417,20 @@ export default function ChatWidget() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Indicador de digitação */}
+                {isTyping && (
+                  <div className="text-left">
+                    <div className="inline-block bg-accent text-accent-foreground px-3 py-2 rounded-xl">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div ref={endRef} />
               </div>
             </ScrollArea>
