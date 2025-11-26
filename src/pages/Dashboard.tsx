@@ -112,26 +112,30 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
       if (ownError) throw ownError;
 
-      // Busca eventos onde o usuário foi convidado
-      const { data: invitations, error: invitationsError } = await supabase
-        .from('event_invitations')
-        .select('event_id, status')
-        .eq('participant_email', user?.email || '');
+      // Busca notificações de convites para o usuário atual
+      const { data: notifications, error: notificationsError } = await supabase
+        .from('notifications')
+        .select('event_id, metadata')
+        .eq('user_id', userId)
+        .in('type', ['event_invite', 'organizer_invite']);
 
-      if (invitationsError) throw invitationsError;
+      if (notificationsError) throw notificationsError;
 
-      // Se há convites, buscar os eventos correspondentes
+      // Se há notificações de convite, buscar os eventos correspondentes
       let invitedEvents: any[] = [];
-      if (invitations && invitations.length > 0) {
-        const invitedEventIds = invitations.map(inv => inv.event_id);
-        const { data: invitedEventsData, error: invitedError } = await supabase
-          .from('table_reune')
-          .select('*')
-          .in('id', invitedEventIds)
-          .order('event_date', { ascending: true });
+      if (notifications && notifications.length > 0) {
+        const invitedEventIds = [...new Set(notifications.map(n => n.event_id).filter(Boolean))];
+        
+        if (invitedEventIds.length > 0) {
+          const { data: invitedEventsData, error: invitedError } = await supabase
+            .from('table_reune')
+            .select('*')
+            .in('id', invitedEventIds)
+            .order('event_date', { ascending: true });
 
-        if (invitedError) throw invitedError;
-        invitedEvents = invitedEventsData || [];
+          if (invitedError) throw invitedError;
+          invitedEvents = invitedEventsData || [];
+        }
       }
 
       // Combinar eventos próprios e convidados (sem duplicatas)
@@ -175,7 +179,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
     } finally {
       setLoading(false);
     }
-  }, [userId, toast]);
+  }, [userId, toast, user?.email]);
 
   useEffect(() => {
     fetchEvents();
@@ -278,11 +282,11 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
       <main className="max-w-6xl mx-auto p-6 animate-fade-in">
         <div className="mb-12">
-          <div className="mb-4 flex flex-col md:flex-row md:justify-between md:items-center">
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
             <h2 className="text-2xl font-semibold text-foreground">Meus Eventos</h2>
-            <div className="mt-3 md:mt-0 flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <FriendsDialog />
-              <Button onClick={onCreateEvent} size="default">
+              <Button onClick={onCreateEvent} size="default" className="flex-1 sm:flex-initial">
                 <Plus className="w-4 h-4 mr-2" />
                 Criar Novo Evento
               </Button>

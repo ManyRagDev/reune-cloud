@@ -8,6 +8,8 @@ import ReuneWaitlist from "./pages/ReuneWaitlist";
 import Index from "./pages/Index";
 import AcceptInvite from "./pages/AcceptInvite";
 import NotFound from "./pages/NotFound";
+import MockupGenerator from "./pages/MockupGenerator";
+import MarketingScreenshots from "./pages/MarketingScreenshots";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +24,8 @@ const App = () => (
           <Route path="/waitlist" element={<ReuneWaitlist />} />
           <Route path="/app" element={<Index />} />
           <Route path="/accept-invite" element={<AcceptInvite />} />
+          <Route path="/mockups" element={<MockupGenerator />} />
+          <Route path="/marketing-screenshots" element={<MarketingScreenshots />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

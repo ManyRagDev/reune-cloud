@@ -65,9 +65,9 @@ export const Testimonials = () => {
         </div>
 
         <div className="text-center text-muted-foreground">
-          <p className="text-lg">
+          {/*<p className="text-lg">
             Mais de <span className="font-semibold text-foreground">1.000 eventos</span> organizados com sucesso
-          </p>
+          </p>*/}
         </div>
       </div>
     </section>

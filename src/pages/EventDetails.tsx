@@ -8,28 +8,40 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus, Trash2, Edit2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEvent } from "@/hooks/useEvent";
 import { useAuth } from "@/hooks/useAuth";
-import { InviteGuestDialog } from "@/components/InviteGuestDialog";
+import { OrganizerInviteDialog } from "@/components/events/OrganizerInviteDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { rpc } from "@/api/rpc";
 // Force TypeScript to reload types
 
 interface Attendee {
-  id: string;
+  id: number;
   name: string;
-  email: string;
-  status: "confirmed" | "pending" | "declined";
+  email?: string;
+  status: "pendente" | "confirmado" | "recusado";
 }
 
 interface Supply {
-  id: string;
+  id: number;
   name: string;
-  assignedTo: string[];
+  quantidade: number;
+  unidade: string;
+  categoria: string;
+  prioridade: string;
+  assignments: ItemAssignment[];
+}
+
+interface ItemAssignment {
+  id: string;
+  participant_id: number;
+  participant_name: string;
+  quantidade_atribuida: number;
+  confirmado: boolean;
 }
 
 interface EventDetailsProps {
@@ -50,8 +62,20 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
-  const [newGuest, setNewGuest] = useState("");
   const [newSupply, setNewSupply] = useState("");
+  const [newSupplyQuantity, setNewSupplyQuantity] = useState(1);
+  const [newSupplyUnit, setNewSupplyUnit] = useState("un");
+  const [friends, setFriends] = useState<{ friend_id: string }[]>([]);
+  const [currentParticipantId, setCurrentParticipantId] = useState<number | null>(null);
+  const [isInvitedGuest, setIsInvitedGuest] = useState(false);
+  const [isConfirmedGuest, setIsConfirmedGuest] = useState(false);
+  const [editingSupplyId, setEditingSupplyId] = useState<number | null>(null);
+  const [editingSupplyData, setEditingSupplyData] = useState<{ name: string; quantidade: number; unidade: string }>({ name: '', quantidade: 1, unidade: 'un' });
+  const [organizerInfo, setOrganizerInfo] = useState<{ username: string | null; email: string | null }>({ 
+    username: null, 
+    email: null 
+  });
+  const [coOrganizersInfo, setCoOrganizersInfo] = useState<Record<string, { username: string | null; email: string | null }>>({});
 
   // Estados para confirmação flexível
   const [confirmation, setConfirmation] = useState<EventConfirmation>({
@@ -71,38 +95,155 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [showLocationPopover, setShowLocationPopover] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Carregar participantes e itens do banco de dados
+  // Carregar amigos
+  useEffect(() => {
+    if (!user) return;
+
+    const loadFriends = async () => {
+      try {
+        const { data, error } = await supabase.rpc("get_friends", { _search: null });
+        if (error) throw error;
+        if (data) {
+          setFriends(data.map((f: any) => ({ friend_id: f.friend_id })));
+        }
+      } catch (err) {
+        console.error("Erro ao carregar amigos:", err);
+      }
+    };
+
+    loadFriends();
+  }, [user]);
+
+  // Verificar se usuário é convidado confirmado
+  useEffect(() => {
+    if (!event || !user) return;
+
+    const checkInvitationStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('event_invitations')
+          .select('status')
+          .eq('event_id', Number(eventId))
+          .eq('participant_email', user.email)
+          .maybeSingle();
+
+        if (!error && data) {
+          if (data.status === 'accepted') {
+            setIsInvitedGuest(true);
+            setIsConfirmedGuest(true);
+          } else if (data.status === 'pending') {
+            setIsInvitedGuest(true);
+            setIsConfirmedGuest(false);
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao verificar status de convite:', err);
+      }
+    };
+
+    checkInvitationStatus();
+  }, [event, user, eventId]);
+
+  // Buscar informações do organizador
   useEffect(() => {
     if (!event) return;
+
+    const fetchOrganizerInfo = async () => {
+      try {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', event.user_id)
+          .maybeSingle();
+
+        // Se o usuário logado é o organizador, usar seu próprio email
+        const organizerEmail = user?.id === event.user_id ? user.email : null;
+
+        setOrganizerInfo({
+          username: profileData?.username || null,
+          email: organizerEmail || null,
+        });
+      } catch (err) {
+        console.error('Erro ao buscar informações do organizador:', err);
+      }
+    };
+
+    fetchOrganizerInfo();
+  }, [event, user]);
+
+  // Buscar informações dos co-organizadores
+  useEffect(() => {
+    if (!organizers.length) return;
+
+    const fetchCoOrganizersInfo = async () => {
+      try {
+        const userIds = organizers.map(o => o.user_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('id', userIds);
+
+        if (profilesData) {
+          const infoMap: Record<string, { username: string | null; email: string | null }> = {};
+          profilesData.forEach((profile: any) => {
+            infoMap[profile.id] = {
+              username: profile.username || null,
+              email: null,
+            };
+          });
+          setCoOrganizersInfo(infoMap);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar informações dos co-organizadores:', err);
+      }
+    };
+
+    fetchCoOrganizersInfo();
+  }, [organizers]);
+
+  // Carregar participantes e itens do banco de dados
+  useEffect(() => {
+    if (!event || !user) return;
 
     const loadEventData = async () => {
       try {
         const eventIdNum = Number(eventId);
 
-        // Carregar participantes
-        const { data: participantsData, error: participantsError } = await supabase
-          .from("event_participants")
-          .select("*")
+        // Carregar participantes a partir de event_invitations
+        const { data: invitationsData, error: invitationsError } = await supabase
+          .from("event_invitations")
+          .select("id, participant_email, participant_name, status")
           .eq("event_id", eventIdNum);
 
-        if (participantsError) throw participantsError;
+        if (invitationsError) throw invitationsError;
 
-        if (participantsData && participantsData.length > 0) {
-          const mappedParticipants: Attendee[] = participantsData.map((p) => ({
-            id: p.id.toString(),
-            name: p.nome_participante,
-            email: p.contato || "",
-            status:
-              p.status_convite === "confirmado"
-                ? "confirmed"
-                : p.status_convite === "recusado"
-                  ? "declined"
-                  : "pending",
+        if (invitationsData) {
+          const mappedAttendees: Attendee[] = invitationsData.map((inv: any) => ({
+            id: inv.id,
+            name: inv.participant_name,
+            email: inv.participant_email,
+            status: inv.status === 'accepted' ? 'confirmado' : inv.status === 'declined' ? 'recusado' : 'pendente',
           }));
-          setAttendees(mappedParticipants);
+          setAttendees(mappedAttendees);
+          
+          // Encontrar o ID da invitation do usuário atual
+          const myInvitation = invitationsData.find((inv: any) => inv.participant_email === user.email);
+          if (myInvitation) {
+            // Buscar o participant_id na tabela event_participants baseado no email
+            const { data: participantData } = await supabase
+              .from("event_participants")
+              .select("id")
+              .eq("event_id", eventIdNum)
+              .eq("contato", user.email)
+              .maybeSingle();
+            
+            if (participantData) {
+              setCurrentParticipantId(participantData.id);
+            }
+          }
         }
 
-        // Carregar itens
+        // Carregar itens com suas atribuições
         const { data: itemsData, error: itemsError } = await supabase
           .from("event_items")
           .select("*")
@@ -110,12 +251,42 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
         if (itemsError) throw itemsError;
 
-        if (itemsData && itemsData.length > 0) {
-          const mappedSupplies: Supply[] = itemsData.map((item) => ({
-            id: item.id.toString(),
-            name: `${item.nome_item} (${item.quantidade} ${item.unidade})`,
-            assignedTo: [],
-          }));
+        // Carregar atribuições
+        const { data: assignmentsData, error: assignmentsError } = await supabase
+          .from("item_assignments")
+          .select(`
+            id,
+            item_id,
+            participant_id,
+            quantidade_atribuida,
+            confirmado
+          `)
+          .eq("event_id", eventIdNum);
+
+        if (assignmentsError) throw assignmentsError;
+
+        if (itemsData) {
+          const mappedSupplies: Supply[] = itemsData.map((item: any) => {
+            const itemAssignments = (assignmentsData || [])
+              .filter((a: any) => a.item_id === item.id)
+              .map((a: any) => ({
+                id: a.id,
+                participant_id: a.participant_id,
+                participant_name: "Participante",
+                quantidade_atribuida: a.quantidade_atribuida,
+                confirmado: a.confirmado,
+              }));
+
+            return {
+              id: item.id,
+              name: item.nome_item,
+              quantidade: item.quantidade,
+              unidade: item.unidade,
+              categoria: item.categoria,
+              prioridade: item.prioridade,
+              assignments: itemAssignments,
+            };
+          });
           setSupplies(mappedSupplies);
         }
       } catch (err) {
@@ -124,7 +295,64 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     };
 
     loadEventData();
-  }, [event, eventId]);
+
+    // Configurar realtime
+    const eventIdNum = Number(eventId);
+    
+    const invitationsChannel = supabase
+      .channel(`invitations_${eventIdNum}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_invitations',
+          filter: `event_id=eq.${eventIdNum}`
+        },
+        () => {
+          loadEventData();
+        }
+      )
+      .subscribe();
+
+    const itemsChannel = supabase
+      .channel(`items_${eventIdNum}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_items',
+          filter: `event_id=eq.${eventIdNum}`
+        },
+        () => {
+          loadEventData();
+        }
+      )
+      .subscribe();
+
+    const assignmentsChannel = supabase
+      .channel(`assignments_${eventIdNum}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'item_assignments',
+          filter: `event_id=eq.${eventIdNum}`
+        },
+        () => {
+          loadEventData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(invitationsChannel);
+      supabase.removeChannel(itemsChannel);
+      supabase.removeChannel(assignmentsChannel);
+    };
+  }, [event, eventId, user]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -272,9 +500,15 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     }
   };
 
-  const handleInvite = async (email: string, name: string, shouldBeOrganizer: boolean) => {
+  const handleInvite = async (
+    userId: string,
+    email: string,
+    name: string,
+    shouldBeOrganizer: boolean
+  ) => {
     if (!event) return { error: "Evento não encontrado" };
     if (!session) return { error: "Autenticação necessária" };
+    
     try {
       const { data, error } = await supabase.rpc("process_invitation" as any, {
         _event_id: Number(event.id),
@@ -282,13 +516,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         _invitee_name: name,
         _is_organizer: shouldBeOrganizer,
       });
+      
       if (error) throw error;
+      
       const result = data as {
         user_exists?: boolean;
         message?: string;
         invitation_token?: string;
+        invitation_id?: string;
         event_data?: { title: string; date: string; time: string };
       };
+      
+      // Se usuário não existe, enviar email
       if (!result?.user_exists && result?.invitation_token) {
         const { error: emailError } = await supabase.functions.invoke("send-invitation-email", {
           body: {
@@ -301,11 +540,28 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
             invitation_token: result.invitation_token,
           },
         });
+        
         if (emailError) {
           console.error("Erro ao enviar email:", emailError);
-          return { error: "Convite registrado, mas houve erro ao enviar o email" };
+          toast({
+            title: "Aviso",
+            description: "Convite registrado, mas houve erro ao enviar o email",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Convite enviado por email",
+            description: `Um email foi enviado para ${email}`,
+          });
         }
+      } else if (result?.user_exists) {
+        // Usuário existe - notificação já foi criada pelo RPC
+        toast({
+          title: "Convite enviado!",
+          description: `${name} recebeu uma notificação sobre o convite.`,
+        });
       }
+      
       return { error: null };
     } catch (err: any) {
       console.error("Erro ao processar convite:", err);
@@ -313,50 +569,172 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     }
   };
 
-  const addGuest = () => {
-    if (newGuest.trim()) {
-      const newAttendee: Attendee = {
-        id: Date.now().toString(),
-        name: newGuest,
-        email: `${newGuest.toLowerCase().replace(" ", ".")}@email.com`,
-        status: "pending",
+
+  const addSupply = async () => {
+    if (!newSupply.trim()) return;
+    
+    try {
+      // Adicionar ao estado local imediatamente
+      const newItem = {
+        id: Date.now(),
+        name: newSupply,
+        quantidade: newSupplyQuantity,
+        unidade: newSupplyUnit,
+        categoria: 'geral',
+        prioridade: 'B',
+        assignments: [],
       };
-      setAttendees([...attendees, newAttendee]);
-      setNewGuest("");
+      
+      setSupplies([...supplies, newItem]);
+      setNewSupply("");
+      setNewSupplyQuantity(1);
+      setNewSupplyUnit("un");
+      
+      // Se for convidado confirmado ou organizador, salvar diretamente no banco
+      if ((isConfirmedGuest || isOrganizer) && event) {
+        const { error } = await supabase
+          .from('event_items')
+          .insert({
+            event_id: Number(eventId),
+            nome_item: newSupply.trim(),
+            quantidade: newSupplyQuantity,
+            unidade: newSupplyUnit,
+            categoria: 'geral',
+            prioridade: 'B',
+          });
+
+        if (error) {
+          throw error;
+        }
+
+        toast({
+          title: "Item adicionado",
+          description: "O item foi adicionado à lista automaticamente.",
+        });
+
+        // Refetch para garantir que os IDs e assignments estão corretos
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('event_items')
+          .select('*')
+          .eq('event_id', Number(eventId))
+          .order('updated_at', { ascending: false });
+
+        if (!itemsError && itemsData) {
+          const { data: assignmentsData } = await supabase
+            .from('item_assignments')
+            .select('*, event_participants(nome_participante)')
+            .eq('event_id', Number(eventId));
+
+          if (assignmentsData) {
+            const suppliesWithAssignments = itemsData.map((item) => ({
+              id: item.id,
+              name: item.nome_item,
+              quantidade: item.quantidade,
+              unidade: item.unidade,
+              categoria: item.categoria,
+              prioridade: item.prioridade,
+              assignments: assignmentsData
+                .filter((a) => a.item_id === item.id)
+                .map((a) => ({
+                  id: a.id,
+                  participant_id: a.participant_id,
+                  participant_name: (a.event_participants as any)?.nome_participante || 'Participante',
+                  quantidade_atribuida: a.quantidade_atribuida,
+                  confirmado: a.confirmado,
+                })),
+            }));
+            
+            setSupplies(suppliesWithAssignments);
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('Erro ao adicionar item:', err);
       toast({
-        title: "Convite enviado!",
-        description: `${newGuest} foi convidado(a) para o evento.`,
+        title: "Erro",
+        description: err.message || "Não foi possível adicionar o item.",
+        variant: "destructive",
       });
     }
   };
 
-  const addSupply = () => {
-    if (newSupply.trim()) {
-      const newItem: Supply = {
-        id: Date.now().toString(),
-        name: newSupply,
-        assignedTo: [],
-      };
-      setSupplies([...supplies, newItem]);
-      setNewSupply("");
+  const toggleSupplyAssignment = async (supplyId: number) => {
+    if (!currentParticipantId) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar confirmado como participante para se responsabilizar por itens.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const supply = supplies.find(s => s.id === supplyId);
+      if (!supply) return;
+
+      const myAssignment = supply.assignments.find(a => a.participant_id === currentParticipantId);
+
+      if (myAssignment) {
+        // Remover atribuição
+        const { error } = await supabase
+          .from('item_assignments')
+          .delete()
+          .eq('id', myAssignment.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Responsabilidade removida",
+          description: "Você não é mais responsável por este item.",
+        });
+      } else {
+        // Adicionar atribuição
+        const { error } = await supabase
+          .from('item_assignments')
+          .insert({
+            event_id: Number(eventId),
+            item_id: supplyId,
+            participant_id: currentParticipantId,
+            quantidade_atribuida: supply.quantidade,
+            confirmado: false,
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: "Responsabilidade assumida",
+          description: "Você agora é responsável por este item!",
+        });
+      }
+    } catch (err: any) {
+      console.error('Erro ao alterar atribuição:', err);
+      toast({
+        title: "Erro",
+        description: err.message || "Não foi possível alterar a atribuição.",
+        variant: "destructive",
+      });
     }
   };
 
-  const toggleSupplyAssignment = (supplyId: string, userName: string) => {
-    setSupplies(
-      supplies.map((supply) => {
-        if (supply.id === supplyId) {
-          const isAssigned = supply.assignedTo.includes(userName);
-          return {
-            ...supply,
-            assignedTo: isAssigned
-              ? supply.assignedTo.filter((name) => name !== userName)
-              : [...supply.assignedTo, userName],
-          };
-        }
-        return supply;
-      }),
-    );
+  const getSupplyStatus = (supply: Supply) => {
+    if (!supply.assignments.length) return 'available';
+    const myAssignment = supply.assignments.find(a => a.participant_id === currentParticipantId);
+    if (myAssignment) return 'mine';
+    return 'taken';
+  };
+
+  const getSupplyStatusText = (supply: Supply) => {
+    const status = getSupplyStatus(supply);
+    if (status === 'available') return 'Disponível';
+    if (status === 'mine') return 'Você se responsabilizou';
+    return `Responsável: ${supply.assignments.map(a => a.participant_name).join(', ')}`;
+  };
+
+  const getSupplyStatusVariant = (supply: Supply): "default" | "secondary" | "outline" => {
+    const status = getSupplyStatus(supply);
+    if (status === 'available') return 'outline';
+    if (status === 'mine') return 'default';
+    return 'secondary';
   };
 
   const handleScheduleDelivery = () => {
@@ -371,109 +749,78 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     if (!event) return;
     setSaving(true);
     try {
-      const eventoIdStr = String(Number(eventId));
-      const eventoIdNum = Number(eventId);
-      const isAIEvent = Boolean((event as any)?.created_by_ai);
-
-      // Se evento manual, tentar fallback com upsert direto nas tabelas
-      if (!isAIEvent) {
-        // Participantes (fallback manual)
-        const participantsRows = attendees.map((a) => ({
-          id: isNaN(Number(a.id)) ? undefined : Number(a.id),
-          event_id: eventoIdNum,
-          nome_participante: a.name,
-          contato: a.email || null,
-          status_convite: a.status === "confirmed" ? "confirmado" : a.status === "declined" ? "recusado" : "pendente",
-        }));
-        const { error: partErr } = await supabase
-          .from("event_participants")
-          .upsert(participantsRows, { onConflict: "id" });
-        if (partErr) throw partErr;
-
-        // Itens (fallback manual)
-        const itemsRows = supplies.map((s) => {
-          let nome_item = s.name;
-          let quantidade = 1;
-          let unidade = "un";
-
-          const match = s.name.match(/^(.*)\s*\(([^)]+)\)\s*$/);
-          if (match) {
-            nome_item = match[1].trim();
-            const parts = match[2].trim().split(/\s+/);
-            const q = Number(parts[0]);
-            if (!isNaN(q)) quantidade = q;
-            unidade = parts.slice(1).join(" ") || "un";
-          }
-
-          return {
-            id: isNaN(Number(s.id)) ? undefined : Number(s.id),
-            event_id: eventoIdNum,
-            nome_item,
-            quantidade,
-            unidade,
-            valor_estimado: 0,
-            categoria: "",
-            prioridade: "C",
-          };
-        });
-        const { error: itemsErr } = await supabase.from("event_items").upsert(itemsRows, { onConflict: "id" });
-        if (itemsErr) throw itemsErr;
-
-        toast({
-          title: "Alterações salvas (modo manual)!",
-          description: "",
-        });
-        return;
-      }
-
-      // Montar payload de participantes (evento criado pela IA)
-      const participantsPayload = attendees.map((a) => ({
-        id: a.id,
-        evento_id: eventoIdStr,
-        nome_participante: a.name,
-        contato: a.email || null,
-        status_convite: a.status === "confirmed" ? "confirmado" : a.status === "declined" ? "recusado" : "pendente",
-        preferencias: null,
-        valor_responsavel: null,
-      })) as any;
-
-      await rpc.participants_bulk_upsert(eventoIdStr, participantsPayload);
-
-      // Montar payload de itens
-      const itemsPayload = supplies.map((s) => {
-        let nome_item = s.name;
-        let quantidade = 1;
-        let unidade = "un";
-
-        const match = s.name.match(/^(.*)\s*\(([^)]+)\)\s*$/);
-        if (match) {
-          nome_item = match[1].trim();
-          const parts = match[2].trim().split(/\s+/);
-          const q = Number(parts[0]);
-          if (!isNaN(q)) quantidade = q;
-          unidade = parts.slice(1).join(" ") || "un";
-        }
-
-        return {
-          id: s.id,
-          evento_id: eventoIdStr,
-          nome_item,
-          quantidade,
-          unidade,
-          valor_estimado: 0,
-          categoria: "",
-          prioridade: "C" as const,
-        };
-      }) as any;
-
-      await rpc.items_replace_for_event(eventoIdStr, itemsPayload);
-
-      toast({ title: "Alterações salvas!", description: "" });
+      // Como os itens já são salvos automaticamente ao adicionar/editar,
+      // apenas confirmamos que tudo está salvo
+      await new Promise(resolve => setTimeout(resolve, 500)); // Pequeno delay para feedback visual
+      
+      toast({ 
+        title: "Tudo salvo!", 
+        description: "Todas as alterações já foram salvas automaticamente." 
+      });
     } catch (err: any) {
       console.error("Erro ao salvar listas:", err);
-      toast({ title: "Falha ao salvar", description: err.message || "Não foi possível salvar as alterações." });
+      toast({ 
+        title: "Falha ao salvar", 
+        description: err.message || "Não foi possível salvar as alterações." 
+      });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Deletar item
+  const deleteSupply = async (supplyId: number) => {
+    try {
+      const { error } = await supabase
+        .from('event_items')
+        .delete()
+        .eq('id', supplyId);
+
+      if (error) throw error;
+
+      setSupplies(supplies.filter(s => s.id !== supplyId));
+      
+      toast({
+        title: "Item removido",
+        description: "O item foi removido da lista.",
+      });
+    } catch (err: any) {
+      console.error('Erro ao deletar item:', err);
+      toast({
+        title: "Erro",
+        description: err.message || "Não foi possível remover o item.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Editar item
+  const updateSupply = async (supplyId: number, updates: { nome_item?: string; quantidade?: number; unidade?: string }) => {
+    try {
+      const { error } = await supabase
+        .from('event_items')
+        .update(updates)
+        .eq('id', supplyId);
+
+      if (error) throw error;
+
+      setSupplies(supplies.map(s => 
+        s.id === supplyId 
+          ? { ...s, name: updates.nome_item || s.name, quantidade: updates.quantidade || s.quantidade, unidade: updates.unidade || s.unidade }
+          : s
+      ));
+      
+      toast({
+        title: "Item atualizado",
+        description: "As alterações foram salvas.",
+      });
+    } catch (err: any) {
+      console.error('Erro ao atualizar item:', err);
+      toast({
+        title: "Erro",
+        description: err.message || "Não foi possível atualizar o item.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -716,156 +1063,411 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   <UserPlus className="w-5 h-5 mr-2" />
                   Organizadores ({1 + organizers.length})
                 </CardTitle>
-                <InviteGuestDialog onInvite={handleInvite} />
+                <OrganizerInviteDialog
+                  onInvite={handleInvite}
+                  excludeUserIds={[event.user_id, ...organizers.map((o) => o.user_id)]}
+                  friends={friends}
+                  isOrganizer={true}
+                  triggerLabel="Adicionar Organizador"
+                />
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {/* Criador do evento */}
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">Criador do evento</p>
-                    <p className="text-sm text-muted-foreground">ID: {event.user_id}</p>
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {organizerInfo.username || organizerInfo.email || 'Criador do evento'}
+                      {user?.id === event.user_id && (
+                        <span className="text-muted-foreground ml-1">(você)</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Criador do evento</p>
                   </div>
                   <Badge variant="default">Organizador Principal</Badge>
                 </div>
 
                 {/* Co-organizadores */}
-                {organizers.map((organizer) => (
-                  <div key={organizer.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Co-organizador</p>
-                      <p className="text-sm text-muted-foreground">ID: {organizer.user_id}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Adicionado em {new Date(organizer.added_at).toLocaleDateString("pt-BR")}
-                      </p>
+                {organizers.map((organizer) => {
+                  const info = coOrganizersInfo[organizer.user_id];
+                  const displayName = info?.username || info?.email || 'Co-organizador';
+                  const isCurrentUser = user?.id === organizer.user_id;
+
+                  return (
+                    <div key={organizer.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {displayName}
+                          {isCurrentUser && (
+                            <span className="text-muted-foreground ml-1">(você)</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Adicionado em {new Date(organizer.added_at).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => removeOrganizer(organizer.id)}>
+                        <UserMinus className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => removeOrganizer(organizer.id)}>
-                      <UserMinus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Attendees */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Convidados ({attendees.length})
-                </CardTitle>
-              </div>
-              {!isOrganizer && <InviteGuestDialog onInvite={(email, name) => handleInvite(email, name, false)} />}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {attendees.map((attendee) => (
-                <div key={attendee.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{attendee.name}</p>
-                    <p className="text-sm text-muted-foreground">{attendee.email}</p>
-                  </div>
-                  <Badge
-                    variant={
-                      attendee.status === "confirmed"
-                        ? "default"
-                        : attendee.status === "pending"
-                          ? "secondary"
-                          : "destructive"
-                    }
-                  >
-                    {attendee.status === "confirmed"
-                      ? "Confirmado"
-                      : attendee.status === "pending"
-                        ? "Pendente"
-                        : "Recusado"}
-                  </Badge>
+        {/* Attendees - Visível para organizadores e convidados confirmados */}
+        {(isOrganizer || isInvitedGuest) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Users className="w-5 h-5 mr-2" />
+                    Participantes ({attendees.length})
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Lista de pessoas convidadas para o evento
+                  </CardDescription>
                 </div>
-              ))}
-
-              {isOrganizer && (
-                <div className="flex gap-2 mt-4">
-                  <Input
-                    placeholder="Nome do convidado..."
-                    value={newGuest}
-                    onChange={(e) => setNewGuest(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && addGuest()}
+                {isOrganizer && (
+                  <OrganizerInviteDialog
+                    onInvite={handleInvite}
+                    excludeUserIds={[]}
+                    friends={friends}
+                    isOrganizer={false}
+                    triggerLabel="Convidar Participante"
                   />
-                  <Button onClick={addGuest}>
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {/* Organizador - sempre aparece primeiro */}
+                {event && (
+                  <div className="flex items-center justify-between p-3 bg-primary/5 border-2 border-primary/20 rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">
+                        {organizerInfo.username || organizerInfo.email || 'Organizador'}
+                        {user?.id === event.user_id && (
+                          <span className="text-muted-foreground ml-1">(você)</span>
+                        )}
+                      </p>
+                    </div>
+                    <Badge variant="default" className="shrink-0 ml-2">
+                      Organizador
+                    </Badge>
+                  </div>
+                )}
 
-        {/* Supplies List */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center">
-                <Package className="w-5 h-5 mr-2" />
-                Lista de Insumos
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {supplies.map((supply) => (
-                <div key={supply.id} className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{supply.name}</h4>
-                      {supply.assignedTo.length > 0 && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Responsáveis: {supply.assignedTo.join(", ")}
+                {/* Convidados */}
+                {attendees.map((attendee) => {
+                  const isCurrentUser = user?.email === attendee.email;
+                  const displayName = attendee.name || attendee.email || 'Participante';
+                  
+                  return (
+                    <div key={attendee.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {displayName}
+                          {isCurrentUser && (
+                            <span className="text-muted-foreground ml-1">(você)</span>
+                          )}
                         </p>
+                        {isOrganizer && attendee.email && attendee.name && (
+                          <p className="text-sm text-muted-foreground truncate">{attendee.email}</p>
+                        )}
+                      </div>
+                      <Badge
+                        variant={
+                          attendee.status === "confirmado"
+                            ? "default"
+                            : attendee.status === "pendente"
+                              ? "secondary"
+                              : "destructive"
+                        }
+                        className="shrink-0 ml-2"
+                      >
+                        {attendee.status === "confirmado"
+                          ? "Confirmado"
+                          : attendee.status === "pendente"
+                            ? "Pendente"
+                            : "Recusado"}
+                      </Badge>
+                    </div>
+                  );
+                })}
+                {attendees.length === 0 && (
+                  <p className="text-center text-muted-foreground py-6 mt-3">
+                    Nenhum participante convidado ainda
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Supplies List - Visível para organizadores e convidados confirmados */}
+        {(isOrganizer || isInvitedGuest) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Package className="w-5 h-5 mr-2" />
+                    Lista de Insumos ({supplies.length})
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {isInvitedGuest && !isOrganizer
+                      ? "Escolha os itens que você pode levar"
+                      : "Gerencie os itens necessários para o evento"}
+                  </CardDescription>
+                </div>
+                {/* Botão destacado para adicionar itens */}
+                {(isOrganizer || isConfirmedGuest) && (
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={() => {
+                      const input = document.querySelector('[placeholder="Adicionar item..."]') as HTMLInputElement;
+                      if (input) {
+                        input.focus();
+                        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }}
+                    className="gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Adicionar Item
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {supplies.map((supply) => {
+                  const isEditing = editingSupplyId === supply.id;
+                  
+                  return (
+                    <div
+                      key={supply.id}
+                      className={`p-4 border-2 rounded-lg transition-all ${
+                        getSupplyStatus(supply) === 'mine'
+                          ? 'border-primary bg-primary/5'
+                          : getSupplyStatus(supply) === 'taken'
+                            ? 'border-muted bg-muted/30'
+                            : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {isEditing ? (
+                        // Modo de edição
+                        <div className="space-y-3">
+                          <Input
+                            value={editingSupplyData.name}
+                            onChange={(e) => setEditingSupplyData({ ...editingSupplyData, name: e.target.value })}
+                            placeholder="Nome do item"
+                            className="font-medium"
+                          />
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              min="0.1"
+                              step="0.1"
+                              value={editingSupplyData.quantidade}
+                              onChange={(e) => setEditingSupplyData({ ...editingSupplyData, quantidade: parseFloat(e.target.value) || 0 })}
+                              placeholder="Quantidade"
+                              className="flex-1"
+                            />
+                            <Select
+                              value={editingSupplyData.unidade}
+                              onValueChange={(value) => setEditingSupplyData({ ...editingSupplyData, unidade: value })}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-background border shadow-lg z-50">
+                                <SelectItem value="un">Unidade(s)</SelectItem>
+                                <SelectItem value="kg">Quilograma(s)</SelectItem>
+                                <SelectItem value="g">Grama(s)</SelectItem>
+                                <SelectItem value="l">Litro(s)</SelectItem>
+                                <SelectItem value="ml">Mililitro(s)</SelectItem>
+                                <SelectItem value="pacote">Pacote(s)</SelectItem>
+                                <SelectItem value="caixa">Caixa(s)</SelectItem>
+                                <SelectItem value="dúzia">Dúzia(s)</SelectItem>
+                                <SelectItem value="fatia">Fatia(s)</SelectItem>
+                                <SelectItem value="porção">Porção(ões)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingSupplyId(null)}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                updateSupply(supply.id, {
+                                  nome_item: editingSupplyData.name,
+                                  quantidade: editingSupplyData.quantidade,
+                                  unidade: editingSupplyData.unidade,
+                                });
+                                setEditingSupplyId(null);
+                              }}
+                            >
+                              <Save className="w-4 h-4 mr-1" />
+                              Salvar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        // Modo de visualização
+                        <>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-medium">{supply.name}</h4>
+                                <Badge variant={getSupplyStatusVariant(supply)} className="text-xs">
+                                  {getSupplyStatusText(supply)}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {supply.quantidade} {supply.unidade}
+                              </p>
+                            </div>
+                            {(isOrganizer || isConfirmedGuest) && (
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingSupplyId(supply.id);
+                                    setEditingSupplyData({
+                                      name: supply.name,
+                                      quantidade: supply.quantidade,
+                                      unidade: supply.unidade,
+                                    });
+                                  }}
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (confirm('Tem certeza que deseja remover este item?')) {
+                                      deleteSupply(supply.id);
+                                    }
+                                  }}
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+
+                          {(isConfirmedGuest || isOrganizer) && currentParticipantId && (
+                            <div className="flex items-center space-x-2 pt-2 border-t">
+                              <Checkbox
+                                id={`supply-${supply.id}`}
+                                checked={getSupplyStatus(supply) === 'mine'}
+                                onCheckedChange={() => toggleSupplyAssignment(supply.id)}
+                                disabled={getSupplyStatus(supply) === 'taken'}
+                              />
+                              <label
+                                htmlFor={`supply-${supply.id}`}
+                                className={`text-sm font-medium leading-none ${
+                                  getSupplyStatus(supply) === 'taken'
+                                    ? 'cursor-not-allowed opacity-70'
+                                    : 'cursor-pointer'
+                                }`}
+                              >
+                                {getSupplyStatus(supply) === 'mine'
+                                  ? 'Desistir deste item'
+                                  : getSupplyStatus(supply) === 'taken'
+                                    ? 'Item já foi escolhido'
+                                    : 'Me responsabilizar por este item'}
+                              </label>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleScheduleDelivery} className="ml-4">
-                      Agendar Entrega
-                    </Button>
-                  </div>
+                  );
+                })}
 
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`supply-${supply.id}`}
-                      checked={supply.assignedTo.includes("Você")}
-                      onCheckedChange={() => toggleSupplyAssignment(supply.id, "Você")}
+                {supplies.length === 0 && (
+                  <div className="text-center py-8">
+                    <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                    <p className="text-muted-foreground mb-4">
+                      Nenhum item adicionado ainda
+                    </p>
+                    {(isOrganizer || isConfirmedGuest) && (
+                      <p className="text-sm text-muted-foreground">
+                        Use o campo abaixo para adicionar o primeiro item
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Campo de adicionar item para organizadores e convidados confirmados */}
+                {(isOrganizer || isConfirmedGuest) && (
+                  <div className="space-y-3 mt-4 p-4 bg-muted/50 rounded-lg border-2 border-dashed border-primary/30">
+                    <Input
+                      placeholder="Digite o nome do item..."
+                      value={newSupply}
+                      onChange={(e) => setNewSupply(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && addSupply()}
+                      className="bg-background"
                     />
-                    <label
-                      htmlFor={`supply-${supply.id}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Me responsabilizar por este item
-                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        value={newSupplyQuantity}
+                        onChange={(e) => setNewSupplyQuantity(parseFloat(e.target.value) || 1)}
+                        placeholder="Quantidade"
+                        className="bg-background flex-1"
+                      />
+                      <Select
+                        value={newSupplyUnit}
+                        onValueChange={setNewSupplyUnit}
+                      >
+                        <SelectTrigger className="w-[140px] bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg z-50">
+                          <SelectItem value="un">Unidade(s)</SelectItem>
+                          <SelectItem value="kg">Quilograma(s)</SelectItem>
+                          <SelectItem value="g">Grama(s)</SelectItem>
+                          <SelectItem value="l">Litro(s)</SelectItem>
+                          <SelectItem value="ml">Mililitro(s)</SelectItem>
+                          <SelectItem value="pacote">Pacote(s)</SelectItem>
+                          <SelectItem value="caixa">Caixa(s)</SelectItem>
+                          <SelectItem value="dúzia">Dúzia(s)</SelectItem>
+                          <SelectItem value="fatia">Fatia(s)</SelectItem>
+                          <SelectItem value="porção">Porção(ões)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={addSupply} disabled={!newSupply.trim()} className="shrink-0">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-
-              {isOrganizer && (
-                <div className="flex gap-2 mt-4">
-                  <Input
-                    placeholder="Adicionar item..."
-                    value={newSupply}
-                    onChange={(e) => setNewSupply(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && addSupply()}
-                  />
-                  <Button onClick={addSupply}>
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Botão de Salvar (organizador) */}
         {isOrganizer && (

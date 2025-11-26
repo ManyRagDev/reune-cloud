@@ -82,6 +82,20 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
       return;
     }
 
+    // Validar se a data não é no passado
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      toast({
+        title: "Data inválida",
+        description: "Não é possível criar eventos em datas passadas. Escolha uma data futura.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     
     try {
@@ -123,26 +137,31 @@ const CreateEvent = ({ onBack, onCreate }: CreateEventProps) => {
             );
 
             if (inviteError) {
-              console.error("Erro ao enviar convite:", inviteError);
+              console.error("Erro ao enviar convite para", invitee.email, ":", inviteError);
               continue;
             }
 
-            // Se o usuário existe, criar notificação
-            if (inviteData && (inviteData as any).user_exists) {
-              await supabase.from("notifications").insert({
-                user_id: invitee.id,
-                event_id: eventData.id,
-                type: "event_invite",
-                title: `Convite: ${title}`,
-                message: `Você foi convidado(a) para ${title}`,
-                metadata: {
-                  event_id: eventData.id,
+            const result = inviteData as any;
+            
+            // Se usuário não existe, enviar email
+            if (!result?.user_exists && result?.invitation_token) {
+              const { error: emailError } = await supabase.functions.invoke("send-invitation-email", {
+                body: {
+                  invitee_email: invitee.email,
+                  invitee_name: invitee.name,
+                  event_title: title,
                   event_date: date,
                   event_time: time,
-                  invite_status: invitee.status,
+                  is_organizer: false,
+                  invitation_token: result.invitation_token,
                 },
               });
+              
+              if (emailError) {
+                console.error("Erro ao enviar email para", invitee.email, ":", emailError);
+              }
             }
+            // Se usuário existe, a notificação já foi criada pelo RPC process_invitation
           } catch (err) {
             console.error("Erro ao processar convite individual:", err);
           }
