@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Send, RotateCcw } from 'lucide-react';
+import { Send, RotateCcw, Minus, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,8 +9,8 @@ import aiChatIcon from '@/assets/ai-chat-icon.png';
 import { ConversationMessagesRepository } from '@/db/repositories/conversationMessages';
 import { ContextManager } from '@/core/orchestrator/contextManager';
 
-type ChatMessage = { 
-  role: 'user' | 'assistant'; 
+type ChatMessage = {
+  role: 'user' | 'assistant';
   content: string;
   suggestedReplies?: string[]; // Quick replies clicáveis
   items?: Array<{
@@ -44,22 +44,22 @@ export default function ChatWidget() {
   useEffect(() => {
     const loadHistory = async () => {
       if (!open || !user?.id || hasLoadedHistory.current) return;
-      
+
       setIsLoadingHistory(true);
       hasLoadedHistory.current = true;
-      
+
       try {
         const messagesRepo = new ConversationMessagesRepository();
         const savedMessages = await messagesRepo.getByUserId(user.id);
-        
+
         if (savedMessages.length > 0) {
           console.log('[ChatWidget] Histórico carregado:', savedMessages.length, 'mensagens');
-          
+
           const chatMessages: ChatMessage[] = savedMessages.map((m) => ({
             role: m.role as 'user' | 'assistant',
             content: m.content,
           }));
-          
+
           setMessages(chatMessages);
         } else if (!hasGreeted) {
           // Sem histórico, mostrar greeting inicial
@@ -100,25 +100,25 @@ export default function ChatWidget() {
     setIsTyping(true);
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setInput('');
-    
+
     const maxRetries = 3;
     const timeout = 30000; // 30 segundos
-    
+
     try {
       // Salvar mensagem do usuário no banco
       await contextManager.saveMessage(
-        user.id, 
-        'user', 
-        text, 
+        user.id,
+        'user',
+        text,
         eventoId ? Number(eventoId) : undefined
       );
 
       // Buscar API key dos secrets
       const { supabase } = await import('@/integrations/supabase/client');
       const apiKey = import.meta.env.VITE_CHAT_API_SECRET_KEY;
-      
+
       console.log('[ChatWidget] Verificando API key:', apiKey ? 'Presente' : 'Ausente');
-      
+
       if (!apiKey) {
         throw new Error('API key não configurada. Entre em contato com o suporte.');
       }
@@ -127,7 +127,7 @@ export default function ChatWidget() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-      const requestUrl = 'https://studio--studio-3500643630-eaa37.us-central1.hosted.app/api/chat';
+      const requestUrl = '/api/chat';
       const requestBody = {
         message: text,
         userId: user.id,
@@ -178,9 +178,9 @@ export default function ChatWidget() {
         console.log('[ChatWidget] Resposta do endpoint:', data);
 
         // Adaptar resposta do endpoint para o formato esperado
-        const assistantMessage: ChatMessage = { 
-          role: 'assistant', 
-          content: data.message || data.mensagem || 'Desculpe, não consegui processar sua mensagem.',
+        const assistantMessage: ChatMessage = {
+          role: 'assistant',
+          content: data.reply || data.message || data.mensagem || 'Desculpe, não consegui processar sua mensagem.',
           suggestedReplies: data.suggestedReplies || data.suggested_replies,
           items: data.items || data.itens
         };
@@ -188,14 +188,25 @@ export default function ChatWidget() {
         setMessages((prev) => [...prev, assistantMessage]);
 
         // Processar evento criado/atualizado
-        const newEventoId = data.eventoId || data.evento_id;
+        let newEventoId = data.eventoId || data.evento_id;
+
+        // FALLBACK: Se o backend não retornou ID mas identificou intenção de criar evento
+        if (!newEventoId && (data.intent === 'criar_evento' || data.intencao === 'criar_evento')) {
+          console.log('[ChatWidget] Backend não retornou ID. Gerando ID localmente...');
+          newEventoId = crypto.randomUUID();
+        }
+
         if (newEventoId && newEventoId !== eventoId) {
           console.log('[ChatWidget] Novo evento detectado:', newEventoId);
-          
+
           // Se há dados do evento retornados, criar/atualizar no Supabase
-          if (data.evento || data.event) {
-            const eventoData = data.evento || data.event;
-            
+          const eventoData = data.evento || data.event || {
+            title: 'Novo Evento',
+            tipo_evento: data.parameters?.eventType || data.parameters?.tipo_evento,
+            qtd_pessoas: data.parameters?.quantity || data.parameters?.qtd_pessoas,
+          };
+
+          if (eventoData) {
             // Verificar se evento já existe
             const { data: existingEvent } = await supabase
               .from('table_reune')
@@ -226,22 +237,21 @@ export default function ChatWidget() {
 
               if (eventError) {
                 console.error('[ChatWidget] Erro ao criar evento:', eventError);
-                throw new Error('Não foi possível salvar o evento no banco de dados.');
               } else {
                 console.log('[ChatWidget] Evento criado com sucesso:', newEventoId);
               }
             }
           }
-          
+
           setEventoId(newEventoId);
         }
 
         // Processar itens retornados
         if (assistantMessage.items && assistantMessage.items.length > 0 && (newEventoId || eventoId)) {
           console.log('[ChatWidget] Salvando itens no banco:', assistantMessage.items.length);
-          
+
           const eventIdToUse = newEventoId || eventoId;
-          
+
           // Usar função RPC para substituir itens (apenas para eventos criados pela IA)
           const { error: itemsError } = await supabase.rpc('items_replace_for_event', {
             evento_id: String(eventIdToUse),
@@ -258,9 +268,9 @@ export default function ChatWidget() {
 
         // Salvar mensagem do assistente no banco
         await contextManager.saveMessage(
-          user.id, 
-          'assistant', 
-          assistantMessage.content, 
+          user.id,
+          'assistant',
+          assistantMessage.content,
           (newEventoId || eventoId) ? Number(newEventoId || eventoId) : undefined
         );
       } catch (timeoutError) {
@@ -273,15 +283,15 @@ export default function ChatWidget() {
 
     } catch (e) {
       console.error('[ChatWidget] Erro ao enviar mensagem:', e);
-      
+
       setIsTyping(false);
       // Remover mensagem do usuário em caso de erro fatal
       setMessages((prev) => prev.slice(0, -1));
-      
+
       let errorMessage = 'Ocorreu um erro ao processar sua solicitação.';
       if (e instanceof Error) {
         console.error('[ChatWidget] Detalhes do erro:', e.message, e.stack);
-        
+
         if (e.message.toLowerCase().includes('failed to fetch') || e.name === 'NetworkError') {
           errorMessage = 'Não foi possível conectar ao servidor de chat. O serviço pode estar temporariamente indisponível. Verifique sua conexão ou tente novamente em alguns instantes.';
         } else if (e.message.includes('API key')) {
@@ -296,10 +306,10 @@ export default function ChatWidget() {
           errorMessage = e.message || errorMessage;
         }
       }
-      
-      setMessages((prev) => [...prev, { 
-        role: 'assistant', 
-        content: `❌ ${errorMessage}\n\nPor favor, tente novamente ou entre em contato com o suporte se o problema persistir.` 
+
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: `❌ ${errorMessage}\n\nPor favor, tente novamente ou entre em contato com o suporte se o problema persistir.`
       }]);
     } finally {
       setSending(false);
@@ -310,11 +320,11 @@ export default function ChatWidget() {
 
   const handleRestart = async () => {
     if (!user?.id) return;
-    
+
     try {
       // Limpar contexto e histórico no banco
       await contextManager.clearUserContext(user.id);
-      
+
       // Resetar estado local
       setMessages([{
         role: 'assistant',
@@ -324,15 +334,24 @@ export default function ChatWidget() {
       setStagnationCount(0);
       setHasGreeted(true);
       hasLoadedHistory.current = false;
-      
+
       console.log('[ChatWidget] Chat reiniciado com sucesso');
     } catch (error) {
       console.error('[ChatWidget] Erro ao reiniciar chat:', error);
-      setMessages((prev) => [...prev, { 
-        role: 'assistant', 
-        content: 'Ocorreu um erro ao reiniciar o chat. Tente novamente.' 
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: 'Ocorreu um erro ao reiniciar o chat. Tente novamente.'
       }]);
     }
+  };
+
+  const handleMinimize = () => {
+    setOpen(false);
+  };
+
+  const handleClose = async () => {
+    await handleRestart();
+    setOpen(false);
   };
 
   if (!canShow) return null;
@@ -354,20 +373,36 @@ export default function ChatWidget() {
 
       {/* Painel lateral com histórico e input */}
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="flex flex-col h-full w-full sm:max-w-sm">
+        <SheetContent side="right" className="flex flex-col h-full w-full sm:max-w-sm [&>button]:hidden">
           <SheetHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between w-full">
               <SheetTitle>Assistente UNE.AI</SheetTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRestart}
-                disabled={sending || isLoadingHistory}
-                aria-label="Reiniciar conversa"
-                title="Reiniciar conversa"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
+              <SheetDescription className="sr-only">
+                Assistente virtual para ajudar na organização de eventos.
+              </SheetDescription>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleMinimize}
+                  aria-label="Minimizar chat"
+                  title="Minimizar"
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleClose}
+                  disabled={sending || isLoadingHistory}
+                  aria-label="Fechar e limpar histórico"
+                  title="Fechar e limpar"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </SheetHeader>
           <div className="flex-1 mt-4">
@@ -383,7 +418,7 @@ export default function ChatWidget() {
                       }
                     >
                       <div className="whitespace-pre-wrap">{m.content}</div>
-                      
+
                       {/* Renderizar lista de itens se presente */}
                       {m.items && m.items.length > 0 && (
                         <div className="mt-3 space-y-2 text-sm">
@@ -404,7 +439,7 @@ export default function ChatWidget() {
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Renderizar sugestões de resposta rápida */}
                       {m.suggestedReplies && m.suggestedReplies.length > 0 && m.role === 'assistant' && (
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -427,7 +462,7 @@ export default function ChatWidget() {
                     </div>
                   </div>
                 ))}
-                
+
                 {/* Indicador de digitação */}
                 {isTyping && (
                   <div className="text-left">
@@ -440,7 +475,7 @@ export default function ChatWidget() {
                     </div>
                   </div>
                 )}
-                
+
                 <div ref={endRef} />
               </div>
             </ScrollArea>
