@@ -108,11 +108,20 @@ export default function ChatWidget() {
         eventoId ? Number(eventoId) : undefined
       );
 
-      // Chamar endpoint externo
+      // Buscar API key dos secrets
+      const { supabase } = await import('@/integrations/supabase/client');
+      const apiKey = import.meta.env.VITE_CHAT_API_SECRET_KEY;
+      
+      if (!apiKey) {
+        throw new Error('API key não configurada');
+      }
+
+      // Chamar endpoint externo com autenticação
       const response = await fetch('https://studio--studio-3500643630-eaa37.us-central1.hosted.app/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           message: text,
