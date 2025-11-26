@@ -274,6 +274,38 @@ export type Database = {
           },
         ]
       }
+      event_dynamics: {
+        Row: {
+          created_at: string
+          event_id: number
+          id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: number
+          id?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: number
+          id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_dynamics_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_invitations: {
         Row: {
           created_at: string | null
@@ -434,6 +466,123 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_secret_santa: {
+        Row: {
+          created_at: string
+          draw_date: string | null
+          event_id: number
+          has_drawn: boolean | null
+          id: string
+          max_value: number | null
+          min_value: number | null
+          rules_json: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          draw_date?: string | null
+          event_id: number
+          has_drawn?: boolean | null
+          id?: string
+          max_value?: number | null
+          min_value?: number | null
+          rules_json?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          draw_date?: string | null
+          event_id?: number
+          has_drawn?: boolean | null
+          id?: string
+          max_value?: number | null
+          min_value?: number | null
+          rules_json?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_secret_santa_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "table_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_secret_santa_pairs: {
+        Row: {
+          created_at: string
+          giver_id: string
+          id: string
+          receiver_id: string
+          secret_santa_id: string
+        }
+        Insert: {
+          created_at?: string
+          giver_id: string
+          id?: string
+          receiver_id: string
+          secret_santa_id: string
+        }
+        Update: {
+          created_at?: string
+          giver_id?: string
+          id?: string
+          receiver_id?: string
+          secret_santa_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_secret_santa_pairs_secret_santa_id_fkey"
+            columns: ["secret_santa_id"]
+            isOneToOne: false
+            referencedRelation: "event_secret_santa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_secret_santa_participants: {
+        Row: {
+          created_at: string
+          id: string
+          secret_santa_id: string
+          status: string
+          updated_at: string
+          user_id: string
+          wishlist_link: string | null
+          wishlist_text: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          secret_santa_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          wishlist_link?: string | null
+          wishlist_text?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          secret_santa_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          wishlist_link?: string | null
+          wishlist_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_secret_santa_participants_secret_santa_id_fkey"
+            columns: ["secret_santa_id"]
+            isOneToOne: false
+            referencedRelation: "event_secret_santa"
             referencedColumns: ["id"]
           },
         ]

@@ -10,6 +10,8 @@ import AcceptInvite from "./pages/AcceptInvite";
 import NotFound from "./pages/NotFound";
 import MockupGenerator from "./pages/MockupGenerator";
 import MarketingScreenshots from "./pages/MarketingScreenshots";
+import SecretSantaSetup from "./pages/SecretSantaSetup";
+import SecretSantaParticipants from "./pages/SecretSantaParticipants";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,8 @@ const App = () => (
           <Route path="/accept-invite" element={<AcceptInvite />} />
           <Route path="/mockups" element={<MockupGenerator />} />
           <Route path="/marketing-screenshots" element={<MarketingScreenshots />} />
+          <Route path="/event/:eventId/secret-santa/setup" element={<SecretSantaSetup />} />
+          <Route path="/event/:eventId/secret-santa/participants" element={<SecretSantaParticipants />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
