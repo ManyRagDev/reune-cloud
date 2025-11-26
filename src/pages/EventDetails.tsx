@@ -8,7 +8,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus, Trash2, Edit2, Save } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus, Trash2, Edit2, Save, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { OrganizerInviteDialog } from "@/components/events/OrganizerInviteDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { rpc } from "@/api/rpc";
+import { useNavigate } from "react-router-dom";
 // Force TypeScript to reload types
 
 interface Attendee {
@@ -59,6 +60,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const { toast } = useToast();
   const { user, session } = useAuth();
   const { event, organizers, loading, error, isOrganizer, addOrganizer, removeOrganizer } = useEvent(eventId);
+  const navigate = useNavigate();
 
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
@@ -76,6 +78,10 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     email: null 
   });
   const [coOrganizersInfo, setCoOrganizersInfo] = useState<Record<string, { username: string | null; email: string | null }>>({});
+  
+  // Estados para dinâmicas do evento
+  const [hasSecretSanta, setHasSecretSanta] = useState(false);
+  const [secretSantaData, setSecretSantaData] = useState<any>(null);
 
   // Estados para confirmação flexível
   const [confirmation, setConfirmation] = useState<EventConfirmation>({
@@ -200,6 +206,45 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
     fetchCoOrganizersInfo();
   }, [organizers]);
+
+  // Carregar dinâmicas do evento
+  useEffect(() => {
+    if (!event) return;
+
+    const loadDynamics = async () => {
+      try {
+        const { data: dynamicsData, error: dynamicsError } = await supabase
+          .from("event_dynamics")
+          .select("*")
+          .eq("event_id", Number(eventId))
+          .eq("type", "secret_santa")
+          .maybeSingle();
+
+        if (dynamicsError && dynamicsError.code !== 'PGRST116') throw dynamicsError;
+
+        if (dynamicsData) {
+          setHasSecretSanta(true);
+
+          // Carregar dados do Amigo Secreto
+          const { data: secretSantaData, error: secretSantaError } = await supabase
+            .from("event_secret_santa")
+            .select("*")
+            .eq("event_id", Number(eventId))
+            .maybeSingle();
+
+          if (secretSantaError && secretSantaError.code !== 'PGRST116') throw secretSantaError;
+
+          if (secretSantaData) {
+            setSecretSantaData(secretSantaData);
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao carregar dinâmicas:", err);
+      }
+    };
+
+    loadDynamics();
+  }, [event, eventId]);
 
   // Carregar participantes e itens do banco de dados
   useEffect(() => {
@@ -1463,6 +1508,94 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                       </Button>
                     </div>
                   </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Dinâmicas do Evento - Visível para organizadores e convidados confirmados */}
+        {(isOrganizer || isInvitedGuest) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Gift className="w-5 h-5 mr-2" />
+                    Dinâmicas do Evento
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Atividades especiais para tornar o evento mais divertido
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {hasSecretSanta ? (
+                  <div className="p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Gift className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold mb-1">Amigo Secreto</h3>
+                          {secretSantaData && (
+                            <div className="space-y-1 text-sm text-muted-foreground">
+                              {secretSantaData.min_value && secretSantaData.max_value && (
+                                <p>
+                                  Valor: R$ {secretSantaData.min_value} - R$ {secretSantaData.max_value}
+                                </p>
+                              )}
+                              {secretSantaData.draw_date && (
+                                <p>
+                                  Data do sorteio: {format(new Date(secretSantaData.draw_date), "dd/MM/yyyy", { locale: ptBR })}
+                                </p>
+                              )}
+                              {secretSantaData.has_drawn && (
+                                <Badge variant="default" className="mt-2">Sorteio realizado</Badge>
+                              )}
+                              {!secretSantaData.has_drawn && (
+                                <Badge variant="secondary" className="mt-2">Aguardando sorteio</Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {isOrganizer && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/event/${eventId}/secret-santa/participants`)}
+                        >
+                          Gerenciar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {isOrganizer ? (
+                      <div className="text-center py-8">
+                        <Gift className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                        <p className="text-muted-foreground mb-4">
+                          Nenhuma dinâmica adicionada ainda
+                        </p>
+                        <Button
+                          onClick={() => navigate(`/event/${eventId}/secret-santa/setup`)}
+                          className="gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Adicionar Amigo Secreto
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-6">
+                        Nenhuma dinâmica configurada para este evento
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </CardContent>
