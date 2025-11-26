@@ -12,6 +12,10 @@ import MockupGenerator from "./pages/MockupGenerator";
 import MarketingScreenshots from "./pages/MarketingScreenshots";
 import SecretSantaSetup from "./pages/SecretSantaSetup";
 import SecretSantaParticipants from "./pages/SecretSantaParticipants";
+import SecretSantaResults from "./pages/SecretSantaResults";
+import SecretSantaMyResult from "./pages/SecretSantaMyResult";
+import SecretSantaWishlist from "./pages/SecretSantaWishlist";
+import SecretSantaAdmin from "./pages/SecretSantaAdmin";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +34,10 @@ const App = () => (
           <Route path="/marketing-screenshots" element={<MarketingScreenshots />} />
           <Route path="/event/:eventId/secret-santa/setup" element={<SecretSantaSetup />} />
           <Route path="/event/:eventId/secret-santa/participants" element={<SecretSantaParticipants />} />
+          <Route path="/event/:eventId/secret-santa/results" element={<SecretSantaResults />} />
+          <Route path="/event/:eventId/secret-santa/my-result" element={<SecretSantaMyResult />} />
+          <Route path="/event/:eventId/secret-santa/wishlist" element={<SecretSantaWishlist />} />
+          <Route path="/event/:eventId/secret-santa/admin" element={<SecretSantaAdmin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

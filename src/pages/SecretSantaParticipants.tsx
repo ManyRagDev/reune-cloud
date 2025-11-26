@@ -250,10 +250,10 @@ export default function SecretSantaParticipants() {
   };
 
   const handleDrawPairs = async () => {
-    if (!secretSantaId || participants.length < 3) {
+    if (!secretSantaId || participants.length < 2) {
       toast({
         title: "Participantes insuficientes",
-        description: "É necessário pelo menos 3 participantes para realizar o sorteio.",
+        description: "É necessário pelo menos 2 participantes para realizar o sorteio.",
         variant: "destructive",
       });
       return;
@@ -261,18 +261,31 @@ export default function SecretSantaParticipants() {
 
     setDrawing(true);
     try {
-      // Algoritmo simples de sorteio
-      const shuffled = [...participants].sort(() => Math.random() - 0.5);
-      const pairs = shuffled.map((giver, index) => ({
+      // Importar e executar algoritmo de sorteio
+      const { performSecretSantaDraw, validateParticipants } = await import(
+        "@/utils/secretSantaDraw"
+      );
+
+      // Validar participantes
+      const validation = validateParticipants(participants);
+      if (!validation.valid) {
+        throw new Error(validation.error);
+      }
+
+      // Realizar sorteio
+      const pairs = performSecretSantaDraw(participants);
+
+      // Preparar dados para inserção
+      const pairsToInsert = pairs.map((pair) => ({
         secret_santa_id: secretSantaId,
-        giver_id: giver.user_id,
-        receiver_id: shuffled[(index + 1) % shuffled.length].user_id,
+        giver_id: pair.giver_id,
+        receiver_id: pair.receiver_id,
       }));
 
       // Inserir pares
       const { error: pairsError } = await supabase
         .from("event_secret_santa_pairs")
-        .insert(pairs);
+        .insert(pairsToInsert);
 
       if (pairsError) throw pairsError;
 
@@ -289,7 +302,7 @@ export default function SecretSantaParticipants() {
         description: "Os pares foram sorteados com sucesso. Cada participante pode ver seu par.",
       });
 
-      navigate(`/app?event=${eventId}`);
+      navigate(`/event/${eventId}/secret-santa/results`);
     } catch (err: any) {
       console.error("Erro ao realizar sorteio:", err);
       toast({
