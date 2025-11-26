@@ -134,11 +134,7 @@ export default function ChatWidget() {
           body: JSON.stringify({
             message: text,
             userId: user.id,
-            eventoId: eventoId,
-            history: messages.map(m => ({
-              role: m.role,
-              content: m.content
-            }))
+            ...(eventoId && { eventId: eventoId })
           }),
           signal: controller.signal
         });
