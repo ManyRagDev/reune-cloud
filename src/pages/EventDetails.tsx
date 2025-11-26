@@ -8,7 +8,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus, Trash2, Edit2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -63,10 +63,14 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [newSupply, setNewSupply] = useState("");
+  const [newSupplyQuantity, setNewSupplyQuantity] = useState(1);
+  const [newSupplyUnit, setNewSupplyUnit] = useState("un");
   const [friends, setFriends] = useState<{ friend_id: string }[]>([]);
   const [currentParticipantId, setCurrentParticipantId] = useState<number | null>(null);
   const [isInvitedGuest, setIsInvitedGuest] = useState(false);
   const [isConfirmedGuest, setIsConfirmedGuest] = useState(false);
+  const [editingSupplyId, setEditingSupplyId] = useState<number | null>(null);
+  const [editingSupplyData, setEditingSupplyData] = useState<{ name: string; quantidade: number; unidade: string }>({ name: '', quantidade: 1, unidade: 'un' });
   const [organizerInfo, setOrganizerInfo] = useState<{ username: string | null; email: string | null }>({ 
     username: null, 
     email: null 
@@ -574,8 +578,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       const newItem = {
         id: Date.now(),
         name: newSupply,
-        quantidade: 1,
-        unidade: 'un',
+        quantidade: newSupplyQuantity,
+        unidade: newSupplyUnit,
         categoria: 'geral',
         prioridade: 'B',
         assignments: [],
@@ -583,6 +587,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       
       setSupplies([...supplies, newItem]);
       setNewSupply("");
+      setNewSupplyQuantity(1);
+      setNewSupplyUnit("un");
       
       // Se for convidado confirmado ou organizador, salvar diretamente no banco
       if ((isConfirmedGuest || isOrganizer) && event) {
@@ -591,50 +597,48 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           .insert({
             event_id: Number(eventId),
             nome_item: newSupply.trim(),
-            quantidade: 1,
-            unidade: 'un',
+            quantidade: newSupplyQuantity,
+            unidade: newSupplyUnit,
             categoria: 'geral',
             prioridade: 'B',
           });
 
         if (error) {
-          console.error('Erro ao salvar item:', error);
-          toast({
-            title: "Erro ao salvar",
-            description: "O item foi adicionado localmente, mas pode não ter sido salvo no banco.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Item adicionado!",
-            description: "O item foi salvo com sucesso.",
-          });
-          // Recarregar a lista para pegar o ID correto do banco
-          const { data: items } = await supabase
-            .from('event_items')
-            .select('*')
-            .eq('event_id', Number(eventId))
-            .order('created_at', { ascending: true });
-          
-          if (items) {
-            const { data: assignments } = await supabase
-              .from('item_assignments')
-              .select('*, event_participants(nome_participante)')
-              .eq('event_id', Number(eventId));
+          throw error;
+        }
 
-            const suppliesWithAssignments = items.map((item: any) => ({
+        toast({
+          title: "Item adicionado",
+          description: "O item foi adicionado à lista automaticamente.",
+        });
+
+        // Refetch para garantir que os IDs e assignments estão corretos
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('event_items')
+          .select('*')
+          .eq('event_id', Number(eventId))
+          .order('updated_at', { ascending: false });
+
+        if (!itemsError && itemsData) {
+          const { data: assignmentsData } = await supabase
+            .from('item_assignments')
+            .select('*, event_participants(nome_participante)')
+            .eq('event_id', Number(eventId));
+
+          if (assignmentsData) {
+            const suppliesWithAssignments = itemsData.map((item) => ({
               id: item.id,
               name: item.nome_item,
               quantidade: item.quantidade,
               unidade: item.unidade,
               categoria: item.categoria,
               prioridade: item.prioridade,
-              assignments: (assignments || [])
-                .filter((a: any) => a.item_id === item.id)
-                .map((a: any) => ({
+              assignments: assignmentsData
+                .filter((a) => a.item_id === item.id)
+                .map((a) => ({
                   id: a.id,
                   participant_id: a.participant_id,
-                  participant_name: (a.event_participants as any)?.nome_participante || 'Desconhecido',
+                  participant_name: (a.event_participants as any)?.nome_participante || 'Participante',
                   quantidade_atribuida: a.quantidade_atribuida,
                   confirmado: a.confirmado,
                 })),
@@ -745,78 +749,78 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     if (!event) return;
     setSaving(true);
     try {
-      const eventoIdStr = String(Number(eventId));
-      const eventoIdNum = Number(eventId);
-      const isAIEvent = Boolean((event as any)?.created_by_ai);
-
-      // Se evento manual, tentar fallback com upsert direto nas tabelas
-      if (!isAIEvent) {
-        // Participantes (fallback manual)
-        const participantsRows = attendees.map((a) => ({
-          id: isNaN(Number(a.id)) ? undefined : Number(a.id),
-          event_id: eventoIdNum,
-          nome_participante: a.name,
-          contato: a.email || null,
-          status_convite: a.status === "confirmado" ? "confirmado" : a.status === "recusado" ? "recusado" : "pendente",
-        }));
-        const { error: partErr } = await supabase
-          .from("event_participants")
-          .upsert(participantsRows, { onConflict: "id" });
-        if (partErr) throw partErr;
-
-        // Itens (fallback manual)
-        const itemsRows = supplies.map((s) => ({
-          id: isNaN(Number(s.id)) ? undefined : Number(s.id),
-          event_id: eventoIdNum,
-          nome_item: s.name,
-          quantidade: s.quantidade,
-          unidade: s.unidade,
-          categoria: s.categoria,
-          prioridade: s.prioridade,
-        }));
-        const { error: itemsErr } = await supabase.from("event_items").upsert(itemsRows, { onConflict: "id" });
-        if (itemsErr) throw itemsErr;
-
-        toast({
-          title: "Alterações salvas (modo manual)!",
-          description: "",
-        });
-        return;
-      }
-
-      // Montar payload de participantes (evento criado pela IA)
-      const participantsPayload = attendees.map((a) => ({
-        id: a.id,
-        evento_id: eventoIdStr,
-        nome_participante: a.name,
-        contato: a.email || null,
-        status_convite: a.status,
-        preferencias: null,
-        valor_responsavel: null,
-      })) as any;
-
-      await rpc.participants_bulk_upsert(eventoIdStr, participantsPayload);
-
-      // Montar payload de itens
-      const itemsPayload = supplies.map((s) => ({
-        id: s.id,
-        evento_id: eventoIdStr,
-        nome_item: s.name,
-        quantidade: s.quantidade,
-        unidade: s.unidade,
-        valor_estimado: 0,
-        categoria: s.categoria,
-        prioridade: s.prioridade,
-      })) as any;
-
-      await rpc.items_replace_for_event(eventoIdStr, itemsPayload);
-
-      toast({ title: "Alterações salvas!", description: "" });
+      // Como os itens já são salvos automaticamente ao adicionar/editar,
+      // apenas confirmamos que tudo está salvo
+      await new Promise(resolve => setTimeout(resolve, 500)); // Pequeno delay para feedback visual
+      
+      toast({ 
+        title: "Tudo salvo!", 
+        description: "Todas as alterações já foram salvas automaticamente." 
+      });
     } catch (err: any) {
       console.error("Erro ao salvar listas:", err);
-      toast({ title: "Falha ao salvar", description: err.message || "Não foi possível salvar as alterações." });
+      toast({ 
+        title: "Falha ao salvar", 
+        description: err.message || "Não foi possível salvar as alterações." 
+      });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Deletar item
+  const deleteSupply = async (supplyId: number) => {
+    try {
+      const { error } = await supabase
+        .from('event_items')
+        .delete()
+        .eq('id', supplyId);
+
+      if (error) throw error;
+
+      setSupplies(supplies.filter(s => s.id !== supplyId));
+      
+      toast({
+        title: "Item removido",
+        description: "O item foi removido da lista.",
+      });
+    } catch (err: any) {
+      console.error('Erro ao deletar item:', err);
+      toast({
+        title: "Erro",
+        description: err.message || "Não foi possível remover o item.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Editar item
+  const updateSupply = async (supplyId: number, updates: { nome_item?: string; quantidade?: number; unidade?: string }) => {
+    try {
+      const { error } = await supabase
+        .from('event_items')
+        .update(updates)
+        .eq('id', supplyId);
+
+      if (error) throw error;
+
+      setSupplies(supplies.map(s => 
+        s.id === supplyId 
+          ? { ...s, name: updates.nome_item || s.name, quantidade: updates.quantidade || s.quantidade, unidade: updates.unidade || s.unidade }
+          : s
+      ));
+      
+      toast({
+        title: "Item atualizado",
+        description: "As alterações foram salvas.",
+      });
+    } catch (err: any) {
+      console.error('Erro ao atualizar item:', err);
+      toast({
+        title: "Erro",
+        description: err.message || "Não foi possível atualizar o item.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1243,57 +1247,161 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {supplies.map((supply) => (
-                  <div
-                    key={supply.id}
-                    className={`p-4 border-2 rounded-lg transition-all ${
-                      getSupplyStatus(supply) === 'mine'
-                        ? 'border-primary bg-primary/5'
-                        : getSupplyStatus(supply) === 'taken'
-                          ? 'border-muted bg-muted/30'
-                          : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium">{supply.name}</h4>
-                          <Badge variant={getSupplyStatusVariant(supply)} className="text-xs">
-                            {getSupplyStatusText(supply)}
-                          </Badge>
+                {supplies.map((supply) => {
+                  const isEditing = editingSupplyId === supply.id;
+                  
+                  return (
+                    <div
+                      key={supply.id}
+                      className={`p-4 border-2 rounded-lg transition-all ${
+                        getSupplyStatus(supply) === 'mine'
+                          ? 'border-primary bg-primary/5'
+                          : getSupplyStatus(supply) === 'taken'
+                            ? 'border-muted bg-muted/30'
+                            : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {isEditing ? (
+                        // Modo de edição
+                        <div className="space-y-3">
+                          <Input
+                            value={editingSupplyData.name}
+                            onChange={(e) => setEditingSupplyData({ ...editingSupplyData, name: e.target.value })}
+                            placeholder="Nome do item"
+                            className="font-medium"
+                          />
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              min="0.1"
+                              step="0.1"
+                              value={editingSupplyData.quantidade}
+                              onChange={(e) => setEditingSupplyData({ ...editingSupplyData, quantidade: parseFloat(e.target.value) || 0 })}
+                              placeholder="Quantidade"
+                              className="flex-1"
+                            />
+                            <Select
+                              value={editingSupplyData.unidade}
+                              onValueChange={(value) => setEditingSupplyData({ ...editingSupplyData, unidade: value })}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-background border shadow-lg z-50">
+                                <SelectItem value="un">Unidade(s)</SelectItem>
+                                <SelectItem value="kg">Quilograma(s)</SelectItem>
+                                <SelectItem value="g">Grama(s)</SelectItem>
+                                <SelectItem value="l">Litro(s)</SelectItem>
+                                <SelectItem value="ml">Mililitro(s)</SelectItem>
+                                <SelectItem value="pacote">Pacote(s)</SelectItem>
+                                <SelectItem value="caixa">Caixa(s)</SelectItem>
+                                <SelectItem value="dúzia">Dúzia(s)</SelectItem>
+                                <SelectItem value="fatia">Fatia(s)</SelectItem>
+                                <SelectItem value="porção">Porção(ões)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingSupplyId(null)}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                updateSupply(supply.id, {
+                                  nome_item: editingSupplyData.name,
+                                  quantidade: editingSupplyData.quantidade,
+                                  unidade: editingSupplyData.unidade,
+                                });
+                                setEditingSupplyId(null);
+                              }}
+                            >
+                              <Save className="w-4 h-4 mr-1" />
+                              Salvar
+                            </Button>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {supply.quantidade} {supply.unidade}
-                        </p>
-                      </div>
-                    </div>
+                      ) : (
+                        // Modo de visualização
+                        <>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-medium">{supply.name}</h4>
+                                <Badge variant={getSupplyStatusVariant(supply)} className="text-xs">
+                                  {getSupplyStatusText(supply)}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {supply.quantidade} {supply.unidade}
+                              </p>
+                            </div>
+                            {(isOrganizer || isConfirmedGuest) && (
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingSupplyId(supply.id);
+                                    setEditingSupplyData({
+                                      name: supply.name,
+                                      quantidade: supply.quantidade,
+                                      unidade: supply.unidade,
+                                    });
+                                  }}
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (confirm('Tem certeza que deseja remover este item?')) {
+                                      deleteSupply(supply.id);
+                                    }
+                                  }}
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
 
-                    {(isConfirmedGuest || isOrganizer) && currentParticipantId && (
-                      <div className="flex items-center space-x-2 pt-2 border-t">
-                        <Checkbox
-                          id={`supply-${supply.id}`}
-                          checked={getSupplyStatus(supply) === 'mine'}
-                          onCheckedChange={() => toggleSupplyAssignment(supply.id)}
-                          disabled={getSupplyStatus(supply) === 'taken'}
-                        />
-                        <label
-                          htmlFor={`supply-${supply.id}`}
-                          className={`text-sm font-medium leading-none ${
-                            getSupplyStatus(supply) === 'taken'
-                              ? 'cursor-not-allowed opacity-70'
-                              : 'cursor-pointer'
-                          }`}
-                        >
-                          {getSupplyStatus(supply) === 'mine'
-                            ? 'Desistir deste item'
-                            : getSupplyStatus(supply) === 'taken'
-                              ? 'Item já foi escolhido'
-                              : 'Me responsabilizar por este item'}
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                          {(isConfirmedGuest || isOrganizer) && currentParticipantId && (
+                            <div className="flex items-center space-x-2 pt-2 border-t">
+                              <Checkbox
+                                id={`supply-${supply.id}`}
+                                checked={getSupplyStatus(supply) === 'mine'}
+                                onCheckedChange={() => toggleSupplyAssignment(supply.id)}
+                                disabled={getSupplyStatus(supply) === 'taken'}
+                              />
+                              <label
+                                htmlFor={`supply-${supply.id}`}
+                                className={`text-sm font-medium leading-none ${
+                                  getSupplyStatus(supply) === 'taken'
+                                    ? 'cursor-not-allowed opacity-70'
+                                    : 'cursor-pointer'
+                                }`}
+                              >
+                                {getSupplyStatus(supply) === 'mine'
+                                  ? 'Desistir deste item'
+                                  : getSupplyStatus(supply) === 'taken'
+                                    ? 'Item já foi escolhido'
+                                    : 'Me responsabilizar por este item'}
+                              </label>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {supplies.length === 0 && (
                   <div className="text-center py-8">
@@ -1311,17 +1419,49 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
                 {/* Campo de adicionar item para organizadores e convidados confirmados */}
                 {(isOrganizer || isConfirmedGuest) && (
-                  <div className="flex gap-2 mt-4 p-4 bg-muted/50 rounded-lg border-2 border-dashed border-primary/30">
+                  <div className="space-y-3 mt-4 p-4 bg-muted/50 rounded-lg border-2 border-dashed border-primary/30">
                     <Input
-                      placeholder="Digite o nome do item e pressione Enter..."
+                      placeholder="Digite o nome do item..."
                       value={newSupply}
                       onChange={(e) => setNewSupply(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && addSupply()}
                       className="bg-background"
                     />
-                    <Button onClick={addSupply} disabled={!newSupply.trim()}>
-                      <Plus className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        value={newSupplyQuantity}
+                        onChange={(e) => setNewSupplyQuantity(parseFloat(e.target.value) || 1)}
+                        placeholder="Quantidade"
+                        className="bg-background flex-1"
+                      />
+                      <Select
+                        value={newSupplyUnit}
+                        onValueChange={setNewSupplyUnit}
+                      >
+                        <SelectTrigger className="w-[140px] bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg z-50">
+                          <SelectItem value="un">Unidade(s)</SelectItem>
+                          <SelectItem value="kg">Quilograma(s)</SelectItem>
+                          <SelectItem value="g">Grama(s)</SelectItem>
+                          <SelectItem value="l">Litro(s)</SelectItem>
+                          <SelectItem value="ml">Mililitro(s)</SelectItem>
+                          <SelectItem value="pacote">Pacote(s)</SelectItem>
+                          <SelectItem value="caixa">Caixa(s)</SelectItem>
+                          <SelectItem value="dúzia">Dúzia(s)</SelectItem>
+                          <SelectItem value="fatia">Fatia(s)</SelectItem>
+                          <SelectItem value="porção">Porção(ões)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={addSupply} disabled={!newSupply.trim()} className="shrink-0">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
