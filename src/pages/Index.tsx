@@ -108,6 +108,7 @@ const Index = () => {
     <>
       <ThemeToggle className="fixed top-4 right-4 z-50" />
       {renderScreen()}
+      <ChatWidget />
     </>
   );
 };
