@@ -566,21 +566,91 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   };
 
 
-  const addSupply = () => {
-    if (newSupply.trim()) {
-      setSupplies([
-        ...supplies,
-        {
-          id: Date.now(),
-          name: newSupply,
-          quantidade: 1,
-          unidade: 'un',
-          categoria: 'geral',
-          prioridade: 'B',
-          assignments: [],
-        },
-      ]);
+  const addSupply = async () => {
+    if (!newSupply.trim()) return;
+    
+    try {
+      // Adicionar ao estado local imediatamente
+      const newItem = {
+        id: Date.now(),
+        name: newSupply,
+        quantidade: 1,
+        unidade: 'un',
+        categoria: 'geral',
+        prioridade: 'B',
+        assignments: [],
+      };
+      
+      setSupplies([...supplies, newItem]);
       setNewSupply("");
+      
+      // Se for convidado confirmado ou organizador, salvar diretamente no banco
+      if ((isConfirmedGuest || isOrganizer) && event) {
+        const { error } = await supabase
+          .from('event_items')
+          .insert({
+            event_id: Number(eventId),
+            nome_item: newSupply.trim(),
+            quantidade: 1,
+            unidade: 'un',
+            categoria: 'geral',
+            prioridade: 'B',
+          });
+
+        if (error) {
+          console.error('Erro ao salvar item:', error);
+          toast({
+            title: "Erro ao salvar",
+            description: "O item foi adicionado localmente, mas pode não ter sido salvo no banco.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Item adicionado!",
+            description: "O item foi salvo com sucesso.",
+          });
+          // Recarregar a lista para pegar o ID correto do banco
+          const { data: items } = await supabase
+            .from('event_items')
+            .select('*')
+            .eq('event_id', Number(eventId))
+            .order('created_at', { ascending: true });
+          
+          if (items) {
+            const { data: assignments } = await supabase
+              .from('item_assignments')
+              .select('*, event_participants(nome_participante)')
+              .eq('event_id', Number(eventId));
+
+            const suppliesWithAssignments = items.map((item: any) => ({
+              id: item.id,
+              name: item.nome_item,
+              quantidade: item.quantidade,
+              unidade: item.unidade,
+              categoria: item.categoria,
+              prioridade: item.prioridade,
+              assignments: (assignments || [])
+                .filter((a: any) => a.item_id === item.id)
+                .map((a: any) => ({
+                  id: a.id,
+                  participant_id: a.participant_id,
+                  participant_name: (a.event_participants as any)?.nome_participante || 'Desconhecido',
+                  quantidade_atribuida: a.quantidade_atribuida,
+                  confirmado: a.confirmado,
+                })),
+            }));
+            
+            setSupplies(suppliesWithAssignments);
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('Erro ao adicionar item:', err);
+      toast({
+        title: "Erro",
+        description: err.message || "Não foi possível adicionar o item.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1140,16 +1210,36 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center">
-                  <Package className="w-5 h-5 mr-2" />
-                  Lista de Insumos ({supplies.length})
-                </CardTitle>
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Package className="w-5 h-5 mr-2" />
+                    Lista de Insumos ({supplies.length})
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {isInvitedGuest && !isOrganizer
+                      ? "Escolha os itens que você pode levar"
+                      : "Gerencie os itens necessários para o evento"}
+                  </CardDescription>
+                </div>
+                {/* Botão destacado para adicionar itens */}
+                {(isOrganizer || isConfirmedGuest) && (
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={() => {
+                      const input = document.querySelector('[placeholder="Adicionar item..."]') as HTMLInputElement;
+                      if (input) {
+                        input.focus();
+                        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }}
+                    className="gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Adicionar Item
+                  </Button>
+                )}
               </div>
-              <CardDescription className="mt-1">
-                {isInvitedGuest && !isOrganizer
-                  ? "Escolha os itens que você pode levar"
-                  : "Gerencie os itens necessários para o evento"}
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -1206,21 +1296,30 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 ))}
 
                 {supplies.length === 0 && (
-                  <p className="text-center text-muted-foreground py-6">
-                    Nenhum item adicionado ainda
-                  </p>
+                  <div className="text-center py-8">
+                    <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                    <p className="text-muted-foreground mb-4">
+                      Nenhum item adicionado ainda
+                    </p>
+                    {(isOrganizer || isConfirmedGuest) && (
+                      <p className="text-sm text-muted-foreground">
+                        Use o campo abaixo para adicionar o primeiro item
+                      </p>
+                    )}
+                  </div>
                 )}
 
-                {/* Mostrar campo de adicionar item para organizadores e convidados confirmados */}
+                {/* Campo de adicionar item para organizadores e convidados confirmados */}
                 {(isOrganizer || isConfirmedGuest) && (
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex gap-2 mt-4 p-4 bg-muted/50 rounded-lg border-2 border-dashed border-primary/30">
                     <Input
-                      placeholder="Adicionar item..."
+                      placeholder="Digite o nome do item e pressione Enter..."
                       value={newSupply}
                       onChange={(e) => setNewSupply(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && addSupply()}
+                      className="bg-background"
                     />
-                    <Button onClick={addSupply}>
+                    <Button onClick={addSupply} disabled={!newSupply.trim()}>
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
