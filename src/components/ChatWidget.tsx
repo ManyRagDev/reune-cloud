@@ -117,6 +117,8 @@ export default function ChatWidget() {
       const { supabase } = await import('@/integrations/supabase/client');
       const apiKey = import.meta.env.VITE_CHAT_API_SECRET_KEY;
       
+      console.log('[ChatWidget] Verificando API key:', apiKey ? 'Presente' : 'Ausente');
+      
       if (!apiKey) {
         throw new Error('API key não configurada. Entre em contato com o suporte.');
       }
@@ -125,21 +127,29 @@ export default function ChatWidget() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+      const requestUrl = 'https://studio--studio-3500643630-eaa37.us-central1.hosted.app/api/chat';
+      const requestBody = {
+        message: text,
+        userId: user.id,
+        ...(eventoId && { eventId: eventoId })
+      };
+
+      console.log('[ChatWidget] Enviando requisição para:', requestUrl);
+      console.log('[ChatWidget] Body:', requestBody);
+
       try {
         // Chamar endpoint externo com autenticação e timeout
-        const response = await fetch('https://studio--studio-3500643630-eaa37.us-central1.hosted.app/api/chat', {
+        const response = await fetch(requestUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`,
           },
-          body: JSON.stringify({
-            message: text,
-            userId: user.id,
-            ...(eventoId && { eventId: eventoId })
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal
         });
+
+        console.log('[ChatWidget] Resposta recebida. Status:', response.status);
 
         clearTimeout(timeoutId);
 
@@ -273,7 +283,7 @@ export default function ChatWidget() {
         console.error('[ChatWidget] Detalhes do erro:', e.message, e.stack);
         
         if (e.message.toLowerCase().includes('failed to fetch') || e.name === 'NetworkError') {
-          errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
+          errorMessage = 'Não foi possível conectar ao servidor de chat. O serviço pode estar temporariamente indisponível. Verifique sua conexão ou tente novamente em alguns instantes.';
         } else if (e.message.includes('API key')) {
           errorMessage = e.message; // Mensagem específica sobre API key
         } else if (e.message.includes('Autenticação')) {
