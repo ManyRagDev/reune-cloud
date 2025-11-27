@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Gift, Sparkles, ArrowLeft } from "lucide-react";
 
 export default function SecretSantaResults() {
-  const { eventId } = useParams<{ eventId: string }>();
+  const { id: eventId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   useEffect(() => {
