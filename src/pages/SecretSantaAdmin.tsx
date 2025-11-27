@@ -31,7 +31,7 @@ interface ParticipantStatus {
 }
 
 export default function SecretSantaAdmin() {
-  const { eventId } = useParams<{ eventId: string }>();
+  const { id: eventId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
