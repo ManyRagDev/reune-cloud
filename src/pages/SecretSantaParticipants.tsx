@@ -447,7 +447,7 @@ export default function SecretSantaParticipants() {
 
       if (updateError) throw updateError;
 
-      // Criar notificações para todos os participantes usando função RPC
+      // Criar notificações in-app para todos os participantes
       const participantUserIds = participants.map((p) => p.user_id);
       try {
         await supabase.rpc("notify_secret_santa_draw", {
@@ -459,9 +459,31 @@ export default function SecretSantaParticipants() {
         console.error("Erro ao criar notificações:", notifErr);
       }
 
+      // Enviar emails para todos os participantes
+      try {
+        const participantsWithEmail = participants.map((p) => ({
+          email: p.email || "",
+          displayName: p.display_name || "Participante",
+        }));
+
+        await supabase.functions.invoke("send-secret-santa-notification", {
+          body: {
+            eventId: Number(eventId),
+            eventTitle: eventData?.title || "Evento",
+            eventDate: eventData?.event_date || new Date().toISOString(),
+            secretSantaId,
+            participants: participantsWithEmail,
+          },
+        });
+        console.log("Emails de notificação enviados com sucesso");
+      } catch (emailErr) {
+        console.error("Erro ao enviar emails:", emailErr);
+        // Não bloquear o fluxo se emails falharem
+      }
+
       toast({
         title: "Sorteio realizado!",
-        description: "Os pares foram sorteados e os participantes foram notificados.",
+        description: "Os pares foram sorteados e os participantes foram notificados por email.",
       });
 
       navigate(`/event/${eventId}/secret-santa/results`);
