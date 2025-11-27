@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, UserPlus, Users, Shuffle, Mail, Loader2 } from "lucide-react";
+import { ArrowLeft, UserPlus, Users, Shuffle, Mail, Loader2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -465,6 +465,56 @@ export default function SecretSantaParticipants() {
     }
   };
 
+  const handleRemoveParticipant = async (participantId: string) => {
+    try {
+      const { error } = await supabase
+        .from("event_secret_santa_participants")
+        .delete()
+        .eq("id", participantId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Participante removido",
+        description: "O participante foi removido do Amigo Secreto.",
+      });
+
+      setParticipants(prev => prev.filter(p => p.id !== participantId));
+    } catch (err: any) {
+      console.error("Erro ao remover participante:", err);
+      toast({
+        title: "Erro ao remover",
+        description: err.message || "Não foi possível remover o participante.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemovePendingInvitation = async (invitationId: string) => {
+    try {
+      const { error } = await supabase
+        .from("event_invitations")
+        .delete()
+        .eq("id", invitationId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Convite removido",
+        description: "O convite pendente foi removido.",
+      });
+
+      setPendingInvitations(prev => prev.filter(inv => inv.id !== invitationId));
+    } catch (err: any) {
+      console.error("Erro ao remover convite:", err);
+      toast({
+        title: "Erro ao remover",
+        description: err.message || "Não foi possível remover o convite.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Função para obter o texto de exibição do participante
   const getParticipantDisplayName = (participant: Participant): string => {
     if (participant.display_name) {
@@ -609,9 +659,19 @@ export default function SecretSantaParticipants() {
                           )}
                         </div>
                       </div>
-                      <Badge variant="default">
-                        Confirmado
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default">
+                          Confirmado
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleRemoveParticipant(participant.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -641,9 +701,19 @@ export default function SecretSantaParticipants() {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="secondary">
-                        Aguardando cadastro
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          Aguardando cadastro
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleRemovePendingInvitation(invitation.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
