@@ -1161,6 +1161,14 @@ export type Database = {
         Returns: Json[]
       }
       mask_location: { Args: { full_location: string }; Returns: string }
+      notify_secret_santa_draw: {
+        Args: {
+          _event_id: number
+          _participant_user_ids: string[]
+          _secret_santa_id: string
+        }
+        Returns: undefined
+      }
       participants_bulk_upsert: {
         Args: { evento_id: string; participantes: Json }
         Returns: Json[]
