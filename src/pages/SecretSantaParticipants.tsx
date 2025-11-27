@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, UserPlus, Users, Shuffle } from "lucide-react";
+import { ArrowLeft, UserPlus, Users, Shuffle, Mail, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +17,13 @@ interface Participant {
   display_name?: string;
   avatar_url?: string;
   email?: string;
+}
+
+interface PendingInvitation {
+  id: string;
+  email: string;
+  name: string;
+  status: string;
 }
 
 interface EventInvitation {
@@ -33,11 +40,14 @@ export default function SecretSantaParticipants() {
 
   const [secretSantaId, setSecretSantaId] = useState<string | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [eventInvitations, setEventInvitations] = useState<EventInvitation[]>([]);
   const [newParticipantEmail, setNewParticipantEmail] = useState("");
   const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [drawing, setDrawing] = useState(false);
+  const [eventData, setEventData] = useState<{ title: string; event_date: string; event_time: string } | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -49,6 +59,16 @@ export default function SecretSantaParticipants() {
     
     setLoading(true);
     try {
+      // Buscar dados do evento
+      const { data: event, error: eventError } = await supabase
+        .from("table_reune")
+        .select("title, event_date, event_time")
+        .eq("id", Number(eventId))
+        .single();
+
+      if (eventError) throw eventError;
+      setEventData(event);
+
       // Buscar configuração do Amigo Secreto
       const { data: secretSantaData, error: secretSantaError } = await supabase
         .from("event_secret_santa")
@@ -82,33 +102,63 @@ export default function SecretSantaParticipants() {
 
       if (participantsError) throw participantsError;
 
-      // Buscar informações dos perfis
+      // Buscar informações dos perfis e emails
       if (participantsData && participantsData.length > 0) {
         const userIds = participantsData.map(p => p.user_id);
+        
+        // Buscar perfis
         const { data: profilesData } = await supabase
           .from("profiles")
           .select("id, display_name, avatar_url")
           .in("id", userIds);
 
-        const { data: usersData } = await supabase
-          .from("profiles")
-          .select("id")
-          .in("id", userIds);
-
-        const participantsWithInfo = participantsData.map(p => {
+        // Para cada participante, buscar o email via RPC
+        const participantsWithInfo: Participant[] = [];
+        
+        for (const p of participantsData) {
           const profile = profilesData?.find(prof => prof.id === p.user_id);
-          return {
+          
+          // Tentar buscar email via função get_my_email se for o próprio usuário
+          // Ou deixar sem email se não for
+          let email: string | undefined;
+          
+          // Se o participante é o usuário logado, podemos obter o email
+          if (p.user_id === user?.id) {
+            email = user?.email;
+          }
+          
+          participantsWithInfo.push({
             ...p,
             status: p.status as "pending" | "confirmed",
             display_name: profile?.display_name,
             avatar_url: profile?.avatar_url,
-          };
-        });
+            email,
+          });
+        }
 
         setParticipants(participantsWithInfo);
+      } else {
+        setParticipants([]);
       }
 
-      // Buscar convidados do evento
+      // Buscar convites pendentes para o amigo secreto (não-cadastrados)
+      // Estes são identificados pelo metadata que contém secret_santa_id
+      const { data: pendingData, error: pendingError } = await supabase
+        .from("event_invitations")
+        .select("id, participant_email, participant_name, status")
+        .eq("event_id", Number(eventId))
+        .eq("status", "pending_secret_santa");
+
+      if (!pendingError && pendingData) {
+        setPendingInvitations(pendingData.map(inv => ({
+          id: inv.id,
+          email: inv.participant_email,
+          name: inv.participant_name || inv.participant_email.split("@")[0],
+          status: inv.status || "pending",
+        })));
+      }
+
+      // Buscar convidados aceitos do evento (para importar)
       const { data: invitationsData, error: invitationsError } = await supabase
         .from("event_invitations")
         .select("participant_email, participant_name, status")
@@ -131,60 +181,172 @@ export default function SecretSantaParticipants() {
   };
 
   const handleAddParticipant = async (email: string) => {
-    if (!secretSantaId) return;
+    if (!secretSantaId || !eventId || !eventData) return;
     
+    const trimmedEmail = email.trim().toLowerCase();
+    
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      toast({
+        title: "Email inválido",
+        description: "Por favor, insira um email válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setAdding(true);
     try {
-      // Buscar usuário pelo email usando a função RPC
+      // Buscar usuário pelo email usando a função RPC (agora com LEFT JOIN)
       const { data: userData, error: userError } = await supabase
         .rpc("search_user_by_identifier", {
-          _identifier: email
+          _identifier: trimmedEmail
         });
 
-      if (userError || !userData || userData.length === 0) {
-        toast({
-          title: "Usuário não encontrado",
-          description: "O email fornecido não corresponde a nenhum usuário cadastrado.",
-          variant: "destructive",
-        });
-        return;
+      if (userError) {
+        console.error("Erro ao buscar usuário:", userError);
       }
 
-      const userId = userData[0].id;
+      // Se usuário existe no sistema
+      if (userData && userData.length > 0) {
+        const foundUser = userData[0];
+        const userId = foundUser.id;
 
-      // Adicionar participante
-      const { error: insertError } = await supabase
-        .from("event_secret_santa_participants")
-        .insert({
-          secret_santa_id: secretSantaId,
-          user_id: userId,
-          status: "confirmed",
-        });
-
-      if (insertError) {
-        if (insertError.code === "23505") { // Unique violation
+        // Verificar se já é participante
+        const existingParticipant = participants.find(p => p.user_id === userId);
+        if (existingParticipant) {
           toast({
             title: "Participante já adicionado",
             description: "Este usuário já está na lista de participantes.",
             variant: "destructive",
           });
-        } else {
-          throw insertError;
+          return;
         }
-        return;
+
+        // Adicionar participante
+        const { error: insertError } = await supabase
+          .from("event_secret_santa_participants")
+          .insert({
+            secret_santa_id: secretSantaId,
+            user_id: userId,
+            status: "confirmed",
+          });
+
+        if (insertError) {
+          if (insertError.code === "23505") {
+            toast({
+              title: "Participante já adicionado",
+              description: "Este usuário já está na lista de participantes.",
+              variant: "destructive",
+            });
+          } else {
+            throw insertError;
+          }
+          return;
+        }
+
+        toast({
+          title: "Participante adicionado!",
+          description: foundUser.display_name 
+            ? `${foundUser.display_name} foi adicionado ao Amigo Secreto.`
+            : "O participante foi adicionado com sucesso.",
+        });
+
+        setNewParticipantEmail("");
+        loadData();
+      } else {
+        // Usuário NÃO existe - criar convite por email
+        await handleInviteNonRegisteredUser(trimmedEmail);
       }
-
-      toast({
-        title: "Participante adicionado!",
-        description: "O participante foi adicionado com sucesso.",
-      });
-
-      setNewParticipantEmail("");
-      loadData();
     } catch (err: any) {
       console.error("Erro ao adicionar participante:", err);
       toast({
         title: "Erro ao adicionar",
         description: err.message || "Não foi possível adicionar o participante.",
+        variant: "destructive",
+      });
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleInviteNonRegisteredUser = async (email: string) => {
+    if (!eventId || !eventData) return;
+
+    // Verificar se já existe um convite pendente para este email
+    const existingInvitation = pendingInvitations.find(inv => inv.email.toLowerCase() === email.toLowerCase());
+    if (existingInvitation) {
+      toast({
+        title: "Convite já enviado",
+        description: "Já existe um convite pendente para este email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Gerar nome a partir do email
+      const name = email.split("@")[0];
+      
+      // Criar registro de convite no banco
+      const { data: invitation, error: inviteError } = await supabase
+        .from("event_invitations")
+        .insert({
+          event_id: Number(eventId),
+          participant_email: email,
+          participant_name: name,
+          status: "pending_secret_santa",
+        })
+        .select()
+        .single();
+
+      if (inviteError) {
+        if (inviteError.code === "23505") {
+          toast({
+            title: "Email já convidado",
+            description: "Este email já possui um convite para o evento.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw inviteError;
+      }
+
+      // Enviar email de convite
+      const { error: emailError } = await supabase.functions.invoke("send-invitation-email", {
+        body: {
+          invitee_email: email,
+          invitee_name: name,
+          event_title: `Amigo Secreto: ${eventData.title}`,
+          event_date: eventData.event_date,
+          event_time: eventData.event_time,
+          is_organizer: false,
+          invitation_token: invitation.invitation_token,
+        },
+      });
+
+      if (emailError) {
+        console.error("Erro ao enviar email:", emailError);
+        toast({
+          title: "Convite criado",
+          description: "O convite foi criado mas houve um erro ao enviar o email. O participante pode ser adicionado manualmente depois.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Convite enviado!",
+          description: `Um email foi enviado para ${email} convidando para participar do Amigo Secreto.`,
+        });
+      }
+
+      setNewParticipantEmail("");
+      loadData();
+    } catch (err: any) {
+      console.error("Erro ao convidar usuário:", err);
+      toast({
+        title: "Erro ao enviar convite",
+        description: err.message || "Não foi possível enviar o convite.",
         variant: "destructive",
       });
     }
@@ -194,11 +356,9 @@ export default function SecretSantaParticipants() {
     if (!secretSantaId || !eventInvitations.length) return;
     
     setConfirming(true);
+    let addedCount = 0;
+    
     try {
-      // Buscar user_ids dos emails dos convidados
-      const emails = eventInvitations.map(inv => inv.participant_email);
-      
-      // Para cada email, tentar buscar o user_id
       for (const invitation of eventInvitations) {
         try {
           const { data } = await supabase.rpc("search_user_by_identifier", {
@@ -209,24 +369,33 @@ export default function SecretSantaParticipants() {
             const userId = data[0].id;
             
             // Adicionar participante (ignorar se já existir)
-            await supabase
+            const { error } = await supabase
               .from("event_secret_santa_participants")
               .insert({
                 secret_santa_id: secretSantaId,
                 user_id: userId,
                 status: "confirmed",
-              })
-              .select();
+              });
+            
+            if (!error) addedCount++;
           }
         } catch (err) {
           console.error(`Erro ao adicionar ${invitation.participant_email}:`, err);
         }
       }
 
-      toast({
-        title: "Participantes confirmados!",
-        description: "Os convidados do evento foram adicionados ao Amigo Secreto.",
-      });
+      if (addedCount > 0) {
+        toast({
+          title: "Participantes adicionados!",
+          description: `${addedCount} participante(s) foram adicionados ao Amigo Secreto.`,
+        });
+      } else {
+        toast({
+          title: "Nenhum participante adicionado",
+          description: "Os convidados podem já estar na lista ou não estão cadastrados.",
+          variant: "default",
+        });
+      }
 
       loadData();
     } catch (err: any) {
@@ -242,10 +411,11 @@ export default function SecretSantaParticipants() {
   };
 
   const handleDrawPairs = async () => {
+    // Contar apenas participantes confirmados (não convites pendentes)
     if (!secretSantaId || participants.length < 2) {
       toast({
         title: "Participantes insuficientes",
-        description: "É necessário pelo menos 2 participantes para realizar o sorteio.",
+        description: "É necessário pelo menos 2 participantes cadastrados para realizar o sorteio.",
         variant: "destructive",
       });
       return;
@@ -253,35 +423,29 @@ export default function SecretSantaParticipants() {
 
     setDrawing(true);
     try {
-      // Importar e executar algoritmo de sorteio
       const { performSecretSantaDraw, validateParticipants } = await import(
         "@/utils/secretSantaDraw"
       );
 
-      // Validar participantes
       const validation = validateParticipants(participants);
       if (!validation.valid) {
         throw new Error(validation.error);
       }
 
-      // Realizar sorteio
       const pairs = performSecretSantaDraw(participants);
 
-      // Preparar dados para inserção
       const pairsToInsert = pairs.map((pair) => ({
         secret_santa_id: secretSantaId,
         giver_id: pair.giver_id,
         receiver_id: pair.receiver_id,
       }));
 
-      // Inserir pares
       const { error: pairsError } = await supabase
         .from("event_secret_santa_pairs")
         .insert(pairsToInsert);
 
       if (pairsError) throw pairsError;
 
-      // Marcar como sorteado
       const { error: updateError } = await supabase
         .from("event_secret_santa")
         .update({ has_drawn: true })
@@ -310,10 +474,12 @@ export default function SecretSantaParticipants() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
+
+  const totalParticipants = participants.length + pendingInvitations.length;
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -351,19 +517,28 @@ export default function SecretSantaParticipants() {
                 value={newParticipantEmail}
                 onChange={(e) => setNewParticipantEmail(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && newParticipantEmail.trim()) {
-                    handleAddParticipant(newParticipantEmail.trim());
+                  if (e.key === "Enter" && newParticipantEmail.trim() && !adding) {
+                    handleAddParticipant(newParticipantEmail);
                   }
                 }}
+                disabled={adding}
               />
               <Button
-                onClick={() => handleAddParticipant(newParticipantEmail.trim())}
-                disabled={!newParticipantEmail.trim()}
+                onClick={() => handleAddParticipant(newParticipantEmail)}
+                disabled={!newParticipantEmail.trim() || adding}
               >
-                <UserPlus className="w-4 h-4 mr-2" />
-                Adicionar
+                {adding ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <UserPlus className="w-4 h-4 mr-2" />
+                )}
+                {adding ? "Adicionando..." : "Adicionar"}
               </Button>
             </div>
+
+            <p className="text-sm text-muted-foreground">
+              Adicione emails de participantes. Se não estiverem cadastrados, receberão um convite para se registrar no ReUNE.
+            </p>
 
             {/* Botão para adicionar todos os convidados do evento */}
             {eventInvitations.length > 0 && (
@@ -373,16 +548,23 @@ export default function SecretSantaParticipants() {
                 variant="outline"
                 className="w-full"
               >
-                {confirming ? "Adicionando..." : `Adicionar todos os ${eventInvitations.length} convidados do evento`}
+                {confirming ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Adicionando...
+                  </>
+                ) : (
+                  `Importar ${eventInvitations.length} convidado(s) confirmado(s) do evento`
+                )}
               </Button>
             )}
 
-            {/* Lista de participantes */}
+            {/* Lista de participantes confirmados */}
             <div className="space-y-3">
-              <h3 className="font-semibold">Participantes ({participants.length})</h3>
+              <h3 className="font-semibold">Participantes Cadastrados ({participants.length})</h3>
               {participants.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Nenhum participante adicionado ainda.
+                  Nenhum participante cadastrado ainda.
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -395,28 +577,76 @@ export default function SecretSantaParticipants() {
                         <Avatar>
                           <AvatarImage src={participant.avatar_url} />
                           <AvatarFallback>
-                            {participant.display_name?.[0] || "?"}
+                            {participant.display_name?.[0]?.toUpperCase() || "?"}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium">
                             {participant.display_name || "Usuário"}
+                            {participant.user_id === user?.id && (
+                              <span className="text-muted-foreground text-sm ml-2">(você)</span>
+                            )}
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            {participant.email}
-                          </p>
+                          {participant.email && (
+                            <p className="text-sm text-muted-foreground">
+                              {participant.email}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <Badge
-                        variant={participant.status === "confirmed" ? "default" : "secondary"}
-                      >
-                        {participant.status === "confirmed" ? "Confirmado" : "Pendente"}
+                      <Badge variant="default">
+                        Confirmado
                       </Badge>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* Lista de convites pendentes (não cadastrados) */}
+            {pendingInvitations.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-semibold">Convites Pendentes ({pendingInvitations.length})</h3>
+                <p className="text-sm text-muted-foreground">
+                  Estas pessoas ainda não se cadastraram no ReUNE.
+                </p>
+                <div className="space-y-2">
+                  {pendingInvitations.map((invitation) => (
+                    <div
+                      key={invitation.id}
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-dashed"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                          <Mail className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-muted-foreground">
+                            {invitation.name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {invitation.email}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary">
+                        Aguardando cadastro
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Aviso sobre convites pendentes */}
+            {pendingInvitations.length > 0 && (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  <strong>Atenção:</strong> Os convites pendentes não participarão do sorteio até que se cadastrem no ReUNE. 
+                  Aguarde todos se registrarem ou realize o sorteio apenas com os participantes confirmados.
+                </p>
+              </div>
+            )}
 
             {/* Botões de ação */}
             <div className="flex gap-3">
@@ -426,8 +656,12 @@ export default function SecretSantaParticipants() {
                 className="flex-1"
                 size="lg"
               >
-                <Shuffle className="w-4 h-4 mr-2" />
-                {drawing ? "Sorteando..." : "Realizar Sorteio"}
+                {drawing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Shuffle className="w-4 h-4 mr-2" />
+                )}
+                {drawing ? "Sorteando..." : `Realizar Sorteio (${participants.length} participantes)`}
               </Button>
             </div>
           </CardContent>
