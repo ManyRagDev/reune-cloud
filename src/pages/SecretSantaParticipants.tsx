@@ -447,9 +447,21 @@ export default function SecretSantaParticipants() {
 
       if (updateError) throw updateError;
 
+      // Criar notificações para todos os participantes usando função RPC
+      const participantUserIds = participants.map((p) => p.user_id);
+      try {
+        await supabase.rpc("notify_secret_santa_draw", {
+          _event_id: Number(eventId),
+          _secret_santa_id: secretSantaId,
+          _participant_user_ids: participantUserIds,
+        });
+      } catch (notifErr) {
+        console.error("Erro ao criar notificações:", notifErr);
+      }
+
       toast({
         title: "Sorteio realizado!",
-        description: "Os pares foram sorteados com sucesso. Cada participante pode ver seu par.",
+        description: "Os pares foram sorteados e os participantes foram notificados.",
       });
 
       navigate(`/event/${eventId}/secret-santa/results`);
