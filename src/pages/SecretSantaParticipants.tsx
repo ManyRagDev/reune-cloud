@@ -14,9 +14,9 @@ interface Participant {
   id: string;
   user_id: string;
   status: "pending" | "confirmed";
-  display_name?: string;
-  avatar_url?: string;
-  email?: string;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  email?: string | null;
 }
 
 interface PendingInvitation {
@@ -90,51 +90,41 @@ export default function SecretSantaParticipants() {
 
       setSecretSantaId(secretSantaData.id);
 
-      // Buscar participantes já adicionados ao Amigo Secreto
+      // Buscar participantes já adicionados ao Amigo Secreto (agora com display_name e email)
       const { data: participantsData, error: participantsError } = await supabase
         .from("event_secret_santa_participants")
         .select(`
           id,
           user_id,
-          status
+          status,
+          display_name,
+          email
         `)
         .eq("secret_santa_id", secretSantaData.id);
 
       if (participantsError) throw participantsError;
 
-      // Buscar informações dos perfis e emails
       if (participantsData && participantsData.length > 0) {
         const userIds = participantsData.map(p => p.user_id);
         
-        // Buscar perfis
+        // Buscar perfis para avatar
         const { data: profilesData } = await supabase
           .from("profiles")
           .select("id, display_name, avatar_url")
           .in("id", userIds);
 
-        // Para cada participante, buscar o email via RPC
-        const participantsWithInfo: Participant[] = [];
-        
-        for (const p of participantsData) {
+        const participantsWithInfo: Participant[] = participantsData.map(p => {
           const profile = profilesData?.find(prof => prof.id === p.user_id);
-          
-          // Tentar buscar email via função get_my_email se for o próprio usuário
-          // Ou deixar sem email se não for
-          let email: string | undefined;
-          
-          // Se o participante é o usuário logado, podemos obter o email
-          if (p.user_id === user?.id) {
-            email = user?.email;
-          }
-          
-          participantsWithInfo.push({
+          return {
             ...p,
             status: p.status as "pending" | "confirmed",
-            display_name: profile?.display_name,
+            // Usar display_name do participante ou do perfil
+            display_name: p.display_name || profile?.display_name,
             avatar_url: profile?.avatar_url,
-            email,
-          });
-        }
+            // Email já está no registro do participante
+            email: p.email,
+          };
+        });
 
         setParticipants(participantsWithInfo);
       } else {
@@ -142,7 +132,6 @@ export default function SecretSantaParticipants() {
       }
 
       // Buscar convites pendentes para o amigo secreto (não-cadastrados)
-      // Estes são identificados pelo metadata que contém secret_santa_id
       const { data: pendingData, error: pendingError } = await supabase
         .from("event_invitations")
         .select("id, participant_email, participant_name, status")
@@ -224,13 +213,15 @@ export default function SecretSantaParticipants() {
           return;
         }
 
-        // Adicionar participante
+        // Adicionar participante com display_name e email
         const { error: insertError } = await supabase
           .from("event_secret_santa_participants")
           .insert({
             secret_santa_id: secretSantaId,
             user_id: userId,
             status: "confirmed",
+            display_name: foundUser.display_name || null,
+            email: foundUser.email,
           });
 
         if (insertError) {
@@ -246,11 +237,13 @@ export default function SecretSantaParticipants() {
           return;
         }
 
+        const displayText = foundUser.display_name 
+          ? `${foundUser.display_name} (${foundUser.email})`
+          : foundUser.email;
+
         toast({
           title: "Participante adicionado!",
-          description: foundUser.display_name 
-            ? `${foundUser.display_name} foi adicionado ao Amigo Secreto.`
-            : "O participante foi adicionado com sucesso.",
+          description: `${displayText} foi adicionado ao Amigo Secreto.`,
         });
 
         setNewParticipantEmail("");
@@ -366,15 +359,17 @@ export default function SecretSantaParticipants() {
           });
 
           if (data && data.length > 0) {
-            const userId = data[0].id;
+            const foundUser = data[0];
             
-            // Adicionar participante (ignorar se já existir)
+            // Adicionar participante com info
             const { error } = await supabase
               .from("event_secret_santa_participants")
               .insert({
                 secret_santa_id: secretSantaId,
-                user_id: userId,
+                user_id: foundUser.id,
                 status: "confirmed",
+                display_name: foundUser.display_name || null,
+                email: foundUser.email,
               });
             
             if (!error) addedCount++;
@@ -411,7 +406,6 @@ export default function SecretSantaParticipants() {
   };
 
   const handleDrawPairs = async () => {
-    // Contar apenas participantes confirmados (não convites pendentes)
     if (!secretSantaId || participants.length < 2) {
       toast({
         title: "Participantes insuficientes",
@@ -471,6 +465,28 @@ export default function SecretSantaParticipants() {
     }
   };
 
+  // Função para obter o texto de exibição do participante
+  const getParticipantDisplayName = (participant: Participant): string => {
+    if (participant.display_name) {
+      return participant.display_name;
+    }
+    if (participant.email) {
+      return participant.email;
+    }
+    return "Participante";
+  };
+
+  // Função para obter as iniciais do participante
+  const getParticipantInitials = (participant: Participant): string => {
+    if (participant.display_name) {
+      return participant.display_name[0].toUpperCase();
+    }
+    if (participant.email) {
+      return participant.email[0].toUpperCase();
+    }
+    return "P";
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -478,8 +494,6 @@ export default function SecretSantaParticipants() {
       </div>
     );
   }
-
-  const totalParticipants = participants.length + pendingInvitations.length;
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -575,19 +589,20 @@ export default function SecretSantaParticipants() {
                     >
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarImage src={participant.avatar_url} />
+                          <AvatarImage src={participant.avatar_url || undefined} />
                           <AvatarFallback>
-                            {participant.display_name?.[0]?.toUpperCase() || "?"}
+                            {getParticipantInitials(participant)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium">
-                            {participant.display_name || "Usuário"}
+                            {getParticipantDisplayName(participant)}
                             {participant.user_id === user?.id && (
                               <span className="text-muted-foreground text-sm ml-2">(você)</span>
                             )}
                           </p>
-                          {participant.email && (
+                          {/* Mostrar email se houver display_name diferente do email */}
+                          {participant.display_name && participant.email && (
                             <p className="text-sm text-muted-foreground">
                               {participant.email}
                             </p>
@@ -622,9 +637,6 @@ export default function SecretSantaParticipants() {
                         </div>
                         <div>
                           <p className="font-medium text-muted-foreground">
-                            {invitation.name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
                             {invitation.email}
                           </p>
                         </div>
