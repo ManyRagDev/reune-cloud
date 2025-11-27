@@ -38,19 +38,11 @@ export default function SecretSantaParticipants() {
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [drawing, setDrawing] = useState(false);
-  const [allConfirmed, setAllConfirmed] = useState(false);
 
   useEffect(() => {
     if (!eventId) return;
     loadData();
   }, [eventId]);
-
-  useEffect(() => {
-    // Verificar se todos os participantes foram confirmados
-    const allParticipantsConfirmed = participants.length > 0 && 
-      participants.every(p => p.status === "confirmed");
-    setAllConfirmed(allParticipantsConfirmed);
-  }, [participants]);
 
   const loadData = async () => {
     if (!eventId) return;
@@ -165,7 +157,7 @@ export default function SecretSantaParticipants() {
         .insert({
           secret_santa_id: secretSantaId,
           user_id: userId,
-          status: "pending",
+          status: "confirmed",
         });
 
       if (insertError) {
@@ -222,7 +214,7 @@ export default function SecretSantaParticipants() {
               .insert({
                 secret_santa_id: secretSantaId,
                 user_id: userId,
-                status: "pending",
+                status: "confirmed",
               })
               .select();
           }
@@ -428,17 +420,15 @@ export default function SecretSantaParticipants() {
 
             {/* Botões de ação */}
             <div className="flex gap-3">
-              {allConfirmed && (
-                <Button
-                  onClick={handleDrawPairs}
-                  disabled={drawing || participants.length < 3}
-                  className="flex-1"
-                  size="lg"
-                >
-                  <Shuffle className="w-4 h-4 mr-2" />
-                  {drawing ? "Sorteando..." : "Realizar Sorteio"}
-                </Button>
-              )}
+              <Button
+                onClick={handleDrawPairs}
+                disabled={drawing || participants.length < 2}
+                className="flex-1"
+                size="lg"
+              >
+                <Shuffle className="w-4 h-4 mr-2" />
+                {drawing ? "Sorteando..." : "Realizar Sorteio"}
+              </Button>
             </div>
           </CardContent>
         </Card>
