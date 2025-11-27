@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.generate-mockup]
 verify_jwt = false
+
+[functions.send-secret-santa-notification]
+verify_jwt = false
