@@ -58,14 +58,19 @@ export default function AcceptInvite() {
           .single();
 
         if (invitationData?.participant_email) {
-          // Adicionar à waitlist silenciosamente (ignora duplicatas)
+          // Enviar para API de waitlist com tracking
           try {
-            await supabase
-              .from('waitlist_reune')
-              .insert({ email: invitationData.participant_email });
+            await fetch('/functions/v1/waitlist', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: invitationData.participant_email,
+                source_url: window.location.href
+              })
+            });
             console.log('Email capturado para benefícios futuros:', invitationData.participant_email);
-          } catch {
-            // Ignora erro de duplicata silenciosamente
+          } catch (error) {
+            console.error('Erro ao capturar email:', error);
           }
         }
 
