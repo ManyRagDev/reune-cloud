@@ -62,7 +62,7 @@ export default function LaunchLandingPage() {
                 setEmail('');
             }
         } catch (error) {
-            console.error('Erro ao cadastrar:', error);
+            // Silently handle error or report to monitoring service
             setStatus('error');
             setErrorMessage('Ocorreu um erro. Tente novamente.');
         } finally {

@@ -21,32 +21,50 @@ import AcceptInvite from "./pages/AcceptInvite";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/app" element={<Index />} />
-          <Route path="/convite/:token" element={<AcceptInvite />} />
-          <Route path="/lancamento" element={<LaunchLandingPage />} />
-          <Route path="/reune" element={<ReuneWaitlist />} />
-          <Route path="/amigo-secreto" element={<SecretSantaLanding />} />
-          <Route path="/event/:id/secret-santa/setup" element={<SecretSantaSetup />} />
-          <Route path="/event/:id/secret-santa/participants" element={<SecretSantaParticipants />} />
-          <Route path="/event/:id/secret-santa/results" element={<SecretSantaResults />} />
-          <Route path="/event/:id/secret-santa/my-result" element={<SecretSantaMyResult />} />
-          <Route path="/event/:id/secret-santa/wishlist" element={<SecretSantaWishlist />} />
-          <Route path="/event/:id/secret-santa/admin" element={<SecretSantaAdmin />} />
-          <Route path="/mockup" element={<MockupGenerator />} />
-          <Route path="/marketing-screenshots" element={<MarketingScreenshots />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+import { EnableDevMode } from "./components/EnableDevMode";
+
+const App = () => {
+  const isDev = localStorage.getItem("reune_dev_mode") === "true";
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/r3un3test4ndo" element={<EnableDevMode />} />
+
+            {isDev ? (
+              <>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/app" element={<Index />} />
+                <Route path="/convite/:token" element={<AcceptInvite />} />
+                <Route path="/lancamento" element={<LaunchLandingPage />} />
+                <Route path="/reune" element={<ReuneWaitlist />} />
+                <Route path="/amigo-secreto" element={<SecretSantaLanding />} />
+                <Route path="/amigosecreto" element={<SecretSantaLanding />} />
+                <Route path="/event/:id/secret-santa/setup" element={<SecretSantaSetup />} />
+                <Route path="/event/:id/secret-santa/participants" element={<SecretSantaParticipants />} />
+                <Route path="/event/:id/secret-santa/results" element={<SecretSantaResults />} />
+                <Route path="/event/:id/secret-santa/my-result" element={<SecretSantaMyResult />} />
+                <Route path="/event/:id/secret-santa/wishlist" element={<SecretSantaWishlist />} />
+                <Route path="/event/:id/secret-santa/admin" element={<SecretSantaAdmin />} />
+                <Route path="/mockup" element={<MockupGenerator />} />
+                <Route path="/marketing-screenshots" element={<MarketingScreenshots />} />
+                <Route path="*" element={<NotFound />} />
+              </>
+            ) : (
+              <>
+                <Route path="/amigosecreto" element={<SecretSantaLanding />} />
+                <Route path="*" element={<LaunchLandingPage />} />
+              </>
+            )}
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

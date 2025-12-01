@@ -56,7 +56,7 @@ export default function SecretSantaParticipants() {
 
   const loadData = async () => {
     if (!eventId) return;
-    
+
     setLoading(true);
     try {
       // Buscar dados do evento
@@ -77,7 +77,7 @@ export default function SecretSantaParticipants() {
         .maybeSingle();
 
       if (secretSantaError) throw secretSantaError;
-      
+
       if (!secretSantaData) {
         toast({
           title: "Amigo Secreto não encontrado",
@@ -106,7 +106,7 @@ export default function SecretSantaParticipants() {
 
       if (participantsData && participantsData.length > 0) {
         const userIds = participantsData.map(p => p.user_id);
-        
+
         // Buscar perfis para avatar
         const { data: profilesData } = await supabase
           .from("profiles")
@@ -158,7 +158,7 @@ export default function SecretSantaParticipants() {
       setEventInvitations(invitationsData || []);
 
     } catch (err: any) {
-      console.error("Erro ao carregar dados:", err);
+      // Error handling
       toast({
         title: "Erro ao carregar",
         description: err.message || "Não foi possível carregar os dados.",
@@ -171,9 +171,9 @@ export default function SecretSantaParticipants() {
 
   const handleAddParticipant = async (email: string) => {
     if (!secretSantaId || !eventId || !eventData) return;
-    
+
     const trimmedEmail = email.trim().toLowerCase();
-    
+
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
@@ -184,7 +184,7 @@ export default function SecretSantaParticipants() {
       });
       return;
     }
-    
+
     setAdding(true);
     try {
       // Buscar usuário pelo email usando a função RPC (agora com LEFT JOIN)
@@ -194,7 +194,7 @@ export default function SecretSantaParticipants() {
         });
 
       if (userError) {
-        console.error("Erro ao buscar usuário:", userError);
+        // Error handling
       }
 
       // Se usuário existe no sistema
@@ -237,7 +237,7 @@ export default function SecretSantaParticipants() {
           return;
         }
 
-        const displayText = foundUser.display_name 
+        const displayText = foundUser.display_name
           ? `${foundUser.display_name} (${foundUser.email})`
           : foundUser.email;
 
@@ -253,7 +253,7 @@ export default function SecretSantaParticipants() {
         await handleInviteNonRegisteredUser(trimmedEmail);
       }
     } catch (err: any) {
-      console.error("Erro ao adicionar participante:", err);
+      // Error handling
       toast({
         title: "Erro ao adicionar",
         description: err.message || "Não foi possível adicionar o participante.",
@@ -281,7 +281,7 @@ export default function SecretSantaParticipants() {
     try {
       // Gerar nome a partir do email
       const name = email.split("@")[0];
-      
+
       // Criar registro de convite no banco
       const { data: invitation, error: inviteError } = await supabase
         .from("event_invitations")
@@ -320,7 +320,7 @@ export default function SecretSantaParticipants() {
       });
 
       if (emailError) {
-        console.error("Erro ao enviar email:", emailError);
+        // Error handling
         toast({
           title: "Convite criado",
           description: "O convite foi criado mas houve um erro ao enviar o email. O participante pode ser adicionado manualmente depois.",
@@ -336,7 +336,7 @@ export default function SecretSantaParticipants() {
       setNewParticipantEmail("");
       loadData();
     } catch (err: any) {
-      console.error("Erro ao convidar usuário:", err);
+      // Error handling
       toast({
         title: "Erro ao enviar convite",
         description: err.message || "Não foi possível enviar o convite.",
@@ -347,10 +347,10 @@ export default function SecretSantaParticipants() {
 
   const handleAddEventInvitations = async () => {
     if (!secretSantaId || !eventInvitations.length) return;
-    
+
     setConfirming(true);
     let addedCount = 0;
-    
+
     try {
       for (const invitation of eventInvitations) {
         try {
@@ -360,7 +360,7 @@ export default function SecretSantaParticipants() {
 
           if (data && data.length > 0) {
             const foundUser = data[0];
-            
+
             // Adicionar participante com info
             const { error } = await supabase
               .from("event_secret_santa_participants")
@@ -371,11 +371,11 @@ export default function SecretSantaParticipants() {
                 display_name: foundUser.display_name || null,
                 email: foundUser.email,
               });
-            
+
             if (!error) addedCount++;
           }
         } catch (err) {
-          console.error(`Erro ao adicionar ${invitation.participant_email}:`, err);
+          // Error handling
         }
       }
 
@@ -394,7 +394,7 @@ export default function SecretSantaParticipants() {
 
       loadData();
     } catch (err: any) {
-      console.error("Erro ao confirmar participantes:", err);
+      // Error handling
       toast({
         title: "Erro ao confirmar",
         description: err.message || "Não foi possível confirmar os participantes.",
@@ -456,7 +456,7 @@ export default function SecretSantaParticipants() {
           _participant_user_ids: participantUserIds,
         });
       } catch (notifErr) {
-        console.error("Erro ao criar notificações:", notifErr);
+        // Error handling
       }
 
       // Enviar emails para todos os participantes
@@ -475,9 +475,9 @@ export default function SecretSantaParticipants() {
             participants: participantsWithEmail,
           },
         });
-        console.log("Emails de notificação enviados com sucesso");
+        // Emails de notificação enviados
       } catch (emailErr) {
-        console.error("Erro ao enviar emails:", emailErr);
+        // Error handling
         // Não bloquear o fluxo se emails falharem
       }
 
@@ -488,7 +488,7 @@ export default function SecretSantaParticipants() {
 
       navigate(`/event/${eventId}/secret-santa/results`);
     } catch (err: any) {
-      console.error("Erro ao realizar sorteio:", err);
+      // Error handling
       toast({
         title: "Erro ao sortear",
         description: err.message || "Não foi possível realizar o sorteio.",
@@ -515,7 +515,7 @@ export default function SecretSantaParticipants() {
 
       setParticipants(prev => prev.filter(p => p.id !== participantId));
     } catch (err: any) {
-      console.error("Erro ao remover participante:", err);
+      // Error handling
       toast({
         title: "Erro ao remover",
         description: err.message || "Não foi possível remover o participante.",
@@ -540,7 +540,7 @@ export default function SecretSantaParticipants() {
 
       setPendingInvitations(prev => prev.filter(inv => inv.id !== invitationId));
     } catch (err: any) {
-      console.error("Erro ao remover convite:", err);
+      // Error handling
       toast({
         title: "Erro ao remover",
         description: err.message || "Não foi possível remover o convite.",
@@ -758,7 +758,7 @@ export default function SecretSantaParticipants() {
             {pendingInvitations.length > 0 && (
               <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                 <p className="text-sm text-amber-700 dark:text-amber-400">
-                  <strong>Atenção:</strong> Os convites pendentes não participarão do sorteio até que se cadastrem no ReUNE. 
+                  <strong>Atenção:</strong> Os convites pendentes não participarão do sorteio até que se cadastrem no ReUNE.
                   Aguarde todos se registrarem ou realize o sorteio apenas com os participantes confirmados.
                 </p>
               </div>
