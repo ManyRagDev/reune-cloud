@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { Sparkles, Calendar, Wallet, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import landingBg from '@/assets/landing-bg.png';
@@ -47,20 +46,23 @@ export default function LaunchLandingPage() {
         setErrorMessage('');
 
         try {
-            const { error } = await supabase
-                .from('waitlist_reune')
-                .insert([{ email }]);
+            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/waitlist`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email,
+                    source_url: window.location.href,
+                }),
+            });
 
-            if (error) {
-                if (error.code === '23505') { // Unique violation
-                    setStatus('success'); // Tratar duplicado como sucesso para não vazar dados
-                } else {
-                    throw error;
-                }
-            } else {
-                setStatus('success');
-                setEmail('');
+            if (!response.ok) {
+                throw new Error('Failed to submit');
             }
+
+            setStatus('success');
+            setEmail('');
         } catch (error) {
             // Silently handle error or report to monitoring service
             setStatus('error');
