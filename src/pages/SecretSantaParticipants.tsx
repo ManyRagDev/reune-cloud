@@ -321,12 +321,17 @@ export default function SecretSantaParticipants() {
 
       // Captura discreta de email para early adopters (lead nurturing)
       try {
-        await supabase
-          .from('waitlist_reune')
-          .insert({ email: email.toLowerCase() });
+        await fetch('/functions/v1/waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.toLowerCase(),
+            source_url: window.location.href
+          })
+        });
         console.log('Email capturado para benefícios futuros:', email);
-      } catch {
-        // Ignora erro de duplicata silenciosamente
+      } catch (error) {
+        console.error('Erro ao capturar email:', error);
       }
 
       if (emailError) {

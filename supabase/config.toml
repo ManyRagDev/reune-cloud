@@ -1,5 +1,8 @@
 project_id = "tfrogqqqmgfgfybesglq"
 
+[functions.waitlist]
+verify_jwt = false
+
 [functions.send-invitation-email]
 verify_jwt = false
 
