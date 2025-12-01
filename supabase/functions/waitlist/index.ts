@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
     // Send event to Meta Conversions API
     const metaToken = Deno.env.get('META_CONVERSIONS_TOKEN');
     const pixelId = Deno.env.get('META_PIXEL_ID');
+    const testCode = Deno.env.get('META_TEST_CODE');
 
     if (metaToken && pixelId) {
       const eventName = getEventName(source_url);
@@ -84,7 +85,7 @@ Deno.serve(async (req) => {
       const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '';
       const userAgent = req.headers.get('user-agent') || '';
 
-      const metaPayload = {
+      const metaPayload: any = {
         data: [
           {
             event_name: eventName,
@@ -99,6 +100,11 @@ Deno.serve(async (req) => {
           },
         ],
       };
+
+      // Add test_event_code if available
+      if (testCode) {
+        metaPayload.test_event_code = testCode;
+      }
 
       const metaUrl = `https://graph.facebook.com/v18.0/${pixelId}/events?access_token=${metaToken}`;
 
