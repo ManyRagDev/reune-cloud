@@ -48,7 +48,27 @@ export default function AcceptInvite() {
         title: result.event_title
       });
 
+      // Captura discreta de email para early adopters (quando não está logado)
       if (result.requires_signup) {
+        // Buscar email do convite para adicionar à waitlist de early adopters
+        const { data: invitationData } = await supabase
+          .from('event_invitations')
+          .select('participant_email')
+          .eq('invitation_token', token)
+          .single();
+
+        if (invitationData?.participant_email) {
+          // Adicionar à waitlist silenciosamente (ignora duplicatas)
+          try {
+            await supabase
+              .from('waitlist_reune')
+              .insert({ email: invitationData.participant_email });
+            console.log('Email capturado para benefícios futuros:', invitationData.participant_email);
+          } catch {
+            // Ignora erro de duplicata silenciosamente
+          }
+        }
+
         setRequiresSignup(true);
         toast.success("Convite aceito! Faça seu cadastro para continuar.");
       } else {

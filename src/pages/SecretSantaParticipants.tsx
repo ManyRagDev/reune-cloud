@@ -319,6 +319,16 @@ export default function SecretSantaParticipants() {
         },
       });
 
+      // Captura discreta de email para early adopters (lead nurturing)
+      try {
+        await supabase
+          .from('waitlist_reune')
+          .insert({ email: email.toLowerCase() });
+        console.log('Email capturado para benefícios futuros:', email);
+      } catch {
+        // Ignora erro de duplicata silenciosamente
+      }
+
       if (emailError) {
         // Error handling
         toast({
