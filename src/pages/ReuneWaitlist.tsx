@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -27,27 +26,28 @@ const ReuneWaitlist = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
-        .from("waitlist_reune")
-        .insert([{ email: email.toLowerCase().trim() }]);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/waitlist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.toLowerCase().trim(),
+          source_url: window.location.href,
+        }),
+      });
 
-      if (error) {
-        if (error.code === "23505") {
-          toast({
-            title: "Você já está na lista!",
-            description: "Esse email já foi cadastrado.",
-          });
-        } else {
-          throw error;
-        }
-      } else {
-        setIsSubmitted(true);
-        setEmail("");
-        toast({
-          title: "Você está na lista! 🎉",
-          description: "Fique de olho no lançamento.",
-        });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to submit');
       }
+
+      setIsSubmitted(true);
+      setEmail("");
+      toast({
+        title: "Você está na lista! 🎉",
+        description: "Fique de olho no lançamento.",
+      });
     } catch (error) {
       console.error("Error submitting to waitlist:", error);
       toast({
