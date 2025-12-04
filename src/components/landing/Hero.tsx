@@ -33,12 +33,12 @@ export const Hero = () => {
             </h1>*/}
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-  Reúna pessoas,{" "}
-  <span className="bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
-    não problemas
-  </span>
-  .
-</h1>
+              Reúna pessoas,{" "}
+              <span className="bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
+                não problemas
+              </span>
+              .
+            </h1>
 
 
             <p className="text-xl text-muted-foreground max-w-2xl">
@@ -58,13 +58,6 @@ export const Hero = () => {
 
             {/* Social proof */}
             <div className="flex items-center gap-6 justify-center lg:justify-start text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 fill-gold text-gold" />
-                <span className="font-semibold text-foreground">4.9/5</span>
-              </div>
-              <div className="h-4 w-px bg-border" />
-              <span>+1.200 eventos organizados</span>
-              <div className="h-4 w-px bg-border" />
               <span className="flex items-center gap-1">
                 <Sparkles className="w-4 h-4 text-primary" />
                 IA UNE.AI
@@ -72,9 +65,9 @@ export const Hero = () => {
             </div>
 
             {/* PWA Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted text-xs">
+            {/* <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted text-xs">
               📱 Instale no celular em 2 toques
-            </div>
+            </div> */}
           </div>
 
           {/* Visual */}
@@ -91,7 +84,7 @@ export const Hero = () => {
                   v.pause();
                   try {
                     v.currentTime = v.duration;
-                  } catch {}
+                  } catch { }
                 }}
                 className="w-full max-w-md mx-auto rounded-2xl drop-shadow-2xl"
               />

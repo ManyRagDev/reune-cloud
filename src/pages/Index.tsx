@@ -9,23 +9,48 @@ import EventDetails from './EventDetails';
 import ChatWidget from '@/components/ChatWidget';
 import { ThemeToggle } from '@/components/landing/ThemeToggle';
 
+import { useSearchParams } from 'react-router-dom';
+import { templates, EventTemplate } from '@/data/templates';
+
 type Screen = 'landing' | 'login' | 'dashboard' | 'createEvent' | 'eventDetails';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [searchParams] = useSearchParams();
+  const [initialTemplate, setInitialTemplate] = useState<EventTemplate | null>(null);
+
+  useEffect(() => {
+    const templateSlug = searchParams.get('template');
+    if (templateSlug) {
+      const template = templates.find(t => t.slug === templateSlug);
+      if (template) {
+        setInitialTemplate(template);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (user) {
-      setCurrentScreen('dashboard');
+      // If there is a template and we just logged in (or loaded), go to create event
+      if (initialTemplate) {
+        setCurrentScreen('createEvent');
+      } else {
+        setCurrentScreen('dashboard');
+      }
     } else if (!loading) {
       setCurrentScreen('landing');
     }
-  }, [user, loading]);
+  }, [user, loading, initialTemplate]);
 
   const handleLogin = () => {
-    setCurrentScreen('dashboard');
+    // If we have a template, go to create event after login
+    if (initialTemplate) {
+      setCurrentScreen('createEvent');
+    } else {
+      setCurrentScreen('dashboard');
+    }
   };
 
   const handleLogout = async () => {
@@ -34,6 +59,7 @@ const Index = () => {
   };
 
   const handleCreateEvent = () => {
+    setInitialTemplate(null); // Clear template if creating manually from dashboard
     setCurrentScreen('createEvent');
   };
 
@@ -43,10 +69,12 @@ const Index = () => {
   };
 
   const handleBackToDashboard = () => {
+    setInitialTemplate(null);
     setCurrentScreen('dashboard');
   };
 
   const handleEventCreated = () => {
+    setInitialTemplate(null);
     setCurrentScreen('dashboard');
   };
 
@@ -69,10 +97,10 @@ const Index = () => {
     switch (currentScreen) {
       case 'landing':
         return <LandingPage />;
-      
+
       case 'login':
         return <Login onLogin={handleLogin} />;
-      
+
       case 'dashboard':
         return (
           <Dashboard
@@ -82,15 +110,16 @@ const Index = () => {
             onLogout={handleLogout}
           />
         );
-      
+
       case 'createEvent':
         return (
           <CreateEvent
             onBack={handleBackToDashboard}
             onCreate={handleEventCreated}
+            initialData={initialTemplate}
           />
         );
-      
+
       case 'eventDetails':
         return (
           <EventDetails
@@ -98,7 +127,7 @@ const Index = () => {
             onBack={handleBackToDashboard}
           />
         );
-      
+
       default:
         return <Login onLogin={handleLogin} />;
     }

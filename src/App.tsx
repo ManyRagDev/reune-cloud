@@ -6,8 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import LaunchLandingPage from "./pages/LaunchLandingPage";
-import ReuneWaitlist from "./pages/ReuneWaitlist";
 import SecretSantaSetup from "./pages/SecretSantaSetup";
 import SecretSantaParticipants from "./pages/SecretSantaParticipants";
 import SecretSantaResults from "./pages/SecretSantaResults";
@@ -18,13 +16,12 @@ import SecretSantaLanding from "./pages/SecretSantaLanding";
 import MockupGenerator from "./pages/MockupGenerator";
 import MarketingScreenshots from "./pages/MarketingScreenshots";
 import AcceptInvite from "./pages/AcceptInvite";
+import { EnableDevMode } from "./components/EnableDevMode";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
-import { EnableDevMode } from "./components/EnableDevMode";
-
 const App = () => {
-  const isDev = localStorage.getItem("reune_dev_mode") === "true";
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -33,33 +30,27 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/app" element={<Index />} />
+            <Route path="/convite/:token" element={<AcceptInvite />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+
+            {/* Secret Santa Routes */}
+            <Route path="/amigo-secreto" element={<SecretSantaLanding />} />
+            <Route path="/amigosecreto" element={<SecretSantaLanding />} />
+            <Route path="/event/:id/secret-santa/setup" element={<SecretSantaSetup />} />
+            <Route path="/event/:id/secret-santa/participants" element={<SecretSantaParticipants />} />
+            <Route path="/event/:id/secret-santa/results" element={<SecretSantaResults />} />
+            <Route path="/event/:id/secret-santa/my-result" element={<SecretSantaMyResult />} />
+            <Route path="/event/:id/secret-santa/wishlist" element={<SecretSantaWishlist />} />
+            <Route path="/event/:id/secret-santa/admin" element={<SecretSantaAdmin />} />
+
+            {/* Utility Routes */}
+            <Route path="/mockup" element={<MockupGenerator />} />
+            <Route path="/marketing-screenshots" element={<MarketingScreenshots />} />
             <Route path="/r3un3test4ndo" element={<EnableDevMode />} />
 
-            {isDev ? (
-              <>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/app" element={<Index />} />
-                <Route path="/convite/:token" element={<AcceptInvite />} />
-                <Route path="/lancamento" element={<LaunchLandingPage />} />
-                <Route path="/reune" element={<ReuneWaitlist />} />
-                <Route path="/amigo-secreto" element={<SecretSantaLanding />} />
-                <Route path="/amigosecreto" element={<SecretSantaLanding />} />
-                <Route path="/event/:id/secret-santa/setup" element={<SecretSantaSetup />} />
-                <Route path="/event/:id/secret-santa/participants" element={<SecretSantaParticipants />} />
-                <Route path="/event/:id/secret-santa/results" element={<SecretSantaResults />} />
-                <Route path="/event/:id/secret-santa/my-result" element={<SecretSantaMyResult />} />
-                <Route path="/event/:id/secret-santa/wishlist" element={<SecretSantaWishlist />} />
-                <Route path="/event/:id/secret-santa/admin" element={<SecretSantaAdmin />} />
-                <Route path="/mockup" element={<MockupGenerator />} />
-                <Route path="/marketing-screenshots" element={<MarketingScreenshots />} />
-                <Route path="*" element={<NotFound />} />
-              </>
-            ) : (
-              <>
-                <Route path="/amigosecreto" element={<SecretSantaLanding />} />
-                <Route path="*" element={<LaunchLandingPage />} />
-              </>
-            )}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>

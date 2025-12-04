@@ -19,9 +19,9 @@ const LandingPage = () => {
       <Benefits />
       <Demo />
       <Templates />
-      <Testimonials />
+      {/* <Testimonials /> */}
       <Integrations />
-      <FAQ />
+      {/* <FAQ /> */}
       <FinalCTA />
       <Footer />
     </div>

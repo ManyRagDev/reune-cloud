@@ -8,7 +8,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus, Trash2, Edit2, Save, Gift } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus, Trash2, Edit2, Save, Gift, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -18,7 +18,6 @@ import { OrganizerInviteDialog } from "@/components/events/OrganizerInviteDialog
 import { supabase } from "@/integrations/supabase/client";
 import { rpc } from "@/api/rpc";
 import { useNavigate } from "react-router-dom";
-// Force TypeScript to reload types
 
 interface Attendee {
   id: number;
@@ -34,6 +33,7 @@ interface Supply {
   unidade: string;
   categoria: string;
   prioridade: string;
+  valor_estimado: number | null;
   assignments: ItemAssignment[];
 }
 
@@ -72,13 +72,13 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [isInvitedGuest, setIsInvitedGuest] = useState(false);
   const [isConfirmedGuest, setIsConfirmedGuest] = useState(false);
   const [editingSupplyId, setEditingSupplyId] = useState<number | null>(null);
-  const [editingSupplyData, setEditingSupplyData] = useState<{ name: string; quantidade: number; unidade: string }>({ name: '', quantidade: 1, unidade: 'un' });
-  const [organizerInfo, setOrganizerInfo] = useState<{ username: string | null; email: string | null }>({ 
-    username: null, 
-    email: null 
+  const [editingSupplyData, setEditingSupplyData] = useState<{ name: string; quantidade: number; unidade: string; valor_estimado: number | null }>({ name: '', quantidade: 1, unidade: 'un', valor_estimado: null });
+  const [organizerInfo, setOrganizerInfo] = useState<{ username: string | null; email: string | null }>({
+    username: null,
+    email: null
   });
   const [coOrganizersInfo, setCoOrganizersInfo] = useState<Record<string, { username: string | null; email: string | null }>>({});
-  
+
   // Estados para dinâmicas do evento
   const [hasSecretSanta, setHasSecretSanta] = useState(false);
   const [secretSantaData, setSecretSantaData] = useState<any>(null);
@@ -270,7 +270,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
             status: inv.status === 'accepted' ? 'confirmado' : inv.status === 'declined' ? 'recusado' : 'pendente',
           }));
           setAttendees(mappedAttendees);
-          
+
           // Encontrar o ID da invitation do usuário atual
           const myInvitation = invitationsData.find((inv: any) => inv.participant_email === user.email);
           if (myInvitation) {
@@ -281,7 +281,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
               .eq("event_id", eventIdNum)
               .eq("contato", user.email)
               .maybeSingle();
-            
+
             if (participantData) {
               setCurrentParticipantId(participantData.id);
             }
@@ -329,6 +329,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
               unidade: item.unidade,
               categoria: item.categoria,
               prioridade: item.prioridade,
+              valor_estimado: item.valor_estimado,
               assignments: itemAssignments,
             };
           });
@@ -343,7 +344,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
     // Configurar realtime
     const eventIdNum = Number(eventId);
-    
+
     const invitationsChannel = supabase
       .channel(`invitations_${eventIdNum}`)
       .on(
@@ -553,7 +554,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   ) => {
     if (!event) return { error: "Evento não encontrado" };
     if (!session) return { error: "Autenticação necessária" };
-    
+
     try {
       const { data, error } = await supabase.rpc("process_invitation" as any, {
         _event_id: Number(event.id),
@@ -561,9 +562,9 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         _invitee_name: name,
         _is_organizer: shouldBeOrganizer,
       });
-      
+
       if (error) throw error;
-      
+
       const result = data as {
         user_exists?: boolean;
         message?: string;
@@ -571,7 +572,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         invitation_id?: string;
         event_data?: { title: string; date: string; time: string };
       };
-      
+
       // Se usuário não existe, enviar email
       if (!result?.user_exists && result?.invitation_token) {
         const { error: emailError } = await supabase.functions.invoke("send-invitation-email", {
@@ -585,7 +586,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
             invitation_token: result.invitation_token,
           },
         });
-        
+
         if (emailError) {
           console.error("Erro ao enviar email:", emailError);
           toast({
@@ -606,7 +607,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           description: `${name} recebeu uma notificação sobre o convite.`,
         });
       }
-      
+
       return { error: null };
     } catch (err: any) {
       console.error("Erro ao processar convite:", err);
@@ -617,7 +618,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   const addSupply = async () => {
     if (!newSupply.trim()) return;
-    
+
     try {
       // Adicionar ao estado local imediatamente
       const newItem = {
@@ -627,14 +628,15 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         unidade: newSupplyUnit,
         categoria: 'geral',
         prioridade: 'B',
+        valor_estimado: null,
         assignments: [],
       };
-      
+
       setSupplies([...supplies, newItem]);
       setNewSupply("");
       setNewSupplyQuantity(1);
       setNewSupplyUnit("un");
-      
+
       // Se for convidado confirmado ou organizador, salvar diretamente no banco
       if ((isConfirmedGuest || isOrganizer) && event) {
         const { error } = await supabase
@@ -646,6 +648,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
             unidade: newSupplyUnit,
             categoria: 'geral',
             prioridade: 'B',
+            valor_estimado: null,
           });
 
         if (error) {
@@ -678,6 +681,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
               unidade: item.unidade,
               categoria: item.categoria,
               prioridade: item.prioridade,
+              valor_estimado: item.valor_estimado,
               assignments: assignmentsData
                 .filter((a) => a.item_id === item.id)
                 .map((a) => ({
@@ -688,7 +692,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   confirmado: a.confirmado,
                 })),
             }));
-            
+
             setSupplies(suppliesWithAssignments);
           }
         }
@@ -797,21 +801,67 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       // Como os itens já são salvos automaticamente ao adicionar/editar,
       // apenas confirmamos que tudo está salvo
       await new Promise(resolve => setTimeout(resolve, 500)); // Pequeno delay para feedback visual
-      
-      toast({ 
-        title: "Tudo salvo!", 
-        description: "Todas as alterações já foram salvas automaticamente." 
+
+      toast({
+        title: "Listas salvas",
+        description: "Todas as alterações foram registradas.",
       });
     } catch (err: any) {
       console.error("Erro ao salvar listas:", err);
-      toast({ 
-        title: "Falha ao salvar", 
-        description: err.message || "Não foi possível salvar as alterações." 
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar as alterações.",
+        variant: "destructive",
       });
     } finally {
       setSaving(false);
     }
   };
+
+  const handleUpdateItemPrice = async (itemId: number, price: number | null) => {
+    try {
+      const { error } = await supabase
+        .from('event_items')
+        .update({ valor_estimado: price })
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      setSupplies(prev => prev.map(item =>
+        item.id === itemId ? { ...item, valor_estimado: price } : item
+      ));
+
+      toast({
+        title: "Valor atualizado",
+        description: "O valor estimado do item foi salvo.",
+      });
+    } catch (err) {
+      console.error("Erro ao atualizar preço:", err);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o valor.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Cost Calculation Logic
+  const calculateCosts = () => {
+    const totalCost = supplies.reduce((acc, item) => {
+      return acc + (item.quantidade * (item.valor_estimado || 0));
+    }, 0);
+
+    // Count confirmed guests + organizer (1)
+    const confirmedGuestsCount = attendees.filter(a => a.status === 'confirmado').length;
+    const totalPeople = confirmedGuestsCount + 1; // +1 for organizer
+
+    const costPerPerson = totalPeople > 0 ? totalCost / totalPeople : 0;
+
+    return { totalCost, costPerPerson, totalPeople };
+  };
+
+  const { totalCost, costPerPerson, totalPeople } = calculateCosts();
+  const hasAnyPrice = supplies.some(s => s.valor_estimado !== null && s.valor_estimado > 0);
 
   // Deletar item
   const deleteSupply = async (supplyId: number) => {
@@ -824,7 +874,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       if (error) throw error;
 
       setSupplies(supplies.filter(s => s.id !== supplyId));
-      
+
       toast({
         title: "Item removido",
         description: "O item foi removido da lista.",
@@ -849,12 +899,12 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
       if (error) throw error;
 
-      setSupplies(supplies.map(s => 
-        s.id === supplyId 
+      setSupplies(supplies.map(s =>
+        s.id === supplyId
           ? { ...s, name: updates.nome_item || s.name, quantidade: updates.quantidade || s.quantidade, unidade: updates.unidade || s.unidade }
           : s
       ));
-      
+
       toast({
         title: "Item atualizado",
         description: "As alterações foram salvas.",
@@ -1211,7 +1261,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 {attendees.map((attendee) => {
                   const isCurrentUser = user?.email === attendee.email;
                   const displayName = attendee.name || attendee.email || 'Participante';
-                  
+
                   return (
                     <div key={attendee.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div className="flex-1 min-w-0">
@@ -1272,8 +1322,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 </div>
                 {/* Botão destacado para adicionar itens */}
                 {(isOrganizer || isConfirmedGuest) && (
-                  <Button 
-                    variant="default" 
+                  <Button
+                    variant="default"
                     size="sm"
                     onClick={() => {
                       const input = document.querySelector('[placeholder="Adicionar item..."]') as HTMLInputElement;
@@ -1291,20 +1341,41 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
               </div>
             </CardHeader>
             <CardContent>
+              {/* Cost Summary */}
+              {hasAnyPrice && (
+                <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex flex-col sm:flex-row justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Custo Total Estimado</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </p>
+                    </div>
+                    <div className="sm:text-right">
+                      <p className="text-sm text-muted-foreground">
+                        Custo por Pessoa ({totalPeople} confirmados)
+                      </p>
+                      <p className="text-xl font-semibold text-primary">
+                        {costPerPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {supplies.map((supply) => {
                   const isEditing = editingSupplyId === supply.id;
-                  
+
                   return (
                     <div
                       key={supply.id}
-                      className={`p-4 border-2 rounded-lg transition-all ${
-                        getSupplyStatus(supply) === 'mine'
-                          ? 'border-primary bg-primary/5'
-                          : getSupplyStatus(supply) === 'taken'
-                            ? 'border-muted bg-muted/30'
-                            : 'border-border hover:border-primary/50'
-                      }`}
+                      className={`p-4 border-2 rounded-lg transition-all ${getSupplyStatus(supply) === 'mine'
+                        ? 'border-primary bg-primary/5'
+                        : getSupplyStatus(supply) === 'taken'
+                          ? 'border-muted bg-muted/30'
+                          : 'border-border hover:border-primary/50'
+                        }`}
                     >
                       {isEditing ? (
                         // Modo de edição
@@ -1346,6 +1417,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                               </SelectContent>
                             </Select>
                           </div>
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="w-4 h-4 text-muted-foreground" />
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={editingSupplyData.valor_estimado || ''}
+                              onChange={(e) => setEditingSupplyData({ ...editingSupplyData, valor_estimado: e.target.value ? parseFloat(e.target.value) : null })}
+                              placeholder="Valor unitário estimado (opcional)"
+                              className="flex-1"
+                            />
+                          </div>
                           <div className="flex gap-2 justify-end">
                             <Button
                               size="sm"
@@ -1363,6 +1446,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                                   quantidade: editingSupplyData.quantidade,
                                   unidade: editingSupplyData.unidade,
                                 });
+                                handleUpdateItemPrice(supply.id, editingSupplyData.valor_estimado);
                                 setEditingSupplyId(null);
                               }}
                             >
@@ -1382,9 +1466,17 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                                   {getSupplyStatusText(supply)}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-muted-foreground">
-                                {supply.quantidade} {supply.unidade}
-                              </p>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <p>
+                                  {supply.quantidade} {supply.unidade}
+                                </p>
+                                {supply.valor_estimado && (
+                                  <p className="flex items-center text-primary">
+                                    <DollarSign className="w-3 h-3 mr-1" />
+                                    {supply.valor_estimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                             {(isOrganizer || isConfirmedGuest) && (
                               <div className="flex gap-1">
@@ -1397,6 +1489,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                                       name: supply.name,
                                       quantidade: supply.quantidade,
                                       unidade: supply.unidade,
+                                      valor_estimado: supply.valor_estimado
                                     });
                                   }}
                                 >
@@ -1428,11 +1521,10 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                               />
                               <label
                                 htmlFor={`supply-${supply.id}`}
-                                className={`text-sm font-medium leading-none ${
-                                  getSupplyStatus(supply) === 'taken'
-                                    ? 'cursor-not-allowed opacity-70'
-                                    : 'cursor-pointer'
-                                }`}
+                                className={`text-sm font-medium leading-none ${getSupplyStatus(supply) === 'taken'
+                                  ? 'cursor-not-allowed opacity-70'
+                                  : 'cursor-pointer'
+                                  }`}
                               >
                                 {getSupplyStatus(supply) === 'mine'
                                   ? 'Desistir deste item'

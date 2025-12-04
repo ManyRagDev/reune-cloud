@@ -15,16 +15,12 @@ const faqs = [
     answer: "A UNE.AI ajuda a montar a lista de itens, quantidades e lembretes automáticos baseado no tipo de evento que você criar.",
   },
   {
-    question: "Preciso baixar o app?",
-    answer: "Não. Você pode usar no navegador e, se quiser, instalar o PWA no celular para ter uma experiência similar a um app nativo.",
+    question: "Preciso baixar algum aplicativo?",
+    answer: "Não. O ReUNE funciona diretamente no navegador do seu celular ou computador, sem ocupar espaço.",
   },
   {
     question: "Meus dados são seguros?",
     answer: "Sim. Seguimos padrões LGPD e não compartilhamos informações pessoais com terceiros.",
-  },
-  {
-    question: "Funciona offline?",
-    answer: "A versão PWA permite acesso limitado mesmo sem conexão, mas você precisará estar online para sincronizar dados.",
   },
   {
     question: "Posso usar no WhatsApp?",

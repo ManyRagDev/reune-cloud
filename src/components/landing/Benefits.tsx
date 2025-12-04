@@ -24,7 +24,7 @@ const benefits = [
   {
     icon: Smartphone,
     title: "Funciona em qualquer lugar",
-    description: "Use no navegador ou instale como app PWA.",
+    description: "Use no navegador de qualquer dispositivo.",
   },
 ];
 
@@ -46,7 +46,7 @@ export const Benefits = () => {
               className="group bg-card rounded-2xl p-6 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-1 animate-fade-in flex flex-col items-center text-center"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div 
+              <div
                 className="w-16 h-16 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform mx-auto"
                 style={{
                   background: 'linear-gradient(135deg, hsl(173 100% 24%), hsl(187 100% 42%))'
@@ -54,7 +54,7 @@ export const Benefits = () => {
               >
                 <benefit.icon className="w-10 h-10 text-white" />
               </div>
-              
+
               <h3 className="text-xl font-semibold mb-2">{benefit.title}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {benefit.description}
