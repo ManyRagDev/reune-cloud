@@ -673,6 +673,40 @@ export const orchestrate = async (
     }
   }
 
+  // 🔹 PATCH: Detectar confirmação explícita no estado itens_pendentes
+  if (draft?.evento?.status === "itens_pendentes_confirmacao") {
+    const CONFIRM_PATTERNS = /\b(confirmar lista|confirmar itens|confirmar|pode confirmar|tá ótimo|ta otimo|está ótimo|lista ok|perfeito|beleza|sim|ok|bora)\b/i;
+    
+    if (CONFIRM_PATTERNS.test(userText.toLowerCase())) {
+      console.log('[ORCHESTRATE] Confirmação explícita detectada - finalizando evento');
+      
+      await finalizeEvent(draft.evento.id, draft.evento);
+      const snapshot = await rpc.get_event_plan(draft.evento.id);
+      const finalMsg = getRandomTemplate('event_finalized');
+      
+      await contextManager.saveMessage(userId, 'assistant', finalMsg, Number(draft.evento.id));
+      await contextManager.updateContext(
+        userId,
+        'finalizado',
+        { evento_finalizado: true },
+        [],
+        1.0,
+        'confirmar_evento',
+        Number(draft.evento.id)
+      );
+      
+      return {
+        estado: "finalizado",
+        evento_id: draft.evento.id,
+        mensagem: finalMsg,
+        snapshot,
+        showItems: true,
+        suggestedReplies: [],
+        ctas: [{ type: "view-dashboard", label: "Ver Dashboard" }]
+      };
+    }
+  }
+
   // 11) STATUS: itens_pendentes_confirmacao - usar LLM para resposta contextual
   if (draft?.evento?.status === "itens_pendentes_confirmacao") {
     console.log('[ORCHESTRATE] Status itens_pendentes - usando LLM');
