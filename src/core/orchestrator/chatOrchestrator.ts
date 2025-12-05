@@ -675,7 +675,7 @@ export const orchestrate = async (
 
   // 🔹 PATCH: Detectar confirmação explícita no estado itens_pendentes
   if (draft?.evento?.status === "itens_pendentes_confirmacao") {
-    const CONFIRM_PATTERNS = /\b(confirmar lista|confirmar itens|confirmar|pode confirmar|tá ótimo|ta otimo|está ótimo|lista ok|perfeito|beleza|sim|ok|bora)\b/i;
+    const CONFIRM_PATTERNS = /\b(confirmar lista|confirmar itens|confirmar|pode confirmar|tá ótimo|ta otimo|está ótimo|lista ok|perfeito|beleza|sim|ok|fechado|fecha|isso|bora)\b/i;
     
     if (CONFIRM_PATTERNS.test(userText.toLowerCase())) {
       console.log('[ORCHESTRATE] Confirmação explícita detectada - finalizando evento');
