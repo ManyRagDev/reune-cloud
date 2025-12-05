@@ -708,7 +708,7 @@ export const orchestrate = async (
   }
 
   // 🔹 PATCH: Persistir data quando informada no estado itens_pendentes
-  if (draft?.evento?.status === "itens_pendentes_confirmacao" && analysis.data_evento) {
+  if (draft?.evento?.status === "itens_pendentes_confirmacao" && analysis.data_evento && analysis.data_evento !== draft.evento.data_evento) {
     console.log('[ORCHESTRATE] Data detectada em itens_pendentes, persistindo:', analysis.data_evento);
     
     await upsertEvent({
