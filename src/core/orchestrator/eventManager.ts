@@ -337,6 +337,157 @@ export async function setEventStatus(eventoId: UUID, status: Event['status']): P
   }
 }
 
+/**
+ * Finaliza evento SEM data definida
+ * - Atualiza status para "criado_sem_data"
+ * - Não regenera itens
+ * - Não chama LLM
+ */
+export async function finalizeEventSemData(eventoId: UUID): Promise<EventSnapshot | null> {
+  console.log(`[Manager] finalizeEventSemData called with eventoId: ${eventoId}`);
+  try {
+    const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
+
+    const { error } = await supabase
+      .from('table_reune')
+      .update({
+        status: 'criado_sem_data',
+        event_date: null
+      })
+      .eq('id', eventIdNum);
+
+    if (error) {
+      console.error('[Manager] Erro ao finalizar evento sem data:', error);
+      throw error;
+    }
+
+    console.info('[Manager] Evento finalizado sem data com sucesso');
+    return await getFinalSnapshot(eventoId);
+  } catch (error) {
+    console.error('[Manager] Erro ao finalizar evento sem data:', error);
+    throw error;
+  }
+}
+
+/**
+ * Finaliza evento COM data definida
+ * - Atualiza status para "criado"
+ * - Normaliza e salva a data
+ * - Não regenera itens
+ * - Não chama LLM
+ */
+export async function finalizeEventComData(eventoId: UUID, data: string): Promise<EventSnapshot | null> {
+  console.log(`[Manager] finalizeEventComData called with eventoId: ${eventoId}, data: ${data}`);
+  try {
+    const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
+    
+    // Normaliza a data para ISO
+    const parsedDate = parseToIsoDate(data);
+    const eventDate = parsedDate || new Date().toISOString().split('T')[0];
+
+    const { error } = await supabase
+      .from('table_reune')
+      .update({
+        status: 'criado',
+        event_date: eventDate
+      })
+      .eq('id', eventIdNum);
+
+    if (error) {
+      console.error('[Manager] Erro ao finalizar evento com data:', error);
+      throw error;
+    }
+
+    console.info('[Manager] Evento finalizado com data:', eventDate);
+    return await getFinalSnapshot(eventoId);
+  } catch (error) {
+    console.error('[Manager] Erro ao finalizar evento com data:', error);
+    throw error;
+  }
+}
+
+/**
+ * Retorna snapshot final do evento com itens e participantes
+ * - Usado após finalização para atualizar o frontend
+ */
+export async function getFinalSnapshot(eventoId: UUID): Promise<EventSnapshot | null> {
+  console.log(`[Manager] getFinalSnapshot called with eventoId: ${eventoId}`);
+  try {
+    const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
+
+    // Busca evento
+    const { data: evento, error: eventoError } = await supabase
+      .from('table_reune')
+      .select('*')
+      .eq('id', eventIdNum)
+      .single();
+
+    if (eventoError || !evento) {
+      console.error('[Manager] Erro ao buscar evento:', eventoError);
+      return null;
+    }
+
+    // Busca itens
+    const { data: itens, error: itensError } = await supabase
+      .from('event_items')
+      .select('*')
+      .eq('event_id', eventIdNum);
+
+    if (itensError) {
+      console.error('[Manager] Erro ao buscar itens:', itensError);
+    }
+
+    // Busca participantes
+    const { data: participantes, error: participantesError } = await supabase
+      .from('event_participants')
+      .select('*')
+      .eq('event_id', eventIdNum);
+
+    if (participantesError) {
+      console.error('[Manager] Erro ao buscar participantes:', participantesError);
+    }
+
+    const snapshot: EventSnapshot = {
+      evento: {
+        id: evento.id.toString(),
+        usuario_id: evento.user_id,
+        nome_evento: evento.title,
+        tipo_evento: evento.tipo_evento || '',
+        data_evento: evento.event_date,
+        qtd_pessoas: evento.qtd_pessoas || 0,
+        status: evento.status as Event['status'],
+      },
+      itens: (itens || []).map(item => ({
+        id: item.id.toString(),
+        evento_id: item.event_id.toString(),
+        nome_item: item.nome_item,
+        quantidade: Number(item.quantidade),
+        unidade: item.unidade,
+        valor_estimado: Number(item.valor_estimado),
+        categoria: item.categoria,
+        prioridade: item.prioridade as 'A' | 'B' | 'C',
+      })),
+      participantes: (participantes || []).map(p => ({
+        id: p.id.toString(),
+        evento_id: p.event_id.toString(),
+        nome_participante: p.nome_participante,
+        contato: p.contato,
+        status_convite: p.status_convite as 'pendente' | 'confirmado' | 'recusado',
+      })),
+      distribuicao: [],
+    };
+
+    return snapshot;
+  } catch (error) {
+    console.error('[Manager] Erro ao buscar snapshot final:', error);
+    return null;
+  }
+}
+
+/**
+ * Finaliza evento (legado - mantido para compatibilidade)
+ * @deprecated Use finalizeEventComData ou finalizeEventSemData
+ */
 export async function finalizeEvent(eventoId: UUID, eventData: Partial<Event>): Promise<void> {
   console.log(`[Manager] finalizeEvent called with eventoId: ${eventoId}`);
   try {
