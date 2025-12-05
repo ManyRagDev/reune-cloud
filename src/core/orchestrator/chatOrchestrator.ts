@@ -707,6 +707,40 @@ export const orchestrate = async (
     }
   }
 
+  // 🔹 PATCH: Persistir data quando informada no estado itens_pendentes
+  if (draft?.evento?.status === "itens_pendentes_confirmacao" && analysis.data_evento) {
+    console.log('[ORCHESTRATE] Data detectada em itens_pendentes, persistindo:', analysis.data_evento);
+    
+    await upsertEvent({
+      id: draft.evento.id,
+      usuario_id: userId,
+      nome_evento: draft.evento.nome_evento,
+      tipo_evento: draft.evento.tipo_evento,
+      categoria_evento: draft.evento.categoria_evento,
+      subtipo_evento: draft.evento.subtipo_evento,
+      qtd_pessoas: draft.evento.qtd_pessoas,
+      menu: draft.evento.menu,
+      data_evento: analysis.data_evento,
+      status: draft.evento.status,
+    });
+    
+    // Atualizar o draft local para refletir a mudança
+    draft.evento.data_evento = analysis.data_evento;
+    
+    // Responder confirmando a data
+    const dataConfirmMsg = `Anotado! Data marcada para ${analysis.data_evento}. Posso confirmar o evento?`;
+    await contextManager.saveMessage(userId, 'assistant', dataConfirmMsg, Number(draft.evento.id));
+    
+    return {
+      estado: "itens_pendentes_confirmacao",
+      evento_id: draft.evento.id,
+      mensagem: dataConfirmMsg,
+      snapshot: draft,
+      suggestedReplies: ["Confirmar lista", "Editar itens"],
+      ctas: []
+    };
+  }
+
   // 11) STATUS: itens_pendentes_confirmacao - usar LLM para resposta contextual
   if (draft?.evento?.status === "itens_pendentes_confirmacao") {
     console.log('[ORCHESTRATE] Status itens_pendentes - usando LLM');
