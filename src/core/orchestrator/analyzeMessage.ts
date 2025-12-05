@@ -176,7 +176,7 @@ function fallbackAnalysis(text: string, context?: any): MessageAnalysis {
 
   let intencao: MessageAnalysis["intencao"] = "desconhecida";
 
-  if (/\b(sim|ok|confirma|beleza|perfeito|pode seguir|isso|bora|quero)\b/i.test(lower))
+  if (/\b(sim|ok|confirma|confirmar|beleza|perfeito|pode seguir|pode confirmar|isso|bora|quero|tá ótimo|ta otimo|está ótimo|esta otimo|lista ok|confirmar lista|confirmar itens)\b/i.test(lower))
     intencao = "confirmar_evento";
   else if (/\b(itens|lista|mostrar|mostra|mostre)\b/i.test(lower))
     intencao = "mostrar_itens";
