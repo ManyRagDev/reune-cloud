@@ -34,7 +34,7 @@ export class ContextManager {
 
     // Se não existe, criar inicial
     if (!context) {
-      console.log('[ContextManager] Criando contexto inicial para usuário:', userId);
+      // console.log('[ContextManager] Criando contexto inicial para usuário:', userId);
       context = await this.contextsRepo.createInitial(userId);
       if (!context) {
         throw new Error('Falha ao criar contexto inicial');
@@ -45,11 +45,11 @@ export class ContextManager {
     const messages = await this.messagesRepo.getByUserId(userId, 50);
     const history = this.messagesRepo.toLlmMessages(messages);
 
-    console.log('[ContextManager] Contexto carregado:', {
-      state: context.state,
-      historyLength: history.length,
-      eventoId: context.evento_id,
-    });
+    // console.log('[ContextManager] Contexto carregado:', {
+    //   state: context.state,
+    //   historyLength: history.length,
+    //   eventoId: context.evento_id,
+    // });
 
     return { context, history };
   }
@@ -131,7 +131,7 @@ export class ContextManager {
     context: ConversationContext
   ): string {
     const collectedData = context.collected_data || {};
-    
+
     const summaryParts: string[] = [
       '**Resumo da conversa anterior:**',
     ];
@@ -172,16 +172,31 @@ export class ContextManager {
    * Limpa contexto e histórico quando uma conversa é encerrada
    */
   async clearUserContext(userId: UUID): Promise<void> {
-    console.log('[ContextManager] Limpando contexto do usuário:', userId);
+    // console.log('[ContextManager] Limpando contexto do usuário:', userId);
+
+    // Limpar histórico de mensagens
     await this.messagesRepo.clearHistory(userId);
-    await this.contextsRepo.delete(userId);
+
+    // Resetar contexto para estado inicial limpo
+    await this.contextsRepo.upsert(
+      userId,
+      'idle',
+      {}, // collected_data vazio
+      [], // missing_slots vazio
+      0.5, // confidence default
+      undefined, // last_intent
+      undefined, // evento_id (vai ser null no banco)
+      undefined // summary
+    );
+
+    // console.log(`[ContextManager] Contexto resetado para usuário: ${userId}`);
   }
 
   /**
    * Reseta contexto mas mantém histórico (para iniciar novo evento)
    */
   async resetContextKeepHistory(userId: UUID): Promise<void> {
-    console.log('[ContextManager] Resetando contexto (mantendo histórico)');
+    // console.log('[ContextManager] Resetando contexto (mantendo histórico)');
     await this.contextsRepo.createInitial(userId);
   }
 }

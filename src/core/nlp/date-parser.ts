@@ -19,10 +19,10 @@ export function parseToIsoDate(dateStr: string): string | null {
   // Formato brasileiro: dd/mm/yyyy ou dd/mm/yy
   const brMatch = normalized.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
   if (brMatch) {
-    const day = brMatch[1].padStart(2, '0');
-    const month = brMatch[2].padStart(2, '0');
+    let day = parseInt(brMatch[1], 10);
+    let month = parseInt(brMatch[2], 10);
     let year = brMatch[3];
-    
+
     if (!year) {
       // Se não tem ano, usa o ano atual
       year = new Date().getFullYear().toString();
@@ -30,8 +30,17 @@ export function parseToIsoDate(dateStr: string): string | null {
       // Ano com 2 dígitos: assume 20XX
       year = '20' + year;
     }
-    
-    return `${year}-${month}-${day}`;
+
+    // 🔥 CORREÇÃO: Criar data no timezone local para evitar problema de -1 dia
+    // Usar Date(year, month-1, day) ao invés de string ISO
+    const localDate = new Date(parseInt(year), month - 1, day);
+
+    // Retornar no formato ISO mas garantindo que é a data local correta
+    const isoYear = localDate.getFullYear();
+    const isoMonth = String(localDate.getMonth() + 1).padStart(2, '0');
+    const isoDay = String(localDate.getDate()).padStart(2, '0');
+
+    return `${isoYear}-${isoMonth}-${isoDay}`;
   }
 
   // Formato textual: "dia 15 de novembro", "15 de novembro", "15 de novembro de 2025"

@@ -847,8 +847,9 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   // Cost Calculation Logic
   const calculateCosts = () => {
+    // 🔥 CORREÇÃO: valor_estimado já é o valor TOTAL, não multiplicar por quantidade
     const totalCost = supplies.reduce((acc, item) => {
-      return acc + (item.quantidade * (item.valor_estimado || 0));
+      return acc + (item.valor_estimado || 0);
     }, 0);
 
     // Count confirmed guests + organizer (1)

@@ -9,10 +9,10 @@ export interface IntentClassification {
 
 export function classifyIntent(analysis: MessageAnalysis, context?: any): IntentClassification {
   const { intencao, nivel_confianca } = analysis;
-  
+
   // Intents que sempre são claros
-  const clearIntents = ['confirmar_evento', 'mostrar_itens', 'encerrar_conversa'];
-  
+  const clearIntents = ['confirmar_evento', 'mostrar_itens', 'encerrar_conversa', 'reiniciar_conversa'];
+
   if (clearIntents.includes(intencao)) {
     return {
       intent: intencao,
@@ -26,7 +26,7 @@ export function classifyIntent(analysis: MessageAnalysis, context?: any): Intent
     const hasCategoria = !!analysis.categoria_evento;
     const hasSubtipo = !!analysis.subtipo_evento;
     const hasQtd = !!analysis.qtd_pessoas;
-    
+
     if (!hasCategoria && hasSubtipo) {
       // Tem subtipo mas não categoria - precisa clarificar
       return {
@@ -36,7 +36,7 @@ export function classifyIntent(analysis: MessageAnalysis, context?: any): Intent
         suggestedReplies: ['Almoço', 'Jantar', 'Lanche']
       };
     }
-    
+
     if (hasCategoria && !hasQtd) {
       return {
         intent: 'criar_evento',

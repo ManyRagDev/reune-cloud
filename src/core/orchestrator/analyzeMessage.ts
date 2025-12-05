@@ -6,15 +6,16 @@ import { parseToIsoDate } from "@/core/nlp/date-parser";
 
 export interface MessageAnalysis {
   intencao:
-    | "criar_evento"
-    | "definir_menu"
-    | "confirmar_evento"
-    | "mostrar_itens"
-    | "editar_evento"
-    | "adicionar_participantes"
-    | "encerrar_conversa"
-    | "out_of_domain"
-    | "desconhecida";
+  | "criar_evento"
+  | "definir_menu"
+  | "confirmar_evento"
+  | "mostrar_itens"
+  | "editar_evento"
+  | "adicionar_participantes"
+  | "encerrar_conversa"
+  | "reiniciar_conversa"
+  | "out_of_domain"
+  | "desconhecida";
   categoria_evento?: string | null;
   subtipo_evento?: string | null;
   finalidade_evento?: string | null;
@@ -74,6 +75,7 @@ Analise a mensagem do usuário e extraia TODAS as informações relevantes sobre
 - editar_evento
 - adicionar_participantes
 - encerrar_conversa
+- reiniciar_conversa
 - out_of_domain
 - desconhecida
 
@@ -84,6 +86,7 @@ Analise a mensagem do usuário e extraia TODAS as informações relevantes sobre
 4. Datas aceitas: dd/mm/yyyy, dd/mm, "dia X de mês", ou formato ISO.
 5. Horários: formato 24h, "19h", "7 da noite".
 6. Quantidade de pessoas: números seguidos de palavras como "pessoas" ou "convidados".
+7. Frases como "recomeçar", "resetar", "começar de novo", "limpar tudo", "apagar conversa", "zerar tudo", "novo evento", "start over", "reset" devem ser classificadas como "reiniciar_conversa".
 
 🧠 CONTEXTO ATUAL DO EVENTO:
 ${context?.tipo_evento ? `Tipo: ${context.tipo_evento}` : "Nenhum evento em andamento"}
@@ -134,17 +137,17 @@ Se algum dado não for encontrado, use null.
         if (!safe.success) throw new Error("Formato inválido do LLM");
 
         const data = safe.data;
-        
+
         // 🔹 Normalizar data para ISO
         const normalizedDate = data.data_evento ? parseToIsoDate(data.data_evento) : null;
-        
+
         if (normalizedDate && data.data_evento) {
-          console.log('[analyzeMessage] Data detectada e normalizada:', {
-            original: data.data_evento,
-            normalized: normalizedDate
-          });
+          // console.log('[analyzeMessage] Data detectada e normalizada:', {
+          //   original: data.data_evento,
+          //   normalized: normalizedDate
+          // });
         }
-        
+
         return {
           intencao: (data.intencao as MessageAnalysis["intencao"]) || "desconhecida",
           categoria_evento: normalize(data.categoria_evento),
@@ -161,7 +164,7 @@ Se algum dado não for encontrado, use null.
       }
     }
   } catch (error) {
-    console.warn("[analyzeMessage] LLM falhou, usando fallback heurístico:", error);
+    // console.warn("[analyzeMessage] LLM falhou, usando fallback heurístico:", error);
   }
 
   // 🔹 Fallback heurístico robusto
@@ -176,7 +179,7 @@ function fallbackAnalysis(text: string, context?: any): MessageAnalysis {
 
   let intencao: MessageAnalysis["intencao"] = "desconhecida";
 
-  if (/\b(sim|ok|confirma|beleza|perfeito|pode seguir|isso|bora|quero)\b/i.test(lower))
+  if (/\b(sim|ok|confirma|confirmar lista|confirmar itens|pode confirmar|beleza|perfeito|pode seguir|isso|bora|quero|tá ótimo|ta otimo|está ótimo|esta otimo|lista ok|ótimo|otimo|perfeito assim)\b/i.test(lower))
     intencao = "confirmar_evento";
   else if (/\b(itens|lista|mostrar|mostra|mostre)\b/i.test(lower))
     intencao = "mostrar_itens";
@@ -186,6 +189,8 @@ function fallbackAnalysis(text: string, context?: any): MessageAnalysis {
     intencao = "adicionar_participantes";
   else if (/\b(tchau|até|obrigado|valeu|flw)\b/i.test(lower))
     intencao = "encerrar_conversa";
+  else if (/\b(recomeçar|resetar|reiniciar|começar de novo|limpar tudo|apagar conversa|zerar tudo|novo evento|start over|reset)\b/i.test(lower))
+    intencao = "reiniciar_conversa";
   else if (/\b(churrasco|jantar|almoço|almoco|piquenique|festa|pizza|feijoada)\b/i.test(lower))
     intencao = "criar_evento";
   else if (/\b(lasanha|massa|carne|frango|peixe|sushi)\b/i.test(lower))
@@ -212,10 +217,10 @@ function fallbackAnalysis(text: string, context?: any): MessageAnalysis {
   const normalizedDate = extractedDate ? parseToIsoDate(extractedDate) : null;
 
   if (normalizedDate && extractedDate) {
-    console.log('[fallbackAnalysis] Data detectada e normalizada:', {
-      original: extractedDate,
-      normalized: normalizedDate
-    });
+    // console.log('[fallbackAnalysis] Data detectada e normalizada:', {
+    //   original: extractedDate,
+    //   normalized: normalizedDate
+    // });
   }
 
   return {

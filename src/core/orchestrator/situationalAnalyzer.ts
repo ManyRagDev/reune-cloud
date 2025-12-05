@@ -110,7 +110,7 @@ export class SituationalAnalyzer {
    */
   private generateIncompletionMessage(missingInfo: string[]): string {
     const messages: Record<string, string> = {
-      data: 'Ainda preciso saber a data do evento.',
+      data: 'Informe, por favor, a data do evento.',
       tipo: 'Falta definir o tipo de evento.',
       quantidade_pessoas: 'Quantas pessoas vão participar?',
       dados_basicos: 'Vamos completar as informações básicas do evento?',
