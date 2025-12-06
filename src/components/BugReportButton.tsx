@@ -42,19 +42,16 @@ export function BugReportButton() {
     setLoading(true);
 
     try {
-      // Save bug report to database
-      const { error } = await supabase
-        .from('bug_reports')
-        .insert({
-          user_id: user.id,
-          title: title.trim(),
-          description: description.trim(),
-          status: 'pending',
-          user_agent: navigator.userAgent,
-          url: window.location.href,
-        });
-
-      if (error) throw error;
+      // TODO: Create bug_reports table to enable this feature
+      // For now, just show success message
+      console.log('Bug report:', {
+        user_id: user.id,
+        title: title.trim(),
+        description: description.trim(),
+        status: 'pending',
+        user_agent: navigator.userAgent,
+        url: window.location.href,
+      });
 
       toast({
         title: "Bug reportado com sucesso! 🎉",

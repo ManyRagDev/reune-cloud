@@ -117,7 +117,7 @@ export default function SendEmailModal({
             <div className="space-y-3 p-4 bg-muted/50 rounded-xl">
               <Label className="text-sm font-medium">Variáveis do Template</Label>
               <p className="text-xs text-muted-foreground">
-                As variáveis {{nome}} e {{email}} são preenchidas automaticamente.
+                As variáveis {"{{nome}}"} e {"{{email}}"} são preenchidas automaticamente.
               </p>
 
               {templateVariables

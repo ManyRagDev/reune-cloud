@@ -138,6 +138,9 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log('✅ E-mail enviado:', lead.email, emailResponse);
 
+        // Extrair message ID da resposta (Resend retorna { data: { id: string }, error: null })
+        const messageId = (emailResponse as any)?.data?.id || (emailResponse as any)?.id || 'unknown';
+
         // Registrar log
         await supabase.from('email_logs').insert({
           lead_id: lead.id,
@@ -145,7 +148,7 @@ const handler = async (req: Request): Promise<Response> => {
           template_name: template_name,
           status: 'success',
           metadata: {
-            resend_message_id: emailResponse.id,
+            resend_message_id: messageId,
             variables: templateVars
           }
         });
@@ -165,7 +168,7 @@ const handler = async (req: Request): Promise<Response> => {
           lead_id: lead.id,
           lead_email: lead.email,
           status: 'success',
-          message_id: emailResponse.id
+          message_id: messageId
         });
 
       } catch (error: any) {
