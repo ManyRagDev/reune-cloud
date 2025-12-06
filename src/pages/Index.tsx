@@ -8,6 +8,7 @@ import CreateEvent from './CreateEvent';
 import EventDetails from './EventDetails';
 import ChatWidget from '@/components/ChatWidget';
 import { ThemeToggle } from '@/components/landing/ThemeToggle';
+import { motion } from 'framer-motion';
 
 import { useSearchParams } from 'react-router-dom';
 import { templates, EventTemplate } from '@/data/templates';
@@ -81,8 +82,26 @@ const Index = () => {
   const renderScreen = () => {
     if (loading) {
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center">
+        <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
+          {/* Animated Background Orbs */}
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{ duration: 8, repeat: Infinity }}
+            className="absolute top-1/4 left-1/4 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl"
+          />
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{ duration: 8, repeat: Infinity, delay: 1 }}
+            className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl"
+          />
+
+          <div className="text-center relative z-10">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
             <p className="mt-4 text-muted-foreground">Carregando...</p>
           </div>

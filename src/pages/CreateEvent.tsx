@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, AlertTriangle, MapPinned, Home, Sparkles } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, MapPinned, Home, Sparkles, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +14,10 @@ import { AddressSelector } from '@/components/events/AddressSelector';
 import { Address } from '@/hooks/useAddresses';
 import { EventTemplate, templates } from '@/data/templates';
 import { Badge } from '@/components/ui/badge';
+import { DatePicker } from '@/components/ui/date-picker';
+import { TimePicker } from '@/components/ui/time-picker';
+import { format } from 'date-fns';
+import { motion } from 'framer-motion';
 
 interface CreateEventProps {
   onBack: () => void;
@@ -26,8 +30,8 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
   const { toast } = useToast();
   const [selectedTemplate, setSelectedTemplate] = useState<EventTemplate | null>(initialData || null);
   const [title, setTitle] = useState(initialData?.title || '');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const [date, setDate] = useState<Date | undefined>();
+  const [time, setTime] = useState<string>('');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState(initialData?.description || '');
   const [selectedInvitees, setSelectedInvitees] = useState<Invitee[]>([]);
@@ -103,12 +107,20 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
       return;
     }
 
+    if (!date) {
+      toast({
+        title: "Data obrigatória",
+        description: "Por favor, selecione uma data para o evento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validar se a data não é no passado
-    const selectedDate = new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (selectedDate < today) {
+    if (date < today) {
       toast({
         title: "Data inválida",
         description: "Não é possível criar eventos em datas passadas. Escolha uma data futura.",
@@ -121,18 +133,20 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
 
     try {
       const eventDescription = description || null;
+      const formattedDate = format(date, 'yyyy-MM-dd');
+
       const { data: eventData, error } = await supabase
         .from('table_reune')
         .insert({
           title,
-          event_date: date,
+          event_date: formattedDate,
           event_time: time,
           location,
           description: eventDescription,
           user_id: user.id,
           is_public: isPublic,
           status: 'published',
-          created_by_ai: false, // Evento criado manualmente pelo usuário
+          created_by_ai: false,
           public_location: isPublic && checkResidentialLocation(location)
             ? 'Local a confirmar com organizador'
             : null
@@ -150,7 +164,7 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
           quantidade: item.quantity,
           unidade: item.unit,
           categoria: item.category,
-          prioridade: 'B', // Prioridade padrão
+          prioridade: 'B',
         }));
 
         const { error: itemsError } = await supabase
@@ -159,13 +173,11 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
 
         if (itemsError) {
           console.error("Erro ao inserir itens do template:", itemsError);
-          // Não interrompe o fluxo, apenas loga o erro
         }
       }
 
       // Se há convidados selecionados, criar convites
       if (selectedInvitees.length > 0 && eventData) {
-        // Processar convites com o RPC
         for (const invitee of selectedInvitees) {
           try {
             const { data: inviteData, error: inviteError } = await supabase.rpc(
@@ -185,7 +197,6 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
 
             const result = inviteData as any;
 
-            // Se usuário não existe, enviar email
             if (!result?.user_exists && result?.invitation_token) {
               const { error: emailError } = await supabase.functions.invoke("send-invitation-email", {
                 body: {
@@ -203,7 +214,6 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
                 console.error("Erro ao enviar email para", invitee.email, ":", emailError);
               }
             }
-            // Se usuário existe, a notificação já foi criada pelo RPC process_invitation
           } catch (err) {
             console.error("Erro ao processar convite individual:", err);
           }
@@ -248,177 +258,296 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-card border-b px-4 py-6">
-        <div className="max-w-2xl mx-auto flex items-center">
-          <Button variant="ghost" size="sm" onClick={onBack} className="mr-4">
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold">Criar Novo Evento</h1>
-            <p className="text-muted-foreground text-sm">Preencha as informações do seu evento</p>
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Animated Background Orbs */}
+      <motion.div
+        animate={{
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.5, 0.3],
+        }}
+        transition={{ duration: 8, repeat: Infinity }}
+        className="fixed top-0 left-0 w-[600px] h-[600px] bg-green-500/20 rounded-full blur-3xl pointer-events-none"
+      />
+      <motion.div
+        animate={{
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.5, 0.3],
+        }}
+        transition={{ duration: 8, repeat: Infinity, delay: 1 }}
+        className="fixed bottom-0 right-0 w-[600px] h-[600px] bg-blue-500/20 rounded-full blur-3xl pointer-events-none"
+      />
+
+      {/* Floating Header */}
+      <motion.header
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        className="fixed top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4"
+      >
+        <div className="rounded-3xl bg-card/80 backdrop-blur-xl border border-border/50 shadow-2xl px-6 py-4">
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="mr-4 hover:bg-background/80"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-green-500 to-blue-500 bg-clip-text text-transparent">
+                Criar Novo Evento
+              </h1>
+              <p className="text-muted-foreground text-sm">Preencha as informações do seu evento</p>
+            </div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
-      <main className="max-w-2xl mx-auto p-4 space-y-6">
+      <main className="relative z-10 max-w-2xl mx-auto px-4 pt-32 pb-20">
         {/* Template Selector */}
-        <section>
-          <Label className="mb-3 block text-muted-foreground">Comece com um modelo (opcional)</Label>
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-6"
+        >
+          <Label className="mb-3 block text-base font-semibold flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            Comece com um modelo (opcional)
+          </Label>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {templates.map((template) => (
-              <div
+            {templates.map((template, index) => (
+              <motion.div
                 key={template.slug}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                whileHover={{ scale: 1.05, y: -4 }}
                 onClick={() => handleTemplateSelect(template)}
                 className={`
-                  flex-shrink-0 w-48 p-4 rounded-xl border cursor-pointer transition-all hover:scale-105
+                  relative flex-shrink-0 w-48 p-4 rounded-2xl border-2 cursor-pointer transition-all
                   ${selectedTemplate?.slug === template.slug
-                    ? 'bg-primary/5 border-primary ring-1 ring-primary'
-                    : 'bg-card border-border hover:border-primary/50'}
+                    ? 'bg-gradient-to-br from-primary/10 to-primary/5 border-primary shadow-lg shadow-primary/20'
+                    : 'bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50'}
                 `}
               >
                 <div className="flex items-start justify-between mb-2">
-                  <Sparkles className={`w-5 h-5 ${selectedTemplate?.slug === template.slug ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${
+                    selectedTemplate?.slug === template.slug ? 'from-primary/20 to-primary/10' : 'from-muted to-muted/50'
+                  } flex items-center justify-center`}>
+                    <Sparkles className={`w-5 h-5 ${selectedTemplate?.slug === template.slug ? 'text-primary' : 'text-muted-foreground'}`} />
+                  </div>
                   {selectedTemplate?.slug === template.slug && (
-                    <Badge variant="secondary" className="text-[10px] h-5">Selecionado</Badge>
+                    <Badge className="text-[10px] h-5 bg-primary text-primary-foreground">Ativo</Badge>
                   )}
                 </div>
-                <h3 className="font-medium text-sm mb-1">{template.title}</h3>
+                <h3 className="font-semibold text-sm mb-1">{template.title}</h3>
                 <p className="text-xs text-muted-foreground line-clamp-2">{template.description}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Informações do Evento</CardTitle>
-            <CardDescription>
-              Adicione os detalhes principais do seu evento
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <Label htmlFor="title">Nome do Evento</Label>
-                <Input
-                  id="title"
-                  type="text"
-                  placeholder="Ex: Churrasco de Domingo"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
+        {/* Main Form Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <div className="relative">
+            <div className="absolute -inset-1 bg-gradient-to-r from-green-500/50 to-blue-500/50 rounded-3xl blur opacity-20"></div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="date">Data</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="time">Horário</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
+            <Card className="relative border-2 border-border/50 bg-card/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden">
+              <div className="h-2 w-full bg-gradient-to-r from-green-500 to-blue-500" />
 
-              <div>
-                <Label htmlFor="location">Endereço</Label>
-                <div className="space-y-3">
-                  {!useManualLocation && (
-                    <AddressSelector
-                      onAddressSelect={handleAddressSelect}
-                      disabled={loading}
+              <CardHeader className="pt-8">
+                <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                  <CalendarIcon className="w-6 h-6 text-primary" />
+                  Informações do Evento
+                </CardTitle>
+                <CardDescription className="text-base">
+                  Adicione os detalhes principais do seu evento
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="pb-8">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Event Title */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                  >
+                    <Label htmlFor="title" className="text-sm font-semibold">Nome do Evento</Label>
+                    <Input
+                      id="title"
+                      type="text"
+                      placeholder="Ex: Churrasco de Domingo"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
+                      className="h-12 mt-2 rounded-xl border-2 border-border/50 bg-background/50 backdrop-blur-sm transition-all focus:border-green-500 focus:shadow-lg focus:shadow-green-500/20"
                     />
-                  )}
+                  </motion.div>
 
-                  {useManualLocation ? (
-                    <div className="space-y-2">
-                      <Input
-                        id="location"
-                        type="text"
-                        placeholder="Ex: Rua das Flores, 123 - Centro"
-                        value={location}
-                        onChange={(e) => handleLocationChange(e.target.value)}
-                        required
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleToggleManualLocation}
-                        className="text-xs"
-                      >
-                        <Home className="h-3 w-3 mr-1" />
-                        Voltar para endereços salvos
-                      </Button>
+                  {/* Date and Time */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.4 }}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                  >
+                    <div>
+                      <Label htmlFor="date" className="text-sm font-semibold flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4" />
+                        Data
+                      </Label>
+                      <div className="mt-2">
+                        <DatePicker
+                          value={date}
+                          onChange={setDate}
+                          placeholder="Escolha a data do evento"
+                          disabled={loading}
+                        />
+                      </div>
                     </div>
-                  ) : (
+                    <div>
+                      <Label htmlFor="time" className="text-sm font-semibold flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Horário
+                      </Label>
+                      <div className="mt-2">
+                        <TimePicker
+                          value={time}
+                          onChange={setTime}
+                          placeholder="Escolha o horário"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Location */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.5 }}
+                  >
+                    <Label htmlFor="location" className="text-sm font-semibold flex items-center gap-2">
+                      <MapPinned className="w-4 h-4" />
+                      Endereço
+                    </Label>
+                    <div className="space-y-3 mt-2">
+                      {!useManualLocation && (
+                        <AddressSelector
+                          onAddressSelect={handleAddressSelect}
+                          disabled={loading}
+                        />
+                      )}
+
+                      {useManualLocation ? (
+                        <div className="space-y-2">
+                          <Input
+                            id="location"
+                            type="text"
+                            placeholder="Ex: Rua das Flores, 123 - Centro"
+                            value={location}
+                            onChange={(e) => handleLocationChange(e.target.value)}
+                            required
+                            className="h-12 rounded-xl border-2 border-border/50 bg-background/50 backdrop-blur-sm transition-all focus:border-blue-500 focus:shadow-lg focus:shadow-blue-500/20"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleToggleManualLocation}
+                            className="text-xs"
+                          >
+                            <Home className="h-3 w-3 mr-1" />
+                            Voltar para endereços salvos
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleToggleManualLocation}
+                          disabled={loading}
+                          className="w-full h-12 border-2"
+                        >
+                          <MapPinned className="h-4 w-4 mr-2" />
+                          Digitar endereço manualmente
+                        </Button>
+                      )}
+                    </div>
+
+                    {showLocationWarning && (
+                      <Alert className="mt-3 border-2 border-amber-500/50 bg-amber-500/10">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <AlertDescription className="text-sm">
+                          <strong>Atenção:</strong> Você está adicionando um endereço residencial em um evento público.
+                          Por segurança, apenas a região será exibida para não-convidados.
+                          O endereço completo ficará visível apenas para você e seus convidados.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </motion.div>
+
+                  {/* Description */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.6 }}
+                  >
+                    <Label htmlFor="description" className="text-sm font-semibold">Descrição (opcional)</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Adicione detalhes sobre o evento..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={4}
+                      className="mt-2 rounded-xl border-2 border-border/50 bg-background/50 backdrop-blur-sm transition-all focus:border-primary focus:shadow-lg focus:shadow-primary/20"
+                    />
+                  </motion.div>
+
+                  {/* Event Invite Selector */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.7 }}
+                  >
+                    <EventInviteSelector
+                      selectedInvitees={selectedInvitees}
+                      onInviteesChange={setSelectedInvitees}
+                    />
+                  </motion.div>
+
+                  {/* Submit Button */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.8 }}
+                  >
                     <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleToggleManualLocation}
-                      disabled={loading}
-                      className="w-full"
+                      type="submit"
+                      className="w-full h-14 text-base font-semibold bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 shadow-lg hover:shadow-xl transition-all"
+                      disabled={loading || !title || !date || !time || !location}
                     >
-                      <MapPinned className="h-4 w-4 mr-2" />
-                      Digitar endereço manualmente
+                      {loading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Criando evento...
+                        </div>
+                      ) : (
+                        'Criar Evento'
+                      )}
                     </Button>
-                  )}
-                </div>
-
-                {showLocationWarning && (
-                  <Alert className="mt-2 border-warning bg-warning/10">
-                    <AlertTriangle className="h-4 w-4 text-warning" />
-                    <AlertDescription className="text-sm text-warning-foreground">
-                      <strong>Atenção:</strong> Você está adicionando um endereço residencial em um evento público.
-                      Por segurança, apenas a região será exibida para não-convidados.
-                      O endereço completo ficará visível apenas para você e seus convidados.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="description">Descrição (opcional)</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Adicione detalhes sobre o evento..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
-                />
-              </div>
-
-              <div>
-                <EventInviteSelector
-                  selectedInvitees={selectedInvitees}
-                  onInviteesChange={setSelectedInvitees}
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading || !title || !date || !time || !location}
-              >
-                {loading ? 'Criando...' : 'Criar Evento'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                  </motion.div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </motion.div>
       </main>
     </div>
   );

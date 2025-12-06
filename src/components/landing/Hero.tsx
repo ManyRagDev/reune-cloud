@@ -19,9 +19,11 @@ export const Hero = () => {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Content */}
           <div className="text-center lg:text-left space-y-8 animate-fade-in">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-light text-orange text-sm font-medium">
-              <Sparkles className="w-4 h-4" />
+            {/* Enhanced AI Badge - More prominent */}
+            <div className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-orange-500/20 to-amber-500/20 border-2 border-orange-500/30 text-orange-600 dark:text-orange-400 text-base font-semibold shadow-lg hover:shadow-orange-500/30 hover:scale-105 transition-all duration-300 group">
+              <Sparkles className="w-5 h-5 animate-pulse group-hover:rotate-12 transition-transform" />
               <span>Powered by UNE.AI</span>
+              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
             </div>
 
             {/*<h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
@@ -56,11 +58,11 @@ export const Hero = () => {
               </Button>
             </div>
 
-            {/* Social proof */}
-            <div className="flex items-center gap-6 justify-center lg:justify-start text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-4 h-4 text-primary" />
-                IA UNE.AI
+            {/* Social proof - Enhanced AI emphasis */}
+            <div className="flex items-center gap-6 justify-center lg:justify-start text-sm">
+              <span className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-medium">
+                <Star className="w-4 h-4 fill-primary" />
+                Inteligência Artificial UNE.AI
               </span>
             </div>
 

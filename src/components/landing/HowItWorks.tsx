@@ -1,5 +1,6 @@
 import { Calendar, Sparkles, Users, ListTodo, CheckCircle2, Share2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion, AnimatePresence } from "framer-motion";
 
 const stepsWithAI = [
   {
@@ -59,28 +60,35 @@ export const HowItWorks = () => {
             <TabsList className="grid w-full max-w-[400px] grid-cols-2 h-14 p-1 bg-background/50 backdrop-blur-sm border shadow-sm rounded-full">
               <TabsTrigger
                 value="with-ai"
-                className="rounded-full h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300"
+                className="rounded-full h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/30 transition-all duration-300 group"
               >
-                <Sparkles className="w-4 h-4 mr-2" />
+                <Sparkles className="w-4 h-4 mr-2 group-data-[state=active]:animate-pulse group-hover:rotate-12 transition-transform" />
                 Com IA
               </TabsTrigger>
               <TabsTrigger
                 value="without-ai"
-                className="rounded-full h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300"
+                className="rounded-full h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/30 transition-all duration-300 group"
               >
-                <ListTodo className="w-4 h-4 mr-2" />
+                <ListTodo className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
                 Manual
               </TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContent value="with-ai" className="mt-0">
-            <div className="grid md:grid-cols-3 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="grid md:grid-cols-3 gap-8"
+            >
               {stepsWithAI.map((step, index) => (
-                <div
+                <motion.div
                   key={index}
-                  className="relative group animate-fade-in"
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                  className="relative group"
                 >
                   <div className="bg-card rounded-2xl p-8 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-2 h-full border border-border/50">
                     <div className="absolute top-4 right-4 text-6xl font-bold text-muted-foreground/5">
@@ -101,18 +109,25 @@ export const HowItWorks = () => {
                   {index < stepsWithAI.length - 1 && (
                     <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5 bg-gradient-to-r from-primary/30 to-transparent" />
                   )}
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </TabsContent>
 
           <TabsContent value="without-ai" className="mt-0">
-            <div className="grid md:grid-cols-3 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="grid md:grid-cols-3 gap-8"
+            >
               {stepsWithoutAI.map((step, index) => (
-                <div
+                <motion.div
                   key={index}
-                  className="relative group animate-fade-in"
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                  className="relative group"
                 >
                   <div className="bg-card rounded-2xl p-8 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-2 h-full border border-border/50">
                     <div className="absolute top-4 right-4 text-6xl font-bold text-muted-foreground/5">
@@ -133,9 +148,9 @@ export const HowItWorks = () => {
                   {index < stepsWithoutAI.length - 1 && (
                     <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5 bg-gradient-to-r from-secondary/30 to-transparent" />
                   )}
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </TabsContent>
         </Tabs>
       </div>

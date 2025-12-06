@@ -88,8 +88,24 @@ export const Footer = () => {
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-8 border-t text-center text-sm text-muted-foreground">
-          © {currentYear} ReUNE. Todos os direitos reservados.
+        <div className="pt-8 border-t space-y-3">
+          {/* Continuous Improvement Badge */}
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+              </span>
+              <span className="font-medium">Em constante evolução</span>
+            </div>
+            <span className="text-muted-foreground">
+              Nossa IA está sendo aprimorada continuamente
+            </span>
+          </div>
+
+          <div className="text-center text-sm text-muted-foreground">
+            © {currentYear} ReUNE. Todos os direitos reservados.
+          </div>
         </div>
       </div>
     </footer>

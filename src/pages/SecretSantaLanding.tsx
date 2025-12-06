@@ -1,18 +1,24 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { motion } from "framer-motion";
-import { Gift, Users, Link2, Shuffle, TreePine, Sparkles, ArrowRight, Loader2 } from "lucide-react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { Gift, Users, Link2, Shuffle, TreePine, Sparkles, ArrowRight, Loader2, ChevronRight, Zap } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/landing/ThemeToggle";
+import { Footer } from "@/components/landing/Footer";
 
 export default function SecretSantaLanding() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { scrollYProgress } = useScroll();
+  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
 
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [showWizard, setShowWizard] = useState(false);
@@ -49,7 +55,6 @@ export default function SecretSantaLanding() {
 
   const handleStartClick = () => {
     if (!user) {
-      // Redirect to app (login is handled there)
       navigate("/app");
       return;
     }
@@ -71,7 +76,6 @@ export default function SecretSantaLanding() {
     setCreating(true);
 
     try {
-      // 1. Create the event
       const { data: eventData, error: eventError } = await supabase
         .from("table_reune")
         .insert({
@@ -90,7 +94,6 @@ export default function SecretSantaLanding() {
 
       if (eventError) throw eventError;
 
-      // 2. Create the event dynamic entry
       const { error: dynamicError } = await supabase.from("event_dynamics").insert({
         event_id: eventData.id,
         type: "secret_santa",
@@ -98,7 +101,6 @@ export default function SecretSantaLanding() {
 
       if (dynamicError) throw dynamicError;
 
-      // 3. Create the secret santa configuration
       const { error: secretSantaError } = await supabase.from("event_secret_santa").insert({
         event_id: eventData.id,
         min_value: min,
@@ -110,8 +112,6 @@ export default function SecretSantaLanding() {
       if (secretSantaError) throw secretSantaError;
 
       toast.success("Amigo Secreto criado! Agora adicione os participantes.");
-
-      // Redirect to participants page
       navigate(`/event/${eventData.id}/secret-santa/participants`);
     } catch (error) {
       console.error("Erro ao criar Amigo Secreto:", error);
@@ -121,8 +121,29 @@ export default function SecretSantaLanding() {
     }
   };
 
+  const features = [
+    {
+      icon: Shuffle,
+      title: "Sorteio Justo",
+      description: "Algoritmo garante que ninguém tire a si mesmo e todos recebam alguém para presentear.",
+      gradient: "from-red-500 to-pink-500"
+    },
+    {
+      icon: Gift,
+      title: "Lista de Desejos",
+      description: "Cada participante adiciona sugestões de presente para facilitar a escolha.",
+      gradient: "from-amber-500 to-yellow-500"
+    },
+    {
+      icon: Link2,
+      title: "Convite por Link",
+      description: "Compartilhe no WhatsApp ou e-mail em 1 clique. Simples e rápido.",
+      gradient: "from-green-500 to-emerald-500"
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-red-500/30 overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-hidden">
       <Helmet>
         <title>Amigo Secreto Online Grátis | ReUNE</title>
         <meta
@@ -132,46 +153,110 @@ export default function SecretSantaLanding() {
         <meta name="keywords" content="amigo secreto, sorteio online, amigo oculto, natal 2025, amigo secreto gratis" />
       </Helmet>
 
-      {/* Festive Gradient Background */}
-      <div className="fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_top,rgba(220,38,38,0.15),transparent_50%),radial-gradient(ellipse_at_bottom,rgba(22,163,74,0.1),transparent_50%)]" />
+      <ThemeToggle className="fixed top-4 right-4 z-50" />
 
-      {/* Subtle snow/sparkle effect */}
-      <div className="fixed inset-0 z-0 opacity-30 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuMyIvPjwvc3ZnPg==')]" />
-
-      <div className="relative z-10 container mx-auto px-4 py-8 min-h-screen flex flex-col">
-        {/* Header */}
-        <header className="flex justify-between items-center mb-12">
-          <a
-            href="/"
-            className="text-2xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-red-500"
-          >
+      {/* Floating Navigation */}
+      <motion.nav
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        className="fixed top-4 left-1/2 -translate-x-1/2 z-40 px-6 py-3 rounded-full bg-background/80 backdrop-blur-xl border border-border/50 shadow-2xl"
+      >
+        <div className="flex items-center gap-8">
+          <span className="text-xl font-bold bg-gradient-to-r from-red-500 to-green-500 bg-clip-text text-transparent">
             ReUNE
-          </a>
-          <div className="flex items-center gap-2 text-sm text-gray-400 font-medium border border-white/10 px-3 py-1.5 rounded-full backdrop-blur-md">
+          </span>
+          <div className="hidden md:flex items-center gap-2 text-sm font-medium border-l border-border/50 pl-6">
             <TreePine className="w-4 h-4 text-green-500" />
-            <span>Amigo Secreto 2025</span>
+            <span className="text-muted-foreground">Amigo Secreto 2025</span>
           </div>
-        </header>
+          <Button size="sm" onClick={() => navigate("/")} variant="ghost" className="ml-4">
+            <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
+            Voltar
+          </Button>
+        </div>
+      </motion.nav>
 
-        {/* Hero Content */}
-        <main className="flex-1 flex flex-col items-center justify-center text-center max-w-4xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-8">
-              <Gift className="w-4 h-4 text-red-400" />
-              <span className="text-sm text-gray-300">Sorteio Automático e Gratuito</span>
-            </div>
+      {/* Hero Section - Ultra Modern */}
+      <section className="relative min-h-screen flex items-center justify-center px-4 pt-24 pb-12 overflow-hidden">
+        {/* Animated Background Gradient - Festive */}
+        <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-background to-green-500/5" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.1)_0%,transparent_50%)]" />
 
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-gray-500">
-              Organize seu Amigo Secreto
-              <br />
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-amber-400">
-                em 30 segundos
+        {/* Floating Orbs - Christmas Colors */}
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{ duration: 8, repeat: Infinity }}
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-500/20 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            scale: [1.2, 1, 1.2],
+            opacity: [0.5, 0.3, 0.5],
+          }}
+          transition={{ duration: 8, repeat: Infinity, delay: 1 }}
+          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-green-500/20 rounded-full blur-3xl"
+        />
+
+        <motion.div
+          style={{ opacity, scale }}
+          className="relative z-10 max-w-7xl mx-auto text-center space-y-8"
+        >
+          {/* Badges */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center gap-3"
+          >
+            <Badge className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-red-500/10 to-green-500/10 border-red-500/20 text-red-600 dark:text-red-400">
+              <Gift className="w-4 h-4 mr-2 inline" />
+              Sorteio Automático e Gratuito
+            </Badge>
+
+            {/* Free Access Banner */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 blur-xl opacity-30 animate-pulse" />
+              <Badge className="relative px-6 py-3 text-base font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 shadow-lg">
+                <Zap className="w-5 h-5 mr-2 inline animate-pulse" />
+                GRÁTIS até 01/01/2026 - Todos os Recursos!
+              </Badge>
+            </motion.div>
+          </motion.div>
+
+          {/* Main Headline */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="space-y-6"
+          >
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight">
+              Organize seu{" "}
+              <span className="relative inline-block">
+                <span className="bg-gradient-to-r from-red-500 via-amber-500 to-green-600 bg-clip-text text-transparent">
+                  Amigo Secreto
+                </span>
+                <motion.div
+                  className="absolute -bottom-2 left-0 right-0 h-3 bg-gradient-to-r from-red-500/20 to-green-500/20 -z-10 rounded-full blur-sm"
+                  animate={{ scaleX: [0, 1] }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                />
               </span>
             </h1>
 
-            <p className="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-              Sorteio aleatório e justo, lista de desejos integrada e convites por e-mail.
-              <span className="block mt-2 text-green-400">Sem complicação. Sem cadastros desgastantes.</span>
+            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Sorteio aleatório e justo, lista de desejos integrada e convites instantâneos.
+              <span className="block mt-2 text-primary font-medium">
+                Sem complicação. Tudo em 30 segundos.
+              </span>
             </p>
           </motion.div>
 
@@ -180,189 +265,233 @@ export default function SecretSantaLanding() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="mb-12"
+            className="pt-8"
           >
-            <p className="text-xs uppercase tracking-widest text-gray-500 mb-4">Contagem para o Natal</p>
-            <div className="grid grid-cols-4 gap-3 md:gap-6">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Contagem para o Natal</p>
+            <div className="grid grid-cols-4 gap-4 md:gap-8 max-w-2xl mx-auto">
               {[
                 { label: "Dias", value: timeLeft.days },
                 { label: "Horas", value: timeLeft.hours },
                 { label: "Min", value: timeLeft.minutes },
                 { label: "Seg", value: timeLeft.seconds },
               ].map((item, idx) => (
-                <div
+                <motion.div
                   key={idx}
-                  className="flex flex-col items-center p-3 md:p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * idx, duration: 0.4 }}
+                  className="flex flex-col items-center group"
                 >
-                  <div className="text-2xl md:text-4xl font-mono font-bold text-white">
-                    {String(item.value).padStart(2, "0")}
+                  <div className="relative">
+                    <div className={`absolute inset-0 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl ${
+                      idx % 2 === 0 ? 'bg-red-600/20' : 'bg-green-600/20'
+                    }`} />
+
+                    <motion.div
+                      key={item.value}
+                      initial={{ scale: 1 }}
+                      animate={{ scale: [1, 1.05, 1] }}
+                      transition={{ duration: 0.3 }}
+                      className={`relative text-3xl md:text-5xl font-mono font-bold mb-2 px-4 py-2 md:px-6 md:py-3 rounded-2xl bg-gradient-to-br ${
+                        idx % 2 === 0 ? 'from-red-500/10 to-red-500/5' : 'from-green-500/10 to-green-500/5'
+                      } border ${
+                        idx % 2 === 0 ? 'border-red-500/20' : 'border-green-500/20'
+                      } backdrop-blur-sm group-hover:border-primary/50 transition-all duration-300`}
+                    >
+                      {idx === 3 && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-green-600/10 rounded-2xl animate-pulse" />
+                      )}
+                      <span className="relative z-10">{String(item.value).padStart(2, "0")}</span>
+                    </motion.div>
                   </div>
-                  <div className="text-[10px] md:text-xs uppercase tracking-widest text-gray-500 mt-1">
+                  <div className="text-xs uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">
                     {item.label}
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </motion.div>
 
-          {/* CTA or Wizard */}
+          {/* CTA Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="w-full max-w-md mx-auto"
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="flex flex-col items-center gap-6 pt-8"
           >
             {!showWizard ? (
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-amber-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md">
                 <Button
+                  size="lg"
                   onClick={handleStartClick}
                   disabled={authLoading}
-                  className="relative w-full h-14 text-lg font-semibold bg-gradient-to-r from-red-600 to-amber-500 hover:from-red-500 hover:to-amber-400 text-white rounded-xl shadow-lg transition-all"
+                  className="group h-14 px-8 text-lg bg-gradient-to-r from-red-500 to-green-500 hover:from-red-600 hover:to-green-600 w-full"
                 >
                   <Gift className="w-5 h-5 mr-2" />
                   Criar Meu Amigo Secreto
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </div>
             ) : (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-r from-red-600/50 to-green-600/50 rounded-2xl blur opacity-25"></div>
-                <form
-                  onSubmit={handleCreateSecretSanta}
-                  className="relative p-6 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl space-y-4"
-                >
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-amber-400" />
-                    Configuração Rápida
-                  </h3>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="groupName" className="text-gray-300 text-sm">
-                      Nome do Grupo
-                    </Label>
-                    <Input
-                      id="groupName"
-                      value={groupName}
-                      onChange={(e) => setGroupName(e.target.value)}
-                      placeholder="Ex: Família Silva, Amigos do Trabalho"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-11"
-                    />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full max-w-md"
+              >
+                <div className="relative p-8 bg-card border-2 border-border rounded-3xl shadow-2xl space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    <h3 className="text-xl font-semibold">Configuração Rápida</h3>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <form onSubmit={handleCreateSecretSanta} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="minValue" className="text-gray-300 text-sm">
-                        Valor Mínimo (R$)
-                      </Label>
+                      <Label htmlFor="groupName">Nome do Grupo</Label>
                       <Input
-                        id="minValue"
-                        type="number"
-                        value={minValue}
-                        onChange={(e) => setMinValue(e.target.value)}
-                        placeholder="50"
-                        min="0"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-11"
+                        id="groupName"
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                        placeholder="Ex: Família Silva, Amigos do Trabalho"
+                        className="h-11"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="maxValue" className="text-gray-300 text-sm">
-                        Valor Máximo (R$)
-                      </Label>
-                      <Input
-                        id="maxValue"
-                        type="number"
-                        value={maxValue}
-                        onChange={(e) => setMaxValue(e.target.value)}
-                        placeholder="100"
-                        min="0"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-11"
-                      />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="minValue">Valor Mínimo (R$)</Label>
+                        <Input
+                          id="minValue"
+                          type="number"
+                          value={minValue}
+                          onChange={(e) => setMinValue(e.target.value)}
+                          placeholder="50"
+                          min="0"
+                          className="h-11"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="maxValue">Valor Máximo (R$)</Label>
+                        <Input
+                          id="maxValue"
+                          type="number"
+                          value={maxValue}
+                          onChange={(e) => setMaxValue(e.target.value)}
+                          placeholder="100"
+                          min="0"
+                          className="h-11"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <Button
-                    type="submit"
-                    disabled={creating}
-                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white rounded-xl mt-4"
-                  >
-                    {creating ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Criando...
-                      </>
-                    ) : (
-                      <>
-                        <Shuffle className="w-5 h-5 mr-2" />
-                        Criar e Adicionar Participantes
-                      </>
-                    )}
-                  </Button>
+                    <Button
+                      type="submit"
+                      disabled={creating}
+                      className="w-full h-12 text-base font-semibold bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400"
+                    >
+                      {creating ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          Criando...
+                        </>
+                      ) : (
+                        <>
+                          <Shuffle className="w-5 h-5 mr-2" />
+                          Criar e Adicionar Participantes
+                        </>
+                      )}
+                    </Button>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowWizard(false)}
-                    className="w-full text-sm text-gray-500 hover:text-gray-300 transition-colors mt-2"
-                  >
-                    Cancelar
-                  </button>
-                </form>
+                    <button
+                      type="button"
+                      onClick={() => setShowWizard(false)}
+                      className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </form>
+                </div>
               </motion.div>
             )}
 
-            <p className="mt-4 text-xs text-gray-600">100% gratuito • Sem anúncios • Seus dados protegidos</p>
+            <p className="text-xs text-muted-foreground">
+              100% gratuito • Sem anúncios • Seus dados protegidos
+            </p>
           </motion.div>
-        </main>
+        </motion.div>
 
-        {/* Features */}
-        <motion.footer
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="mt-16 grid md:grid-cols-3 gap-4 max-w-4xl mx-auto w-full"
+        {/* Scroll Indicator */}
+        <motion.div
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
         >
-          {[
-            {
-              icon: Shuffle,
-              title: "Sorteio Justo",
-              desc: "Algoritmo garante que ninguém tire a si mesmo.",
-              color: "text-red-400",
-            },
-            {
-              icon: Gift,
-              title: "Lista de Desejos",
-              desc: "Cada participante adiciona sugestões de presente.",
-              color: "text-amber-400",
-            },
-            {
-              icon: Link2,
-              title: "Convite por Link",
-              desc: "Compartilhe no WhatsApp em 1 clique.",
-              color: "text-green-400",
-            },
-          ].map((feature, idx) => (
-            <div
-              key={idx}
-              className="p-5 rounded-xl bg-white/5 border border-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors group cursor-default"
-            >
-              <feature.icon className={`w-7 h-7 ${feature.color} mb-3 group-hover:scale-110 transition-transform`} />
-              <h3 className="text-base font-semibold text-white mb-1">{feature.title}</h3>
-              <p className="text-sm text-gray-400">{feature.desc}</p>
-            </div>
-          ))}
-        </motion.footer>
+          <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-2">
+            <motion.div
+              animate={{ y: [0, 12, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-1 h-3 bg-primary rounded-full"
+            />
+          </div>
+        </motion.div>
+      </section>
 
-        {/* Bottom link */}
-        <div className="mt-12 text-center">
-          <a
-            href="/"
-            className="text-sm text-gray-500 hover:text-gray-300 transition-colors inline-flex items-center gap-1"
+      {/* Features Grid */}
+      <section id="features" className="py-32 px-4 relative">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-20"
           >
-            Conheça o ReUNE completo
-            <ArrowRight className="w-3 h-3" />
-          </a>
+            <Badge className="mb-4">
+              <TreePine className="w-4 h-4 mr-2" />
+              Como Funciona
+            </Badge>
+            <h2 className="text-4xl md:text-6xl font-bold mb-6">
+              Simples.{" "}
+              <span className="bg-gradient-to-r from-red-500 to-green-500 bg-clip-text text-transparent">
+                Rápido. Divertido.
+              </span>
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Tudo que você precisa para organizar o amigo secreto perfeito.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ y: -8, scale: 1.02 }}
+                className="group relative p-8 rounded-3xl bg-card border border-border/50 hover:border-border transition-all duration-300 hover:shadow-2xl"
+              >
+                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.gradient} p-0.5 mb-6`}>
+                  <div className="w-full h-full rounded-2xl bg-background flex items-center justify-center">
+                    <feature.icon className={`w-8 h-8 bg-gradient-to-br ${feature.gradient} bg-clip-text text-transparent`} />
+                  </div>
+                </div>
+
+                <h3 className="text-2xl font-bold mb-4 group-hover:text-primary transition-colors">
+                  {feature.title}
+                </h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  {feature.description}
+                </p>
+
+                <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300 -z-10`} />
+              </motion.div>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

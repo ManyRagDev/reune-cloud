@@ -14,15 +14,42 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <ThemeToggle className="fixed top-4 right-4 z-50" />
+
+      {/* Main content with improved spacing and visual hierarchy */}
       <Hero />
+
+      {/* Subtle divider for visual breathing */}
+      <div className="container max-w-7xl mx-auto px-4">
+        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-8" />
+      </div>
+
       <HowItWorks />
+
+      <div className="container max-w-7xl mx-auto px-4">
+        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-8" />
+      </div>
+
       <Benefits />
+
+      {/* Demo section - strategic placement after benefits */}
+      <div className="py-8" />
       <Demo />
+
+      <div className="container max-w-7xl mx-auto px-4">
+        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-8" />
+      </div>
+
       <Templates />
       {/* <Testimonials /> */}
+
+      <div className="py-8" />
       <Integrations />
       {/* <FAQ /> */}
+
+      {/* Final CTA gets extra spacing for emphasis */}
+      <div className="py-12" />
       <FinalCTA />
+
       <Footer />
     </div>
   );

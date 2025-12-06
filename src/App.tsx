@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import Index from "./pages/Index";
+import Index2 from "./pages/Index2";
 import NotFound from "./pages/NotFound";
 import SecretSantaSetup from "./pages/SecretSantaSetup";
 import SecretSantaParticipants from "./pages/SecretSantaParticipants";
@@ -30,7 +31,8 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<Index2 />} />
+            <Route path="/old-landing" element={<LandingPage />} />
             <Route path="/app" element={<Index />} />
             <Route path="/convite/:token" element={<AcceptInvite />} />
             <Route path="/admin" element={<AdminDashboard />} />

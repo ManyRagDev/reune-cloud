@@ -18,6 +18,7 @@ import { OrganizerInviteDialog } from "@/components/events/OrganizerInviteDialog
 import { supabase } from "@/integrations/supabase/client";
 import { rpc } from "@/api/rpc";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 interface Attendee {
   id: number;
@@ -945,24 +946,56 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-card border-b px-4 py-6">
-        <div className="max-w-4xl mx-auto flex items-center">
-          <Button variant="ghost" size="sm" onClick={onBack} className="mr-4">
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold">{event.title}</h1>
-            {isOrganizer && (
-              <Badge variant="secondary" className="mt-1">
-                Organizador
-              </Badge>
-            )}
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Animated Background Orbs */}
+      <motion.div
+        animate={{
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.5, 0.3],
+        }}
+        transition={{ duration: 8, repeat: Infinity }}
+        className="fixed top-0 left-0 w-[600px] h-[600px] bg-purple-500/20 rounded-full blur-3xl pointer-events-none"
+      />
+      <motion.div
+        animate={{
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.5, 0.3],
+        }}
+        transition={{ duration: 8, repeat: Infinity, delay: 1 }}
+        className="fixed bottom-0 right-0 w-[600px] h-[600px] bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"
+      />
+
+      {/* Floating Header */}
+      <motion.header
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        className="fixed top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-4xl px-4"
+      >
+        <div className="rounded-3xl bg-card/80 backdrop-blur-xl border border-border/50 shadow-2xl px-6 py-4">
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="mr-4 hover:bg-background/80"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div className="flex-1">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                {event.title}
+              </h1>
+              {isOrganizer && (
+                <Badge className="mt-1 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400">
+                  👑 Organizador
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
-      <main className="max-w-4xl mx-auto p-4 space-y-6">
+      <main className="relative z-10 max-w-4xl mx-auto px-4 pt-32 pb-20 space-y-6">
         {/* Event Info */}
         <Card>
           <CardHeader>
