@@ -146,7 +146,7 @@ export default function EmailTemplateEditor({ templates, password, onUpdate }: E
               className="font-mono text-xs h-64"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Use variáveis com: {{nome}}, {{email}}, etc.
+              Use variáveis com: {"{{nome}}"}, {"{{email}}"}, etc.
             </p>
           </div>
 
