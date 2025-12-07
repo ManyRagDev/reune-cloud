@@ -18,6 +18,8 @@ export interface RegisteredUser {
   founder_since?: string | null;
   premium_until?: string | null;
   storage_multiplier?: number;
+  welcome_email_sent?: boolean;
+  welcome_email_sent_at?: string | null;
   created_at: string;
 }
 

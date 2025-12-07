@@ -136,13 +136,34 @@ export default function LeadTable({
                         </div>
                       )
                     ) : (
-                      // User - Mostrar info de premium/founder
-                      isRegisteredUser(item) && item.is_founder ? (
-                        <div className="flex items-center gap-2 text-purple-600">
-                          <Crown className="w-4 h-4" />
-                          <span className="text-xs">
-                            Premium {item.premium_until && `até ${format(new Date(item.premium_until), "dd/MM/yy", { locale: ptBR })}`}
-                          </span>
+                      // User - Mostrar status de email E info de premium/founder
+                      isRegisteredUser(item) ? (
+                        <div className="flex flex-col gap-1">
+                          {/* Status de email enviado */}
+                          {item.welcome_email_sent ? (
+                            <div className="flex items-center gap-2 text-green-600">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span className="text-xs">
+                                {item.welcome_email_sent_at &&
+                                  format(new Date(item.welcome_email_sent_at), "dd/MM/yy", { locale: ptBR })
+                                }
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-amber-600">
+                              <XCircle className="w-3 h-3" />
+                              <span className="text-xs">Sem emails</span>
+                            </div>
+                          )}
+                          {/* Info de Premium (se for founder) */}
+                          {item.is_founder && item.premium_until && (
+                            <div className="flex items-center gap-2 text-purple-600">
+                              <Crown className="w-3 h-3" />
+                              <span className="text-xs">
+                                Premium até {format(new Date(item.premium_until), "dd/MM/yy", { locale: ptBR })}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>

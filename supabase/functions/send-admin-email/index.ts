@@ -101,26 +101,57 @@ const handler = async (req: Request): Promise<Response> => {
 
     for (const lead_id of lead_ids) {
       try {
-        // Buscar dados do lead
-        const { data: lead, error: leadError } = await supabase
+        let recipientData: any = null;
+        let isRegisteredUser = false;
+
+        // Tentar buscar da tabela waitlist_reune primeiro
+        const { data: waitlistLead } = await supabase
           .from('waitlist_reune')
           .select('*')
           .eq('id', lead_id)
           .single();
 
-        if (leadError || !lead) {
+        if (waitlistLead) {
+          recipientData = waitlistLead;
+          isRegisteredUser = false;
+        } else {
+          // Se não encontrou na waitlist, buscar da tabela profiles (users registrados)
+          const { data: userProfile } = await supabase
+            .from('profiles')
+            .select('id, created_at, is_founder')
+            .eq('id', lead_id)
+            .single();
+
+          if (userProfile) {
+            // Buscar email do auth.users
+            const { data: authUsers } = await supabase.auth.admin.listUsers();
+            const authUser = authUsers?.users?.find(u => u.id === userProfile.id);
+
+            if (authUser) {
+              recipientData = {
+                id: userProfile.id,
+                name: authUser.user_metadata?.name || null,
+                email: authUser.email,
+                created_at: userProfile.created_at
+              };
+              isRegisteredUser = true;
+            }
+          }
+        }
+
+        if (!recipientData) {
           results.push({
             lead_id,
             status: 'failed',
-            error: 'Lead não encontrado'
+            error: 'Destinatário não encontrado (nem na waitlist nem nos usuários registrados)'
           });
           continue;
         }
 
         // Preparar variáveis do template
         const templateVars = {
-          nome: lead.name || '',
-          email: lead.email,
+          nome: recipientData.name || '',
+          email: recipientData.email,
           ...variables
         };
 
@@ -131,39 +162,47 @@ const handler = async (req: Request): Promise<Response> => {
         // Enviar via Resend
         const emailResponse = await resend.emails.send({
           from: fromEmail,
-          to: [lead.email],
+          to: [recipientData.email],
           subject: emailSubject,
           html: emailHtml,
         });
 
-        console.log('✅ E-mail enviado:', lead.email, emailResponse);
+        console.log('✅ E-mail enviado:', recipientData.email, emailResponse, isRegisteredUser ? '(User registrado)' : '(Waitlist)');
 
         // Registrar log
         await supabase.from('email_logs').insert({
-          lead_id: lead.id,
-          lead_email: lead.email,
+          lead_id: recipientData.id,
+          lead_email: recipientData.email,
           template_name: template_name,
           status: 'success',
           metadata: {
             resend_message_id: emailResponse.id,
-            variables: templateVars
+            variables: templateVars,
+            recipient_type: isRegisteredUser ? 'registered_user' : 'waitlist'
           }
         });
 
-        // Se for template de boas-vindas, atualizar flag do lead
+        // Se for template de boas-vindas, atualizar flag
         if (template_name === 'boas_vindas' || template.name.includes('bem_vind') || template.name.includes('welcome')) {
-          await supabase
-            .from('waitlist_reune')
-            .update({
-              welcome_email_sent: true,
-              welcome_email_sent_at: new Date().toISOString()
-            })
-            .eq('id', lead.id);
+          if (isRegisteredUser) {
+            // Para users registrados, não temos campo welcome_email_sent na tabela profiles
+            // O rastreamento é feito apenas via email_logs
+            console.log('📧 Email de boas-vindas enviado para user registrado:', recipientData.email);
+          } else {
+            // Para waitlist, atualizar flag
+            await supabase
+              .from('waitlist_reune')
+              .update({
+                welcome_email_sent: true,
+                welcome_email_sent_at: new Date().toISOString()
+              })
+              .eq('id', recipientData.id);
+          }
         }
 
         results.push({
-          lead_id: lead.id,
-          lead_email: lead.email,
+          lead_id: recipientData.id,
+          lead_email: recipientData.email,
           status: 'success',
           message_id: emailResponse.id
         });
@@ -173,15 +212,29 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Registrar log de erro
         try {
+          let failedEmail = 'unknown';
+
+          // Tentar buscar email da waitlist
           const { data: failedLead } = await supabase
             .from('waitlist_reune')
             .select('email')
             .eq('id', lead_id)
             .single();
 
+          if (failedLead) {
+            failedEmail = failedLead.email;
+          } else {
+            // Tentar buscar do auth.users
+            const { data: authUsers } = await supabase.auth.admin.listUsers();
+            const authUser = authUsers?.users?.find(u => u.id === lead_id);
+            if (authUser) {
+              failedEmail = authUser.email || 'unknown';
+            }
+          }
+
           await supabase.from('email_logs').insert({
             lead_id: lead_id,
-            lead_email: failedLead?.email || 'unknown',
+            lead_email: failedEmail,
             template_name: template_name,
             status: 'failed',
             error_message: error.message,

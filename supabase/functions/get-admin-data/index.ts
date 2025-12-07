@@ -41,36 +41,63 @@ Deno.serve(async (req) => {
 
         if (waitlistError) throw waitlistError;
 
-        // Fetch Registered Users (profiles + auth.users email)
+        // Fetch Registered Users (TODOS os auth.users + profiles se existir)
         let users = [];
         try {
-            const { data: usersData, error: usersError } = await supabase
-                .from("profiles")
-                .select(`
-                    id,
-                    created_at,
-                    is_founder,
-                    founder_since,
-                    premium_until,
-                    storage_multiplier
-                `);
+            // Buscar TODOS os usuários de auth.users
+            const { data: authUsersResponse } = await supabase.auth.admin.listUsers();
+            const authUsers = authUsersResponse?.users || [];
 
-            if (usersError) {
-                console.error('⚠️  Error fetching users:', usersError.message);
-            } else if (usersData) {
-                // Buscar emails dos usuários (auth.users)
-                const userIds = usersData.map(u => u.id);
-                const { data: authUsers } = await supabase.auth.admin.listUsers();
+            console.log(`📊 Total de usuários em auth.users: ${authUsers.length}`);
 
-                // Combinar profiles com emails
-                users = usersData.map(profile => {
-                    const authUser = authUsers?.users?.find(u => u.id === profile.id);
+            if (authUsers.length > 0) {
+                const userIds = authUsers.map(u => u.id);
+
+                // Buscar profiles para esses usuários (pode não existir para todos)
+                const { data: profilesData } = await supabase
+                    .from("profiles")
+                    .select(`
+                        id,
+                        created_at,
+                        is_founder,
+                        founder_since,
+                        premium_until,
+                        storage_multiplier
+                    `)
+                    .in('id', userIds);
+
+                console.log(`📊 Total de profiles encontrados: ${profilesData?.length || 0}`);
+
+                // Buscar email_logs para verificar se enviou emails
+                const { data: emailLogs } = await supabase
+                    .from('email_logs')
+                    .select('lead_id, sent_at, status')
+                    .in('lead_id', userIds)
+                    .eq('status', 'success')
+                    .order('sent_at', { ascending: false });
+
+                console.log(`📊 Total de email logs encontrados: ${emailLogs?.length || 0}`);
+
+                // Combinar TODOS os auth.users com profiles (se existir) e logs
+                users = authUsers.map(authUser => {
+                    const profile = profilesData?.find(p => p.id === authUser.id);
+                    const userEmailLog = emailLogs?.find(log => log.lead_id === authUser.id);
+
                     return {
-                        ...profile,
-                        email: authUser?.email || 'Email não encontrado',
-                        name: authUser?.user_metadata?.name || null,
+                        id: authUser.id,
+                        email: authUser.email || 'Email não encontrado',
+                        name: authUser.user_metadata?.name || null,
+                        created_at: profile?.created_at || authUser.created_at,
+                        is_founder: profile?.is_founder || false,
+                        founder_since: profile?.founder_since || null,
+                        premium_until: profile?.premium_until || null,
+                        storage_multiplier: profile?.storage_multiplier || 1,
+                        welcome_email_sent: !!userEmailLog,
+                        welcome_email_sent_at: userEmailLog?.sent_at || null,
                     };
                 });
+
+                console.log(`✅ Total de usuários retornados: ${users.length}`);
             }
         } catch (error) {
             console.error('⚠️  Failed to fetch users:', error);
