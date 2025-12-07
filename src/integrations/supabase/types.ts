@@ -864,11 +864,16 @@ export type Database = {
           created_at: string | null
           display_name: string | null
           favorite_event_type: string | null
+          founder_member: boolean | null
+          founder_since: string | null
           hide_profile_prompt: boolean | null
           id: string
+          is_founder: boolean | null
           language: string | null
           phone: string | null
+          premium_until: string | null
           state: string | null
+          storage_multiplier: number | null
           terms_accepted_at: string | null
           updated_at: string | null
           username: string | null
@@ -883,11 +888,16 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           favorite_event_type?: string | null
+          founder_member?: boolean | null
+          founder_since?: string | null
           hide_profile_prompt?: boolean | null
           id: string
+          is_founder?: boolean | null
           language?: string | null
           phone?: string | null
+          premium_until?: string | null
           state?: string | null
+          storage_multiplier?: number | null
           terms_accepted_at?: string | null
           updated_at?: string | null
           username?: string | null
@@ -902,11 +912,16 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           favorite_event_type?: string | null
+          founder_member?: boolean | null
+          founder_since?: string | null
           hide_profile_prompt?: boolean | null
           id?: string
+          is_founder?: boolean | null
           language?: string | null
           phone?: string | null
+          premium_until?: string | null
           state?: string | null
+          storage_multiplier?: number | null
           terms_accepted_at?: string | null
           updated_at?: string | null
           username?: string | null
@@ -1092,6 +1107,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          is_founder: boolean | null
           name: string | null
           origin: string | null
           welcome_email_sent: boolean | null
@@ -1101,6 +1117,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          is_founder?: boolean | null
           name?: string | null
           origin?: string | null
           welcome_email_sent?: boolean | null
@@ -1110,6 +1127,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          is_founder?: boolean | null
           name?: string | null
           origin?: string | null
           welcome_email_sent?: boolean | null
@@ -1130,6 +1148,19 @@ export type Database = {
           total_interactions: number | null
           unique_intents: number | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      founder_members: {
+        Row: {
+          email: string | null
+          founder_since: string | null
+          id: string | null
+          is_founder: boolean | null
+          premium_status: string | null
+          premium_until: string | null
+          signup_date: string | null
+          storage_multiplier: number | null
         }
         Relationships: []
       }
@@ -1271,6 +1302,8 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_storage_multiplier: { Args: { user_id: string }; Returns: number }
+      has_active_premium: { Args: { user_id: string }; Returns: boolean }
       is_event_organizer: {
         Args: { _event_id: number; _user_id: string }
         Returns: boolean
