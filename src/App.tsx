@@ -19,6 +19,8 @@ import MarketingScreenshots from "./pages/MarketingScreenshots";
 import AcceptInvite from "./pages/AcceptInvite";
 import { EnableDevMode } from "./components/EnableDevMode";
 import AdminDashboard from "./pages/AdminDashboard";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +53,10 @@ const App = () => {
             <Route path="/mockup" element={<MockupGenerator />} />
             <Route path="/marketing-screenshots" element={<MarketingScreenshots />} />
             <Route path="/r3un3test4ndo" element={<EnableDevMode />} />
+
+            {/* Legal Pages */}
+            <Route path="/privacidade" element={<PrivacyPolicy />} />
+            <Route path="/termos" element={<TermsOfService />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

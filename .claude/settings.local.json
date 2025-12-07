@@ -8,7 +8,10 @@
       "Bash(npx supabase functions:*)",
       "Bash(npx supabase status)",
       "Bash(npx supabase login)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(npx supabase link:*)"
     ],
     "deny": [],
     "ask": []
