@@ -12,7 +12,8 @@
       "Bash(grep:*)",
       "Bash(ls:*)",
       "Bash(npx supabase link:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npx supabase:*)"
     ],
     "deny": [],
     "ask": []
