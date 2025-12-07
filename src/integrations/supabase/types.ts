@@ -1178,6 +1178,7 @@ export type Database = {
         Args: { desired_username: string }
         Returns: boolean
       }
+      create_missing_profiles: { Args: never; Returns: undefined }
       distribution_bulk_upsert: {
         Args: { evento_id: string; rows: Json }
         Returns: Json[]
