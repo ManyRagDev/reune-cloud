@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          value: Json
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       confirmation_history: {
         Row: {
           confirmation_type: string
@@ -220,6 +247,86 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          lead_email: string
+          lead_id: string | null
+          metadata: Json | null
+          sent_at: string | null
+          status: string
+          template_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          lead_email: string
+          lead_id?: string | null
+          metadata?: Json | null
+          sent_at?: string | null
+          status: string
+          template_name: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          lead_email?: string
+          lead_id?: string | null
+          metadata?: Json | null
+          sent_at?: string | null
+          status?: string
+          template_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_reune"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          html_content: string
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          html_content: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          html_content?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
       }
       event_confirmations: {
         Row: {
@@ -985,16 +1092,28 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          name: string | null
+          origin: string | null
+          welcome_email_sent: boolean | null
+          welcome_email_sent_at: string | null
         }
         Insert: {
           created_at?: string
           email: string
           id?: string
+          name?: string | null
+          origin?: string | null
+          welcome_email_sent?: boolean | null
+          welcome_email_sent_at?: string | null
         }
         Update: {
           created_at?: string
           email?: string
           id?: string
+          name?: string | null
+          origin?: string | null
+          welcome_email_sent?: boolean | null
+          welcome_email_sent_at?: string | null
         }
         Relationships: []
       }
