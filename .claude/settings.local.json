@@ -7,7 +7,8 @@
       "Bash(git commit:*)",
       "Bash(npx supabase functions:*)",
       "Bash(npx supabase status)",
-      "Bash(npx supabase login)"
+      "Bash(npx supabase login)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
