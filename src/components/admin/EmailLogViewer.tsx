@@ -9,6 +9,7 @@ import { CheckCircle2, XCircle, Clock, RefreshCw, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EmailLogViewerProps {
   password: string;
@@ -27,25 +28,19 @@ export default function EmailLogViewer({ password }: EmailLogViewerProps) {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-email-logs`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            password,
-            filters: statusFilter !== 'all' ? { status: statusFilter } : {},
-            limit: 100
-          }),
+      const { data, error } = await supabase.functions.invoke('get-email-logs', {
+        body: {
+          password,
+          filters: statusFilter !== 'all' ? { status: statusFilter } : {},
+          limit: 100
         }
-      );
+      });
 
-      const data = await response.json();
-      if (response.ok) {
-        setLogs(data.logs || []);
-      } else {
-        throw new Error(data.error);
+      if (error) {
+        throw new Error(error.message);
       }
+
+      setLogs(data.logs || []);
     } catch (error: any) {
       toast.error('Erro ao carregar logs');
     } finally {

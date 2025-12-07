@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EmailTemplate } from "@/types/admin";
 import { Mail, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SendEmailModalProps {
   open: boolean;
@@ -41,26 +42,17 @@ export default function SendEmailModal({
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-admin-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            lead_ids: leadIds,
-            template_name: selectedTemplate,
-            variables,
-            password
-          }),
+      const { data, error } = await supabase.functions.invoke('send-admin-email', {
+        body: {
+          lead_ids: leadIds,
+          template_name: selectedTemplate,
+          variables,
+          password
         }
-      );
+      });
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao enviar e-mails');
+      if (error || !data.success) {
+        throw new Error(error?.message || data.error || 'Erro ao enviar e-mails');
       }
 
       toast.success(data.message || `E-mails enviados com sucesso!`);
@@ -117,7 +109,7 @@ export default function SendEmailModal({
             <div className="space-y-3 p-4 bg-muted/50 rounded-xl">
               <Label className="text-sm font-medium">Variáveis do Template</Label>
               <p className="text-xs text-muted-foreground">
-                As variáveis {{nome}} e {{email}} são preenchidas automaticamente.
+                As variáveis {'{'}nome{'}'} e {'{'}email{'}'} são preenchidas automaticamente.
               </p>
 
               {templateVariables
@@ -126,7 +118,7 @@ export default function SendEmailModal({
                   <div key={variable} className="space-y-1">
                     <Label className="text-xs">{variable}</Label>
                     <Input
-                      placeholder={`Valor para {{${variable}}}`}
+                      placeholder={`Valor para {${variable}}`}
                       value={variables[variable] || ''}
                       onChange={(e) => setVariables({ ...variables, [variable]: e.target.value })}
                       className="h-10"

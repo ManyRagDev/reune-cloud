@@ -17,3 +17,15 @@ verify_jwt = false
 
 [functions.send-secret-santa-notification]
 verify_jwt = false
+
+[functions.get-admin-data]
+verify_jwt = false
+
+[functions.get-email-logs]
+verify_jwt = false
+
+[functions.send-admin-email]
+verify_jwt = false
+
+[functions.email-templates]
+verify_jwt = false

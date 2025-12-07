@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Plus, Save, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Edit, Trash2, Plus, Save, X, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -18,6 +19,7 @@ interface EmailTemplateEditorProps {
 
 export default function EmailTemplateEditor({ templates, password, onUpdate }: EmailTemplateEditorProps) {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+  const [viewingTemplate, setViewingTemplate] = useState<EmailTemplate | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     subject: "",
@@ -46,23 +48,29 @@ export default function EmailTemplateEditor({ templates, password, onUpdate }: E
     }
 
     try {
-      const url = editingTemplate
+      const url = editingTemplate?.id
         ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-templates/${editingTemplate.id}`
         : `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-templates`;
 
+      const method = editingTemplate?.id ? 'PUT' : 'POST';
+
       const response = await fetch(url, {
-        method: editingTemplate ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+        },
         body: JSON.stringify({ ...formData, password }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error);
+        throw new Error(data.error || 'Erro ao salvar template');
       }
 
-      toast.success(`Template ${editingTemplate ? 'atualizado' : 'criado'} com sucesso!`);
+      toast.success(`Template ${editingTemplate?.id ? 'atualizado' : 'criado'} com sucesso!`);
       setEditingTemplate(null);
       setFormData({ name: "", subject: "", description: "", html_content: "", variables: [], is_active: true });
       onUpdate();
@@ -78,13 +86,19 @@ export default function EmailTemplateEditor({ templates, password, onUpdate }: E
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-templates/${templateId}?password=${password}`,
-        { method: 'DELETE' }
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          }
+        }
       );
 
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error);
+        throw new Error(data.error || 'Erro ao deletar template');
       }
 
       toast.success('Template deletado com sucesso!');
@@ -146,7 +160,7 @@ export default function EmailTemplateEditor({ templates, password, onUpdate }: E
               className="font-mono text-xs h-64"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Use variáveis com: {{nome}}, {{email}}, etc.
+              Use variáveis com: {'{'}nome{'}'}, {'{'}email{'}'}, etc.
             </p>
           </div>
 
@@ -203,6 +217,10 @@ export default function EmailTemplateEditor({ templates, password, onUpdate }: E
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setViewingTemplate(template)}>
+                    <Eye className="w-3 h-3 mr-1" />
+                    Visualizar
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => handleEdit(template)}>
                     <Edit className="w-3 h-3 mr-1" />
                     Editar
@@ -217,6 +235,39 @@ export default function EmailTemplateEditor({ templates, password, onUpdate }: E
           </motion.div>
         ))}
       </div>
+
+      {/* Preview Modal */}
+      <Dialog open={!!viewingTemplate} onOpenChange={(open) => !open && setViewingTemplate(null)}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Preview: {viewingTemplate?.subject}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-semibold">Nome:</span> {viewingTemplate?.name}
+              </div>
+              <div>
+                <span className="font-semibold">Status:</span>{' '}
+                <Badge variant={viewingTemplate?.is_active ? "default" : "secondary"}>
+                  {viewingTemplate?.is_active ? "Ativo" : "Inativo"}
+                </Badge>
+              </div>
+            </div>
+            {viewingTemplate?.description && (
+              <div className="text-sm">
+                <span className="font-semibold">Descrição:</span> {viewingTemplate.description}
+              </div>
+            )}
+            <div className="border rounded-lg p-4 bg-white">
+              <div
+                dangerouslySetInnerHTML={{ __html: viewingTemplate?.html_content || '' }}
+                className="prose max-w-none"
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

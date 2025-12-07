@@ -6,7 +6,9 @@ export type EventStatus =
   | 'collecting_core'
   | 'itens_pendentes_confirmacao'
   | 'distrib_pendente_confirmacao'
-  | 'finalizado';
+  | 'finalizado'
+  | 'aguardando_data'
+  | 'aguardando_decisao_data';
 
 export interface Event {
   id: UUID;

@@ -11,6 +11,7 @@ export interface ConversationContext {
   confidence_level: number;
   last_intent?: string;
   summary?: string;
+  historyLength?: number;
   created_at: string;
   updated_at: string;
 }

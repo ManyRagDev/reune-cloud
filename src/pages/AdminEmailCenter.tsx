@@ -10,6 +10,7 @@ import EmailTemplateEditor from "@/components/admin/EmailTemplateEditor";
 import EmailLogViewer from "@/components/admin/EmailLogViewer";
 import { AdminData } from "@/types/admin";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdminEmailCenterProps {
   password: string;
@@ -34,21 +35,14 @@ export default function AdminEmailCenter({ password, onLogout }: AdminEmailCente
     console.log('🔐 Enviando requisição com senha:', password ? '✅ Presente' : '❌ Vazia');
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-admin-data`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password }),
-        }
-      );
+      const { data: result, error } = await supabase.functions.invoke('get-admin-data', {
+        body: { password }
+      });
 
-      const result = await response.json();
+      console.log('📡 Resposta da API:', result);
 
-      console.log('📡 Resposta da API:', response.status, result);
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao carregar dados');
+      if (error) {
+        throw new Error(error.message || 'Erro ao carregar dados');
       }
 
       setData(result);
@@ -122,7 +116,7 @@ export default function AdminEmailCenter({ password, onLogout }: AdminEmailCente
       />
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 pt-32 pb-20 space-y-8">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 pt-40 pb-20 space-y-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <motion.div

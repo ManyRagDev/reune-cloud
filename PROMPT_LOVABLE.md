@@ -163,14 +163,14 @@ Tabela para configurações do painel admin:
                 Estamos muito felizes em ter você na nossa lista de espera. Em breve, você terá acesso à plataforma que vai revolucionar a forma de organizar eventos entre amigos!
               </p>
               <p style="color: #374151; font-size: 16px; line-height: 24px; margin: 0;">
-                Fique de olho no seu e-mail ({{email}}) para novidades exclusivas e acesso antecipado. ✨
+                Fique de olho no seu e-mail ({{email}}) para novidades exclusivas e benefícios pelo seu acesso antecipado. ✨
               </p>
             </td>
           </tr>
           <tr>
             <td align="center" style="padding: 8px 20px 32px;">
               <a href="https://reuneapp.com.br" style="display: inline-block; background-color: #f59e0b; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px;">
-                Conhecer o ReUNE
+                Acessar o ReUNE
               </a>
             </td>
           </tr>

@@ -1,0 +1,161 @@
+Crie as seguintes tabelas no Supabase para o Admin Email Center:
+
+═══════════════════════════════════════════════════════════════
+
+1. EXPANDIR TABELA waitlist_reune (já existe)
+
+Adicione os seguintes campos:
+- name (TEXT, nullable)
+- origin (TEXT, default 'unknown')
+- welcome_email_sent (BOOLEAN, default false)
+- welcome_email_sent_at (TIMESTAMP WITH TIME ZONE, nullable)
+
+Crie índices para: name, origin, welcome_email_sent
+
+═══════════════════════════════════════════════════════════════
+
+2. CRIAR TABELA email_templates
+
+Campos:
+- id (UUID, primary key, auto-generated)
+- name (TEXT, unique, not null)
+- subject (TEXT, not null)
+- html_content (TEXT, not null)
+- description (TEXT, nullable)
+- variables (JSONB, default '[]')
+- is_active (BOOLEAN, default true)
+- created_at (TIMESTAMP WITH TIME ZONE, default now())
+- updated_at (TIMESTAMP WITH TIME ZONE, default now())
+
+Configurações:
+- RLS habilitado (apenas service role)
+- Índices: name, is_active
+- Trigger para atualizar updated_at automaticamente
+
+3 templates iniciais:
+
+TEMPLATE 1 - "boas_vindas":
+- subject: "Bem-vindo ao ReUNE! 🎉"
+- description: "E-mail de boas-vindas para novos leads da waitlist"
+- variables: ["nome", "email"]
+- html_content:
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f6f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f6f9fc;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+          <tr>
+            <td align="center" style="padding: 32px 20px 0;">
+              <h1 style="color: #1a1a1a; font-size: 28px; font-weight: 700; margin: 0;">
+                Olá{{#if nome}}, {{nome}}{{/if}}! 👋
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 24px 20px;">
+              <p style="color: #374151; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+                Seja muito bem-vindo(a) ao <strong>ReUNE</strong>! 🎉
+              </p>
+              <p style="color: #374151; font-size: 16px; line-height: 24px; margin: 0 0 16px 0;">
+                Estamos muito felizes em ter você na nossa lista de espera. Em breve, você terá acesso à plataforma que vai revolucionar a forma de organizar eventos entre amigos!
+              </p>
+              <p style="color: #374151; font-size: 16px; line-height: 24px; margin: 0;">
+                Fique de olho no seu e-mail ({{email}}) para novidades exclusivas e benefícios pelo seu acesso antecipado. ✨
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 8px 20px 32px;">
+              <a href="https://reuneapp.com.br" style="display: inline-block; background-color: #f59e0b; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px;">
+                Acessar o ReUNE
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 24px 20px 32px; border-top: 1px solid #e5e7eb;">
+              <p style="color: #6b7280; font-size: 14px; line-height: 20px; margin: 8px 0;">
+                <strong>ReUNE</strong> - Planejamento de eventos simplificado
+              </p>
+              <p style="color: #9ca3af; font-size: 12px; line-height: 18px; margin: 4px 0;">
+                reuneapp.com.br
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+
+TEMPLATE 2 - "atualizacao_lancamento":
+- subject: "Novidades do ReUNE 🚀"
+- description: "Atualização sobre o lançamento da plataforma"
+- variables: ["nome"]
+- html_content: (email HTML simples com título "Novidades do ReUNE! 🚀")
+
+TEMPLATE 3 - "convite_exclusivo":
+- subject: "Você tem acesso exclusivo ao ReUNE! ✨"
+- description: "Convite para recursos VIP e acesso antecipado"
+- variables: ["nome", "codigo_acesso"]
+- html_content: (email HTML com parabéns e código de acesso)
+
+═══════════════════════════════════════════════════════════════
+
+3. CRIAR TABELA email_logs
+
+Campos:
+- id (UUID, primary key, auto-generated)
+- lead_id (UUID, nullable, foreign key para waitlist_reune.id, ON DELETE SET NULL)
+- lead_email (TEXT, not null)
+- template_name (TEXT, not null)
+- sent_at (TIMESTAMP WITH TIME ZONE, default now())
+- status (TEXT, not null, check: 'success', 'failed', 'pending')
+- error_message (TEXT, nullable)
+- metadata (JSONB, default '{}')
+- created_at (TIMESTAMP WITH TIME ZONE, default now())
+
+Configurações:
+- RLS habilitado (apenas service role)
+- Índices: lead_id, lead_email, template_name, status, sent_at DESC, created_at DESC
+
+═══════════════════════════════════════════════════════════════
+
+4. CRIAR TABELA admin_settings
+
+Campos:
+- id (UUID, primary key, auto-generated)
+- key (TEXT, unique, not null)
+- value (JSONB, not null)
+- description (TEXT, nullable)
+- created_at (TIMESTAMP WITH TIME ZONE, default now())
+- updated_at (TIMESTAMP WITH TIME ZONE, default now())
+
+Configurações:
+- RLS habilitado (apenas service role)
+- Índice: key
+- Trigger para atualizar updated_at automaticamente
+
+6 configurações iniciais:
+1. auto_welcome_enabled: false
+2. from_email: "ReUNE <noreply@reuneapp.com.br>"
+3. from_name: "ReUNE"
+4. default_welcome_template: "boas_vindas"
+5. admin_email: "admin@reuneapp.com.br"
+6. email_daily_limit: 1000
+
+═══════════════════════════════════════════════════════════════
+
+IMPORTANTE:
+- Todas as tabelas devem ter RLS habilitado com políticas que bloqueiam acesso público
+- Apenas service role deve ter acesso
+- Use ON CONFLICT DO NOTHING nos INSERTs para evitar duplicatas
+- Os triggers de updated_at devem usar a função padrão do Supabase
+
+Execute tudo e confirme que foi criado com sucesso! 🚀

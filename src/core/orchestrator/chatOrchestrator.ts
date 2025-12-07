@@ -35,6 +35,7 @@ export interface ChatUiPayload {
   qtd_pessoas?: number;
   showItems?: boolean;
   closeChat?: boolean;
+  toast?: string;
 }
 
 export const getGreeting = (userId: UUID): ChatUiPayload => {
@@ -730,9 +731,9 @@ export const orchestrate = async (
   if (savedContext.state === "aguardando_decisao_data" && draft?.evento) {
     // console.log('[ORCHESTRATE] Aguardando decisão sobre data');
 
-    const tipoEvento = savedContext.collected_data?.categoria_evento || draft.evento.tipo_evento;
-    const qtdPessoas = savedContext.collected_data?.qtd_pessoas || draft.evento.qtd_pessoas;
-    const menu = savedContext.collected_data?.menu || draft.evento.menu;
+    const tipoEvento = (savedContext.collected_data?.categoria_evento as string | undefined) || draft.evento.tipo_evento;
+    const qtdPessoas = (savedContext.collected_data?.qtd_pessoas as number | undefined) || draft.evento.qtd_pessoas;
+    const menu = (savedContext.collected_data?.menu as string | undefined) || draft.evento.menu;
 
     // 🔥 Se usuário responder "Não" → Gerar lista SEM data e mostrar
     if (/\b(não|nao|n|depois|mais tarde|agora não|agora nao)\b/i.test(userText)) {
@@ -882,9 +883,9 @@ export const orchestrate = async (
   if (savedContext.state === "aguardando_data" && draft?.evento) {
     // console.log('[ORCHESTRATE] Aguardando data do evento');
 
-    const tipoEvento = savedContext.collected_data?.categoria_evento || draft.evento.tipo_evento;
-    const qtdPessoas = savedContext.collected_data?.qtd_pessoas || draft.evento.qtd_pessoas;
-    const menu = savedContext.collected_data?.menu || draft.evento.menu;
+    const tipoEvento = (savedContext.collected_data?.categoria_evento as string | undefined) || draft.evento.tipo_evento;
+    const qtdPessoas = (savedContext.collected_data?.qtd_pessoas as number | undefined) || draft.evento.qtd_pessoas;
+    const menu = (savedContext.collected_data?.menu as string | undefined) || draft.evento.menu;
 
     if (analysis.data_evento) {
       // console.log('[ORCHESTRATE] Data recebida:', analysis.data_evento);

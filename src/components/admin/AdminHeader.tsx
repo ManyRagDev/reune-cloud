@@ -13,7 +13,7 @@ export default function AdminHeader({ title, subtitle, onLogout }: AdminHeaderPr
     <motion.header
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      className="fixed top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-7xl px-4"
+      className="fixed top-20 left-1/2 -translate-x-1/2 z-40 w-full max-w-7xl px-4"
     >
       <div className="rounded-3xl bg-card/80 backdrop-blur-xl border border-border/50 shadow-2xl px-6 py-4">
         <div className="flex items-center justify-between">

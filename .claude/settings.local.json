@@ -4,7 +4,10 @@
       "Bash(npm run build:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npx supabase functions:*)",
+      "Bash(npx supabase status)",
+      "Bash(npx supabase login)"
     ],
     "deny": [],
     "ask": []
