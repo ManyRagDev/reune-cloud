@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Mail, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Users, Mail, CheckCircle2, XCircle, Clock, UserCog } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import AdminHeader from "@/components/admin/AdminHeader";
 import LeadTable from "@/components/admin/LeadTable";
 import SendEmailModal from "@/components/admin/SendEmailModal";
@@ -22,6 +24,7 @@ export default function AdminEmailCenter({ password, onLogout }: AdminEmailCente
   const [loading, setLoading] = useState(true);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [sendEmailModalOpen, setSendEmailModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'waitlist' | 'users'>('waitlist');
 
   useEffect(() => {
     if (password) {
@@ -65,7 +68,8 @@ export default function AdminEmailCenter({ password, onLogout }: AdminEmailCente
 
   const handleSelectAll = (selected: boolean) => {
     if (selected && data) {
-      setSelectedLeads(data.waitlist.map(lead => lead.id));
+      const currentList = viewMode === 'waitlist' ? data.waitlist : data.users;
+      setSelectedLeads(currentList.map(item => item.id));
     } else {
       setSelectedLeads([]);
     }
@@ -127,13 +131,17 @@ export default function AdminEmailCenter({ password, onLogout }: AdminEmailCente
             <Card className="border-2 border-border/50 bg-card/80 backdrop-blur-sm hover:shadow-xl transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total de Leads
+                  {viewMode === 'waitlist' ? 'Leads (Waitlist)' : 'Usuários Registrados'}
                 </CardTitle>
-                <Users className="h-4 w-4 text-amber-500" />
+                {viewMode === 'waitlist' ? (
+                  <Users className="h-4 w-4 text-amber-500" />
+                ) : (
+                  <UserCog className="h-4 w-4 text-purple-500" />
+                )}
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-purple-500 bg-clip-text text-transparent">
-                  {data.waitlist.length}
+                  {viewMode === 'waitlist' ? data.waitlist.length : data.users?.length || 0}
                 </div>
               </CardContent>
             </Card>
@@ -214,8 +222,40 @@ export default function AdminEmailCenter({ password, onLogout }: AdminEmailCente
             </TabsList>
 
             <TabsContent value="leads" className="space-y-4 mt-6">
+              {/* Seletor de View Mode */}
+              <div className="flex items-center gap-3 mb-4">
+                <Button
+                  variant={viewMode === 'waitlist' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setViewMode('waitlist');
+                    setSelectedLeads([]);
+                  }}
+                  className="gap-2"
+                >
+                  <Users className="w-4 h-4" />
+                  Waitlist
+                  <Badge variant="secondary" className="ml-1">
+                    {data.waitlist.length}
+                  </Badge>
+                </Button>
+                <Button
+                  variant={viewMode === 'users' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setViewMode('users');
+                    setSelectedLeads([]);
+                  }}
+                  className="gap-2"
+                >
+                  <UserCog className="w-4 h-4" />
+                  Usuários Registrados
+                  <Badge variant="secondary" className="ml-1">
+                    {data.users?.length || 0}
+                  </Badge>
+                </Button>
+              </div>
+
               <LeadTable
-                leads={data.waitlist}
+                leads={viewMode === 'waitlist' ? data.waitlist : data.users || []}
                 selectedLeads={selectedLeads}
                 onSelectLead={handleSelectLead}
                 onSelectAll={handleSelectAll}

@@ -16,6 +16,7 @@ import { ProfilePromptDialog } from '@/components/ProfilePromptDialog';
 import { BugReportButton } from '@/components/BugReportButton';
 import { ThemeToggle } from '@/components/landing/ThemeToggle';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { FounderBadge } from '@/components/FounderBadge';
 
 interface Event {
   id: number;
@@ -46,6 +47,12 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
   const [loading, setLoading] = useState(true);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [profilePromptOpen, setProfilePromptOpen] = useState(false);
+  const [founderData, setFounderData] = useState<{
+    is_founder: boolean;
+    founder_since?: string;
+    premium_until?: string;
+    storage_multiplier?: number;
+  } | null>(null);
   const userId = user?.id;
   const { scrollYProgress } = useScroll();
   const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
@@ -101,6 +108,29 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
       });
     }
   };
+
+  const fetchFounderData = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_founder, founder_since, premium_until, storage_multiplier')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Erro ao buscar dados de founder:', error);
+        return;
+      }
+
+      if (data?.is_founder) {
+        setFounderData(data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados de founder:', error);
+    }
+  }, [userId]);
 
   const fetchEvents = useCallback(async () => {
     if (!userId) return;
@@ -188,7 +218,8 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
   useEffect(() => {
     fetchEvents();
-  }, [fetchEvents]);
+    fetchFounderData();
+  }, [fetchEvents, fetchFounderData]);
 
   // Verificar se deve exibir o popup de perfil
   useEffect(() => {
@@ -307,7 +338,17 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
                   ReUNE
                 </h1>
-                <p className="text-sm text-muted-foreground">Olá, {userEmail}!</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-muted-foreground">Olá, {userEmail}!</p>
+                  {founderData?.is_founder && (
+                    <FounderBadge
+                      variant="compact"
+                      founderSince={founderData.founder_since}
+                      premiumUntil={founderData.premium_until}
+                      storageMultiplier={founderData.storage_multiplier}
+                    />
+                  )}
+                </div>
                 <Button
                   variant="link"
                   size="sm"

@@ -41,6 +41,41 @@ Deno.serve(async (req) => {
 
         if (waitlistError) throw waitlistError;
 
+        // Fetch Registered Users (profiles + auth.users email)
+        let users = [];
+        try {
+            const { data: usersData, error: usersError } = await supabase
+                .from("profiles")
+                .select(`
+                    id,
+                    created_at,
+                    is_founder,
+                    founder_since,
+                    premium_until,
+                    storage_multiplier
+                `);
+
+            if (usersError) {
+                console.error('⚠️  Error fetching users:', usersError.message);
+            } else if (usersData) {
+                // Buscar emails dos usuários (auth.users)
+                const userIds = usersData.map(u => u.id);
+                const { data: authUsers } = await supabase.auth.admin.listUsers();
+
+                // Combinar profiles com emails
+                users = usersData.map(profile => {
+                    const authUser = authUsers?.users?.find(u => u.id === profile.id);
+                    return {
+                        ...profile,
+                        email: authUser?.email || 'Email não encontrado',
+                        name: authUser?.user_metadata?.name || null,
+                    };
+                });
+            }
+        } catch (error) {
+            console.error('⚠️  Failed to fetch users:', error);
+        }
+
         // Fetch Secret Santa Events
         const { data: events, error: eventsError } = await supabase
             .from("event_secret_santa")
@@ -117,6 +152,7 @@ Deno.serve(async (req) => {
         return new Response(
             JSON.stringify({
                 waitlist,
+                users,
                 events,
                 templates: templates || [],
                 settings: settings || [],

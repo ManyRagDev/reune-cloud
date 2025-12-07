@@ -10,6 +10,17 @@ export interface Lead {
   created_at: string;
 }
 
+export interface RegisteredUser {
+  id: string;
+  email: string;
+  name?: string | null;
+  is_founder?: boolean;
+  founder_since?: string | null;
+  premium_until?: string | null;
+  storage_multiplier?: number;
+  created_at: string;
+}
+
 export interface EmailTemplate {
   id: string;
   name: string;
@@ -56,6 +67,7 @@ export interface EmailStats {
 
 export interface AdminData {
   waitlist: Lead[];
+  users: RegisteredUser[];
   events: any[];
   templates: EmailTemplate[];
   settings: AdminSettings[];
