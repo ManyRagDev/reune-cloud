@@ -29,7 +29,12 @@ const handler = async (req: Request): Promise<Response> => {
     const { password, filters = {}, limit = 50, offset = 0 }: LogsRequest = await req.json();
 
     // Validar senha admin
-    if (password !== "2025") {
+    const adminPassword = Deno.env.get('ADMIN_DASHBOARD_PASSWORD');
+    if (!adminPassword) {
+      throw new Error('ADMIN_DASHBOARD_PASSWORD n??o configurada');
+    }
+
+    if (password !== adminPassword) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

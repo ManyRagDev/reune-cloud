@@ -14,9 +14,9 @@ import SecretSantaMyResult from "./pages/SecretSantaMyResult";
 import SecretSantaWishlist from "./pages/SecretSantaWishlist";
 import SecretSantaAdmin from "./pages/SecretSantaAdmin";
 import SecretSantaLanding from "./pages/SecretSantaLanding";
-import MockupGenerator from "./pages/MockupGenerator";
 import MarketingScreenshots from "./pages/MarketingScreenshots";
 import AcceptInvite from "./pages/AcceptInvite";
+import ResetPassword from "./pages/ResetPassword";
 import { EnableDevMode } from "./components/EnableDevMode";
 import AdminDashboard from "./pages/AdminDashboard";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -36,6 +36,7 @@ const App = () => {
             <Route path="/" element={<Index2 />} />
             <Route path="/old-landing" element={<LandingPage />} />
             <Route path="/app" element={<Index />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/convite/:token" element={<AcceptInvite />} />
             <Route path="/admin" element={<AdminDashboard />} />
 
@@ -50,7 +51,6 @@ const App = () => {
             <Route path="/event/:id/secret-santa/admin" element={<SecretSantaAdmin />} />
 
             {/* Utility Routes */}
-            <Route path="/mockup" element={<MockupGenerator />} />
             <Route path="/marketing-screenshots" element={<MarketingScreenshots />} />
             <Route path="/r3un3test4ndo" element={<EnableDevMode />} />
 

@@ -38,7 +38,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { receiverEmail, senderName, invitationToken } = parsed.data;
 
-    const invitationUrl = `${Deno.env.get("VITE_SUPABASE_URL")}/auth/v1/verify?token=${invitationToken}&type=invite`;
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("VITE_SUPABASE_URL") || "";
+    if (!supabaseUrl) {
+      throw new Error("SUPABASE_URL n??o configurada");
+    }
+
+    const invitationUrl = `${supabaseUrl}/auth/v1/verify?token=${invitationToken}&type=invite`;
 
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",

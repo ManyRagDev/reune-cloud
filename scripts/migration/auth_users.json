@@ -1,0 +1,119 @@
+[
+  {
+    "id": "b1a44897-eeb0-4954-8a7e-92375f009776",
+    "email": "dessarag@gmail.com",
+    "created_at": "2025-10-24T00:39:06.309Z",
+    "email_confirmed_at": "2025-10-24T00:39:06.318Z",
+    "last_sign_in_at": "2025-10-28T18:01:28.738Z",
+    "raw_user_meta_data": {
+      "email": "dessarag@gmail.com",
+      "email_verified": true,
+      "phone_verified": false,
+      "sub": "b1a44897-eeb0-4954-8a7e-92375f009776"
+    }
+  },
+  {
+    "id": "0dce73f1-a3ca-408e-80a6-f84acae109be",
+    "email": "fernandomassuncao@hotmail.com",
+    "created_at": "2025-10-24T21:27:35.245Z",
+    "email_confirmed_at": "2025-10-24T21:27:35.280Z",
+    "last_sign_in_at": "2025-10-24T21:27:35.288Z",
+    "raw_user_meta_data": {
+      "email": "fernandomassuncao@hotmail.com",
+      "email_verified": true,
+      "phone_verified": false,
+      "sub": "0dce73f1-a3ca-408e-80a6-f84acae109be"
+    }
+  },
+  {
+    "id": "285d734d-916b-4d4d-9c9c-9e83ac26a19c",
+    "email": "andreza.1gn@gmail.com",
+    "created_at": "2025-10-24T22:03:20.976Z",
+    "email_confirmed_at": "2025-10-24T22:03:21.072Z",
+    "last_sign_in_at": "2025-10-24T22:03:21.094Z",
+    "raw_user_meta_data": {
+      "email": "andreza.1gn@gmail.com",
+      "email_verified": true,
+      "phone_verified": false,
+      "sub": "285d734d-916b-4d4d-9c9c-9e83ac26a19c"
+    }
+  },
+  {
+    "id": "511d4831-6165-413c-abc1-0f4c3dd7fe75",
+    "email": "nandadeg@gmail.com",
+    "created_at": "2025-10-25T00:47:58.698Z",
+    "email_confirmed_at": "2025-10-25T00:47:58.740Z",
+    "last_sign_in_at": "2025-10-25T00:47:58.749Z",
+    "raw_user_meta_data": {
+      "email": "nandadeg@gmail.com",
+      "email_verified": true,
+      "phone_verified": false,
+      "sub": "511d4831-6165-413c-abc1-0f4c3dd7fe75"
+    }
+  },
+  {
+    "id": "10561249-73cb-4307-afa3-db17f464e6e6",
+    "email": "emanuel.adm10@gmail.com",
+    "created_at": "2025-10-24T00:36:50.702Z",
+    "email_confirmed_at": "2025-10-24T00:36:50.733Z",
+    "last_sign_in_at": "2025-12-07T02:39:36.534Z",
+    "raw_user_meta_data": {
+      "email": "emanuel.adm10@gmail.com",
+      "email_verified": true,
+      "phone_verified": false,
+      "sub": "10561249-73cb-4307-afa3-db17f464e6e6"
+    }
+  },
+  {
+    "id": "b306e191-88e4-4f7b-ac78-e55622b07c9b",
+    "email": "majucosta94@gmail.com",
+    "created_at": "2025-10-24T02:08:05.303Z",
+    "email_confirmed_at": "2025-10-24T02:08:05.357Z",
+    "last_sign_in_at": "2025-10-24T02:08:05.375Z",
+    "raw_user_meta_data": {
+      "email": "majucosta94@gmail.com",
+      "email_verified": true,
+      "phone_verified": false,
+      "sub": "b306e191-88e4-4f7b-ac78-e55622b07c9b"
+    }
+  },
+  {
+    "id": "ce679c9e-0b29-4810-8f91-2d122deaaebe",
+    "email": "rhenanfa@hotmail.com",
+    "created_at": "2025-10-26T15:11:07.216Z",
+    "email_confirmed_at": "2025-10-26T15:11:07.325Z",
+    "last_sign_in_at": "2025-10-26T15:11:07.349Z",
+    "raw_user_meta_data": {
+      "email": "rhenanfa@hotmail.com",
+      "email_verified": true,
+      "phone_verified": false,
+      "sub": "ce679c9e-0b29-4810-8f91-2d122deaaebe"
+    }
+  },
+  {
+    "id": "ec35e92c-250e-4d26-ba68-43caa19c53b0",
+    "email": "teste@reune.com",
+    "created_at": "2025-10-06T13:50:26.597Z",
+    "email_confirmed_at": "2025-10-06T13:50:26.615Z",
+    "last_sign_in_at": "2025-11-04T01:44:35.506Z",
+    "raw_user_meta_data": {
+      "email": "teste@reune.com",
+      "email_verified": true,
+      "phone_verified": false,
+      "sub": "ec35e92c-250e-4d26-ba68-43caa19c53b0"
+    }
+  },
+  {
+    "id": "2958cc87-6526-4481-872f-777a6fe2db58",
+    "email": "andf.pinheiro@gmail.com",
+    "created_at": "2025-10-30T22:51:44.715Z",
+    "email_confirmed_at": "2025-10-30T22:51:44.826Z",
+    "last_sign_in_at": "2025-10-30T22:51:44.858Z",
+    "raw_user_meta_data": {
+      "email": "andf.pinheiro@gmail.com",
+      "email_verified": true,
+      "phone_verified": false,
+      "sub": "2958cc87-6526-4481-872f-777a6fe2db58"
+    }
+  }
+]

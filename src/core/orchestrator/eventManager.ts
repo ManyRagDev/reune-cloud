@@ -87,6 +87,7 @@ export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID; cr
       categoria_evento: (event as any).categoria_evento,
       subtipo_evento: (event as any).subtipo_evento,
       menu: (event as any).menu,
+      finalidade_evento: (event as any).finalidade_evento,
     };
 
     if (event.id) {

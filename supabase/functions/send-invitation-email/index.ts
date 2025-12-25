@@ -31,6 +31,11 @@ const createEmailTemplate = (props: {
 }) => {
   const roleText = props.is_organizer ? 'organizador(a)' : 'participante';
   const roleEmoji = props.is_organizer ? '👑' : '🎉';
+
+  const logoUrl = Deno.env.get('EMAIL_LOGO_URL');
+  const logoHtml = logoUrl
+    ? `<img src=\\"${logoUrl}\\" alt=\\"ReUNE\\" style=\\"height: 60px; width: auto;\\">`
+    : '';
   
   const formattedDate = new Date(props.event_date).toLocaleDateString('pt-BR', {
     weekday: 'long',
@@ -56,7 +61,7 @@ const createEmailTemplate = (props: {
                 <!-- Logo -->
                 <tr>
                   <td align="center" style="padding: 32px 20px 0;">
-                    <img src="https://tfrogqqqmgfgfybesglq.supabase.co/storage/v1/object/public/reune-logo.png" alt="ReUNE" style="height: 60px; width: auto;">
+                    ${logoHtml}
                   </td>
                 </tr>
 

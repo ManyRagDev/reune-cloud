@@ -15,10 +15,16 @@ Deno.serve(async (req) => {
         const body = await req.json();
         const { password } = body;
 
-        console.log('🔐 Password received:', password ? '✅ Present' : '❌ Missing', 'Value:', password);
+        console.log('?Y"? Password received:', password ? '?o. Present' : '??O Missing');
+
+        const adminPassword = Deno.env.get('ADMIN_DASHBOARD_PASSWORD');
+        if (!adminPassword) {
+            throw new Error('ADMIN_DASHBOARD_PASSWORD n??o configurada');
+        }
+
 
         // Simple password check (in a real app, use Supabase Auth or a secure secret)
-        if (password !== "2025") {
+        if (password !== adminPassword) {
             console.error('❌ Password validation failed. Received:', password);
             return new Response(
                 JSON.stringify({ error: 'Unauthorized', received: password }),
@@ -69,11 +75,12 @@ Deno.serve(async (req) => {
                 console.log(`📊 Total de profiles encontrados: ${profilesData?.length || 0}`);
 
                 // Buscar email_logs para verificar se enviou emails
+                // Aceitar todos os status de sucesso (não apenas 'success')
                 const { data: emailLogs } = await supabase
                     .from('email_logs')
                     .select('lead_id, sent_at, status')
                     .in('lead_id', userIds)
-                    .eq('status', 'success')
+                    .in('status', ['success', 'delivered', 'opened', 'clicked', 'pending'])
                     .order('sent_at', { ascending: false });
 
                 console.log(`📊 Total de email logs encontrados: ${emailLogs?.length || 0}`);

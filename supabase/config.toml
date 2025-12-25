@@ -1,4 +1,4 @@
-project_id = "tfrogqqqmgfgfybesglq"
+project_id = "tjihfzitkehyaiznpjnc"
 
 [functions.waitlist]
 verify_jwt = false
@@ -11,9 +11,6 @@ verify_jwt = false
 
 [functions.update-user-password]
 verify_jwt = true
-
-[functions.generate-mockup]
-verify_jwt = false
 
 [functions.send-secret-santa-notification]
 verify_jwt = false

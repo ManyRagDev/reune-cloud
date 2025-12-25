@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Mail, CheckCircle2, XCircle, Clock, UserCog } from "lucide-react";
+import { Users, Mail, CheckCircle2, XCircle, Clock, UserCog, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -25,10 +25,13 @@ export default function AdminEmailCenter({ password, onLogout }: AdminEmailCente
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [sendEmailModalOpen, setSendEmailModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'waitlist' | 'users'>('waitlist');
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (password) {
       fetchData();
+      // Sincronização automática ao abrir o dashboard
+      syncEmailStatus();
     }
   }, [password]);
 
@@ -55,6 +58,47 @@ export default function AdminEmailCenter({ password, onLogout }: AdminEmailCente
       toast.error(error.message || 'Erro ao carregar dados');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncEmailStatus = async (showToast = false) => {
+    if (syncing) return;
+
+    setSyncing(true);
+
+    if (showToast) {
+      toast.info('🔄 Sincronizando status dos emails...');
+    }
+
+    try {
+      const { data: result, error } = await supabase.functions.invoke('sync-email-status', {
+        body: {
+          password,
+          hours_back: 48 // Verificar últimas 48 horas
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao sincronizar');
+      }
+
+      console.log('✅ Sincronização concluída:', result);
+
+      if (showToast) {
+        toast.success(
+          `Sincronização concluída! ${result.updated} emails atualizados de ${result.synced} verificados.`
+        );
+      }
+
+      // Recarregar dados após sincronização
+      await fetchData();
+    } catch (error: any) {
+      console.error('❌ Erro ao sincronizar:', error);
+      if (showToast) {
+        toast.error(error.message || 'Erro ao sincronizar status dos emails');
+      }
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -223,34 +267,47 @@ export default function AdminEmailCenter({ password, onLogout }: AdminEmailCente
 
             <TabsContent value="leads" className="space-y-4 mt-6">
               {/* Seletor de View Mode */}
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant={viewMode === 'waitlist' ? 'default' : 'outline'}
+                    onClick={() => {
+                      setViewMode('waitlist');
+                      setSelectedLeads([]);
+                    }}
+                    className="gap-2"
+                  >
+                    <Users className="w-4 h-4" />
+                    Waitlist
+                    <Badge variant="secondary" className="ml-1">
+                      {data.waitlist.length}
+                    </Badge>
+                  </Button>
+                  <Button
+                    variant={viewMode === 'users' ? 'default' : 'outline'}
+                    onClick={() => {
+                      setViewMode('users');
+                      setSelectedLeads([]);
+                    }}
+                    className="gap-2"
+                  >
+                    <UserCog className="w-4 h-4" />
+                    Usuários Registrados
+                    <Badge variant="secondary" className="ml-1">
+                      {data.users?.length || 0}
+                    </Badge>
+                  </Button>
+                </div>
+
+                {/* Botão de Sincronização */}
                 <Button
-                  variant={viewMode === 'waitlist' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setViewMode('waitlist');
-                    setSelectedLeads([]);
-                  }}
+                  variant="outline"
+                  onClick={() => syncEmailStatus(true)}
+                  disabled={syncing}
                   className="gap-2"
                 >
-                  <Users className="w-4 h-4" />
-                  Waitlist
-                  <Badge variant="secondary" className="ml-1">
-                    {data.waitlist.length}
-                  </Badge>
-                </Button>
-                <Button
-                  variant={viewMode === 'users' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setViewMode('users');
-                    setSelectedLeads([]);
-                  }}
-                  className="gap-2"
-                >
-                  <UserCog className="w-4 h-4" />
-                  Usuários Registrados
-                  <Badge variant="secondary" className="ml-1">
-                    {data.users?.length || 0}
-                  </Badge>
+                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Sincronizando...' : 'Sincronizar Status'}
                 </Button>
               </div>
 

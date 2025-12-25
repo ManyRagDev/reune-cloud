@@ -15,10 +15,11 @@ const corsHeaders = {
 type Message = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string; name?: string; tool_call_id?: string };
 type ToolCall = { name: string; arguments: Record<string, unknown>; id?: string };
 
-// Configuração Lovable AI
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY') || '';
-const LOVABLE_AI_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-const MODEL = 'google/gemini-2.5-flash'; // Modelo padrão gratuito até 13/10/2025
+// Configuração Groq API
+// Use a variável de ambiente GROQ_API_KEY (não exponha a chave do front)
+const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') || '';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const MODEL = 'llama-3.3-70b-versatile'; // Modelo gratuito no Groq
 const DEFAULT_TEMP = 0.3;
 const MAX_TOOL_ITERS = 3;
 
@@ -319,14 +320,14 @@ async function runToolCall(
   }
 }
 
-// Chamar Lovable AI Gateway
-async function callLovableAI(
+// Chamar Groq API (OpenAI-compatible)
+async function callGroqAI(
   messages: Message[], 
   temperature: number,
   tools?: Array<Record<string, unknown>>
 ): Promise<{ content: string; toolCalls?: ToolCall[] }> {
-  if (!LOVABLE_API_KEY) {
-    throw new Error('LOVABLE_API_KEY não configurado');
+  if (!GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY não configurado');
   }
 
   const body: Record<string, unknown> = {
@@ -340,11 +341,11 @@ async function callLovableAI(
     body.tool_choice = 'auto';
   }
 
-  const res = await fetch(LOVABLE_AI_URL, {
+  const res = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
     },
     body: JSON.stringify(body),
   });
@@ -352,12 +353,12 @@ async function callLovableAI(
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     if (res.status === 429) {
-      throw new Error('Rate limit excedido no Lovable AI. Aguarde um momento.');
+      throw new Error('Rate limit excedido no Groq. Aguarde um momento.');
     }
-    if (res.status === 402) {
-      throw new Error('Créditos insuficientes no Lovable AI. Adicione créditos em Settings → Workspace → Usage.');
+    if (res.status === 401) {
+      throw new Error('Chave Groq inválida ou ausente.');
     }
-    throw new Error(`Lovable AI error: ${res.status} ${text}`);
+    throw new Error(`Groq API error: ${res.status} ${text}`);
   }
 
   const data = (await res.json()) as { 
@@ -423,7 +424,7 @@ serve(async (req) => {
       const ent = cache.get(idemKey);
       if (ent && Date.now() - ent.ts <= 60_000) {
         return jsonResponse({ 
-          provider: 'lovable-ai', 
+          provider: 'groq', 
           model: MODEL, 
           content: ent.content, 
           toolCalls: ent.toolCalls 
@@ -449,7 +450,7 @@ serve(async (req) => {
       : [{ role: 'system', content: systemDefault }, ...messages];
 
     // Loop de execução de tools (max 3 iterações)
-    const toolsToSend = Array.isArray(tools) && tools.length ? tools : defaultTools;
+    const toolsToSend = Array.isArray(tools) ? tools : [];
     const messagesState: Message[] = [...msgs];
     const executed: ToolCall[] = [];
     let finalContent = '';
@@ -457,7 +458,7 @@ serve(async (req) => {
     const started = performance.now();
     
     for (let iter = 0; iter < MAX_TOOL_ITERS; iter++) {
-      const stepRes = await callLovableAI(messagesState, temperature, toolsToSend);
+      const stepRes = await callGroqAI(messagesState, temperature, toolsToSend);
       
       console.debug(JSON.stringify({ 
         iteration: iter + 1, 
@@ -527,7 +528,7 @@ serve(async (req) => {
     }
 
     console.debug(JSON.stringify({ 
-      provider: 'lovable-ai', 
+      provider: 'groq', 
       model: MODEL, 
       user_id: userId, 
       duration_ms,
@@ -535,7 +536,7 @@ serve(async (req) => {
     }));
 
     return jsonResponse({ 
-      provider: 'lovable-ai', 
+      provider: 'groq', 
       model: MODEL, 
       content: finalContent, 
       toolCalls: executed.length ? executed : undefined 

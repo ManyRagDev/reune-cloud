@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Send, Minus, X } from 'lucide-react';
@@ -7,7 +7,10 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import aiChatIcon from '@/assets/ai-chat-icon.png';
 import { ContextManager } from '@/core/orchestrator/contextManager';
-import { orchestrate } from '@/core/orchestrator/chatOrchestrator';
+// ðŸ”¥ NOVO: Usando orquestrador simplificado com Groq
+import { simpleOrchestrate } from '@/core/orchestrator/simpleOrchestrator';
+// ðŸ”„ Para voltar ao orquestrador antigo, descomente a linha abaixo e comente a linha acima:
+// import { orchestrate } from '@/core/orchestrator/chatOrchestrator';
 import { UUID } from '@/types/domain';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -35,7 +38,7 @@ export default function ChatWidget() {
   const [eventoId, setEventoId] = useState<string | undefined>(undefined);
   const [hasGreeted, setHasGreeted] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [wasMinimized, setWasMinimized] = useState(false); // 🔥 NOVO: distinguir minimizar vs fechar
+  const [wasMinimized, setWasMinimized] = useState(false); // ðŸ”¥ NOVO: distinguir minimizar vs fechar
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -43,35 +46,35 @@ export default function ChatWidget() {
 
   const contextManager = useMemo(() => new ContextManager(), []);
 
-  // 🔥 NOVA FUNÇÃO: Reset completo do chat
+  // ðŸ”¥ NOVA FUNÃ‡ÃƒO: Reset completo do chat
   const resetEverything = async () => {
     if (!user?.id) return;
 
-    // console.log('[ChatWidget] 🧹 RESET EVERYTHING - Starting complete reset...');
+    // console.log('[ChatWidget] ðŸ§¹ RESET EVERYTHING - Starting complete reset...');
 
     try {
       // Limpar contexto no backend
       await contextManager.clearUserContext(user.id);
-      // console.log('[ChatWidget] ✅ Backend context reset');
+      // console.log('[ChatWidget] âœ… Backend context reset');
 
       // Limpar estado local
       setEventoId(undefined);
       setMessages([{
         role: 'assistant',
-        content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+        content: 'OlÃ¡! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
       }]);
       setHasGreeted(true);
       setWasMinimized(false);
       hasLoadedHistory.current = false;
 
-      // console.log('[ChatWidget] ✅ Local state reset completed');
+      // console.log('[ChatWidget] âœ… Local state reset completed');
     } catch (error) {
-      // console.error('[ChatWidget] ❌ Error during reset:', error);
+      // console.error('[ChatWidget] âŒ Error during reset:', error);
       // Mesmo com erro, garantir estado limpo localmente
       setEventoId(undefined);
       setMessages([{
         role: 'assistant',
-        content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+        content: 'OlÃ¡! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
       }]);
       setHasGreeted(true);
       setWasMinimized(false);
@@ -79,7 +82,7 @@ export default function ChatWidget() {
     }
   };
 
-  // 🔥 MODIFICADO: Load history com validação de estado idle
+  // ðŸ”¥ MODIFICADO: Load history com validaÃ§Ã£o de estado idle
   useEffect(() => {
     async function loadHistoryAndContext() {
       if (!open || !user?.id || hasLoadedHistory.current) return;
@@ -97,30 +100,30 @@ export default function ChatWidget() {
         //   wasMinimized
         // });
 
-        // 🔥 PATCH 1: Detectar se deve começar do zero
+        // ðŸ”¥ PATCH 1: Detectar se deve comeÃ§ar do zero
         const shouldReset =
           context.state === 'idle' &&
           context.historyLength === 0 &&
           !wasMinimized;
 
         if (shouldReset) {
-          // console.log('[ChatWidget] 🎯 RESET CONDITION MET - Starting fresh conversation');
+          // console.log('[ChatWidget] ðŸŽ¯ RESET CONDITION MET - Starting fresh conversation');
           await resetEverything();
           setIsLoadingHistory(false);
           return;
         }
 
-        // 🔥 PATCH 2: Só restaurar eventId se houver histórico OU estava minimizado
+        // ðŸ”¥ PATCH 2: SÃ³ restaurar eventId se houver histÃ³rico OU estava minimizado
         if (context.evento_id && (context.historyLength > 0 || wasMinimized)) {
-          // console.log('[ChatWidget] ♻️ Restoring event ID:', context.evento_id);
+          // console.log('[ChatWidget] â™»ï¸ Restoring event ID:', context.evento_id);
           setEventoId(String(context.evento_id));
         } else if (context.evento_id) {
-          // console.log('[ChatWidget] ⚠️ Ignoring stale event ID (no history, not minimized)');
+          // console.log('[ChatWidget] âš ï¸ Ignoring stale event ID (no history, not minimized)');
         }
 
-        // Restaurar histórico se existir
+        // Restaurar histÃ³rico se existir
         if (history && history.length > 0) {
-          // console.log('[ChatWidget] ♻️ Restoring history:', history.length, 'messages');
+          // console.log('[ChatWidget] â™»ï¸ Restoring history:', history.length, 'messages');
           const formattedMessages: ChatMessage[] = history.map(msg => ({
             role: msg.role as 'user' | 'assistant',
             content: msg.content,
@@ -131,7 +134,7 @@ export default function ChatWidget() {
           // console.log('[ChatWidget] No history, showing greeting');
           setMessages([{
             role: 'assistant',
-            content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+            content: 'OlÃ¡! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
           }]);
           setHasGreeted(true);
         }
@@ -140,7 +143,7 @@ export default function ChatWidget() {
         if (!hasGreeted) {
           setMessages([{
             role: 'assistant',
-            content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+            content: 'OlÃ¡! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
           }]);
           setHasGreeted(true);
         }
@@ -162,6 +165,12 @@ export default function ChatWidget() {
   async function sendMessage(text: string) {
     if (!user?.id || !text.trim() || isLoading) return;
 
+    console.log('[ChatWidget] sendMessage', {
+      userId: user.id,
+      eventoId,
+      text,
+    });
+
     // console.log('[ChatWidget] Sending message:', text);
     setIsLoading(true);
     setIsTyping(true);
@@ -173,11 +182,19 @@ export default function ChatWidget() {
 
     try {
       // console.log('[ChatWidget] Calling orchestrator...');
-      const response = await orchestrate(
+      // ðŸ”¥ NOVO: Usando orquestrador simplificado
+      const response = await simpleOrchestrate(
         text,
         user.id as UUID,
         eventoId as UUID | undefined
       );
+      console.log('[ChatWidget] orchestrator response', {
+        eventoId: response.evento_id,
+        estado: response.estado,
+        closeChat: response.closeChat,
+        showItems: response.showItems,
+        suggestedReplies: response.suggestedReplies,
+      });
       // console.log('[ChatWidget] Orchestrator response:', response);
 
       // Update event ID if changed
@@ -212,9 +229,9 @@ export default function ChatWidget() {
       setIsTyping(false);
       setMessages(prev => [...prev, assistantMessage]);
 
-      // 🔥 PATCH 3: Integração com closeChat do backend
+      // ðŸ”¥ PATCH 3: IntegraÃ§Ã£o com closeChat do backend
       if (response.closeChat) {
-        // console.log('[ChatWidget] 🎯 Backend requested chat close');
+        // console.log('[ChatWidget] ðŸŽ¯ Backend requested chat close');
         setTimeout(async () => {
           await handleClose();
           toast({
@@ -222,16 +239,16 @@ export default function ChatWidget() {
             description: "Atualizando dashboard...",
           });
 
-          // 🔥 Auto-refresh para atualizar dashboard
+          // ðŸ”¥ Auto-refresh para atualizar dashboard
           setTimeout(() => {
-            // console.log('[ChatWidget] 🔄 Recarregando página para atualizar dashboard');
+            // console.log('[ChatWidget] ðŸ”„ Recarregando pÃ¡gina para atualizar dashboard');
             window.location.reload();
           }, 1000);
         }, 1500);
       }
 
     } catch (error: any) {
-      // console.error('[ChatWidget] Error processing message:', error);
+      console.error('[ChatWidget] Error processing message:', error);
       setIsTyping(false);
 
       let errorMessage = 'Algo deu errado.';
@@ -243,7 +260,7 @@ export default function ChatWidget() {
         ...prev,
         {
           role: 'assistant',
-          content: `❌ ${errorMessage}`
+          content: `âŒ ${errorMessage}`
         }
       ]);
     } finally {
@@ -252,28 +269,28 @@ export default function ChatWidget() {
   }
 
   function handleSuggestedReply(text: string) {
-    // console.log('[ChatWidget] Suggested reply clicked:', text);
+    console.log('[ChatWidget] suggested reply clicked', { text });
     sendMessage(text);
   }
 
-  // 🔥 MODIFICADO: handleClose agora usa resetEverything
+  // ðŸ”¥ MODIFICADO: handleClose agora usa resetEverything
   const handleClose = async () => {
     if (!user?.id) return;
-    // console.log('[ChatWidget] 🚪 CLOSING CHAT - Triggering full reset...');
+    // console.log('[ChatWidget] ðŸšª CLOSING CHAT - Triggering full reset...');
 
     // Fechar o widget visualmente
     setOpen(false);
-    setWasMinimized(false); // 🔥 Marcar como fechado (não minimizado)
+    setWasMinimized(false); // ðŸ”¥ Marcar como fechado (nÃ£o minimizado)
 
     // Reset completo
     await resetEverything();
   };
 
-  // 🔥 NOVO: handleMinimize - apenas fecha visualmente, mantém contexto
+  // ðŸ”¥ NOVO: handleMinimize - apenas fecha visualmente, mantÃ©m contexto
   const handleMinimize = () => {
-    // console.log('[ChatWidget] 📦 MINIMIZING CHAT - Keeping context...');
+    // console.log('[ChatWidget] ðŸ“¦ MINIMIZING CHAT - Keeping context...');
     setOpen(false);
-    setWasMinimized(true); // 🔥 Marcar como minimizado
+    setWasMinimized(true); // ðŸ”¥ Marcar como minimizado
   };
 
   if (!user && !loading) return null;
@@ -286,7 +303,7 @@ export default function ChatWidget() {
           variant="ghost"
           size="lg"
           onClick={() => {
-            // console.log('[ChatWidget] 🔓 Opening chat, wasMinimized:', wasMinimized);
+            // console.log('[ChatWidget] ðŸ”“ Opening chat, wasMinimized:', wasMinimized);
             setOpen(true);
           }}
           aria-label="Abrir chat"
@@ -310,7 +327,7 @@ export default function ChatWidget() {
                   size="icon"
                   className="h-8 w-8"
                   onClick={handleMinimize}
-                  title="Minimizar (mantém conversa)"
+                  title="Minimizar (mantÃ©m conversa)"
                 >
                   <Minus className="w-4 h-4" />
                 </Button>
@@ -326,7 +343,7 @@ export default function ChatWidget() {
               </div>
             </div>
             <SheetDescription>
-              Planeje seu evento com inteligência artificial.
+              Planeje seu evento com inteligÃªncia artificial.
             </SheetDescription>
           </SheetHeader>
 
@@ -423,3 +440,7 @@ export default function ChatWidget() {
     </>
   );
 }
+
+
+
+

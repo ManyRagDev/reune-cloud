@@ -82,7 +82,7 @@ export function BugReportButton() {
       <DialogTrigger asChild>
         <Button
           size="lg"
-          className="fixed bottom-6 right-6 z-50 h-14 px-6 shadow-2xl hover:scale-105 transition-all duration-300 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 group"
+          className="fixed bottom-6 left-6 z-50 h-14 px-6 shadow-2xl hover:scale-105 transition-all duration-300 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 group"
         >
           <Bug className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
           Reportar Bug

@@ -18,17 +18,17 @@ const AdminDashboard = () => {
     const [eventsData, setEventsData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (password === "2025") {
+        const ok = await fetchData();
+        if (ok) {
             setIsAuthenticated(true);
-            fetchData();
         } else {
-            alert("Senha incorreta");
+            alert("Senha incorreta ou função admin indisponível");
         }
     };
 
-    const fetchData = async () => {
+    const fetchData = async (): Promise<boolean> => {
         setLoading(true);
         try {
             const { data, error } = await supabase.functions.invoke('get-admin-data', {
@@ -42,9 +42,11 @@ const AdminDashboard = () => {
                 setEventsData(data.events || []);
             }
 
+            return true;
         } catch (error) {
             console.error("Error fetching data:", error);
             alert("Erro ao carregar dados. Verifique se a função foi deployada.");
+            return false;
         } finally {
             setLoading(false);
         }

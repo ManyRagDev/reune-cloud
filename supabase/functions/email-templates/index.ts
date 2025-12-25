@@ -9,7 +9,11 @@ const corsHeaders = {
 
 // Validar senha admin
 function validateAdmin(password?: string): boolean {
-  return password === "2025";
+  const adminPassword = Deno.env.get('ADMIN_DASHBOARD_PASSWORD');
+  if (!adminPassword) {
+    throw new Error('ADMIN_DASHBOARD_PASSWORD n??o configurada');
+  }
+  return password === adminPassword;
 }
 
 const handler = async (req: Request): Promise<Response> => {

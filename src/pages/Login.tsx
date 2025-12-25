@@ -72,6 +72,42 @@ const Login = ({ onLogin }: LoginProps) => {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!email) {
+      toast({
+        title: "Informe seu email",
+        description: "Digite o email cadastrado para receber o link de redefinição.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Link enviado",
+        description: "Confira seu email para redefinir a senha.",
+      });
+    } catch (error) {
+      const err = error as { message?: string };
+      toast({
+        title: "Erro ao enviar link",
+        description: err?.message || "Tente novamente em instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
       {/* Animated Background Orbs */}
@@ -237,6 +273,24 @@ const Login = ({ onLogin }: LoginProps) => {
                     )}
                   </Button>
                 </motion.div>
+
+                {isLogin && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.75 }}
+                    className="text-right"
+                  >
+                    <button
+                      type="button"
+                      onClick={handlePasswordReset}
+                      className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors hover:underline"
+                      disabled={loading}
+                    >
+                      Esqueci minha senha
+                    </button>
+                  </motion.div>
+                )}
               </form>
 
               {/* Toggle Login/Signup */}
