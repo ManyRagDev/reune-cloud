@@ -8,7 +8,7 @@ interface FriendCardProps {
   displayName: string;
   username?: string;
   avatarUrl?: string;
-  email: string;
+  email?: string;
   onRemove: () => void;
   loading?: boolean;
 }
@@ -25,7 +25,13 @@ export const FriendCard = ({
     if (displayName) {
       return displayName.charAt(0).toUpperCase();
     }
-    return email.charAt(0).toUpperCase();
+    if (username) {
+      return username.charAt(0).toUpperCase();
+    }
+    if (email) {
+      return email.charAt(0).toUpperCase();
+    }
+    return "U";
   };
 
   return (

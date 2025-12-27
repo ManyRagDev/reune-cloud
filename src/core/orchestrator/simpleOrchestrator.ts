@@ -107,7 +107,10 @@ export async function simpleOrchestrate(
   }
 
   // Detectar se precisa mostrar itens
-  const showItems = snapshot?.itens && snapshot.itens.length > 0;
+  let showItems = snapshot?.itens && snapshot.itens.length > 0;
+  if (snapshot?.evento?.status === 'finalizado') {
+    showItems = false;
+  }
 
   // Construir resposta
   const response: ChatUiPayload = {
@@ -121,6 +124,9 @@ export async function simpleOrchestrate(
 
   // Se evento foi finalizado, adicionar flag de fechar
   if (snapshot?.evento?.status === 'finalizado') {
+    if (showItems) {
+      response.mensagem = 'Seu evento esta sendo criado.';
+    }
     response.closeChat = true;
     response.toast = 'Evento criado com sucesso!';
   }

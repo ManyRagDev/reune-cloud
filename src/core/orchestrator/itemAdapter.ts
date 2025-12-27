@@ -3,6 +3,7 @@
  * Previne erros de tipo e formato antes de enviar para o banco
  */
 
+import { z } from 'zod';
 import type { Item } from '@/types/domain';
 
 interface RawLlmItem {
@@ -14,6 +15,15 @@ interface RawLlmItem {
   prioridade?: string;
   [key: string]: unknown;
 }
+
+const llmItemSchema = z.object({
+  nome_item: z.string().min(1),
+  quantidade: z.coerce.number().optional(),
+  unidade: z.string().optional(),
+  valor_estimado: z.coerce.number().optional(),
+  categoria: z.string().optional(),
+  prioridade: z.enum(['A', 'B', 'C']).optional(),
+}).passthrough();
 
 /**
  * Remove code fences (```json ... ```) do conteúdo LLM

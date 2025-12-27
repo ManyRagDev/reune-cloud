@@ -10,7 +10,7 @@ interface Event {
   event_date: string;
   event_time: string;
   location: string | null;
-  user_id: string;
+  user_id: string | null;
   max_attendees: number | null;
   is_public: boolean | null;
   status: string | null;
@@ -47,14 +47,13 @@ export const useEvent = (eventId: string) => {
   const fetchEvent = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('table_reune')
-        .select('*')
-        .eq('id', eventIdNumber)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('get_event_details_safe', {
+        _event_id: eventIdNumber,
+      });
 
       if (error) throw error;
-      setEvent(data);
+      const result = Array.isArray(data) ? data[0] : data;
+      setEvent(result || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar evento');
     } finally {

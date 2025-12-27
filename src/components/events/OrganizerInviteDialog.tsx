@@ -13,8 +13,8 @@ import { UserInviteSearch } from "./UserInviteSearch";
 
 interface OrganizerInviteDialogProps {
   onInvite: (
-    userId: string,
-    email: string,
+    userId: string | null,
+    email: string | null,
     name: string,
     isOrganizer: boolean
   ) => Promise<{ error: string | null }>;
@@ -35,14 +35,15 @@ export const OrganizerInviteDialog = ({
 
   const handleUserInvited = async (user: {
     id: string;
+    user_id?: string;
     name: string;
-    email: string;
+    email?: string;
     username?: string;
     avatar_url?: string;
     status: "convidado" | "pendente" | "convite_email";
     isFriend: boolean;
   }) => {
-    const result = await onInvite(user.id, user.email, user.name, isOrganizer);
+    const result = await onInvite(user.user_id || null, user.email || null, user.name, isOrganizer);
 
     if (!result.error) {
       setOpen(false);

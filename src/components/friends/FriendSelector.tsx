@@ -21,7 +21,7 @@ interface Friend {
   friend_id: string;
   display_name: string;
   avatar_url: string | null;
-  email: string;
+  username?: string | null;
 }
 
 interface FriendSelectorProps {
@@ -106,7 +106,9 @@ export function FriendSelector({ selectedFriends, onSelectionChange }: FriendSel
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{friend.display_name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{friend.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {friend.username ? `@${friend.username}` : ""}
+                    </p>
                   </div>
                 </div>
               </CommandItem>

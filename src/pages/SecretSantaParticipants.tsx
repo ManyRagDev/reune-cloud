@@ -221,7 +221,7 @@ export default function SecretSantaParticipants() {
             user_id: userId,
             status: "confirmed",
             display_name: foundUser.display_name || null,
-            email: foundUser.email,
+            email: trimmedEmail,
           });
 
         if (insertError) {
@@ -238,8 +238,8 @@ export default function SecretSantaParticipants() {
         }
 
         const displayText = foundUser.display_name
-          ? `${foundUser.display_name} (${foundUser.email})`
-          : foundUser.email;
+          ? `${foundUser.display_name} (${trimmedEmail})`
+          : trimmedEmail;
 
         toast({
           title: "Participante adicionado!",
@@ -384,7 +384,7 @@ export default function SecretSantaParticipants() {
                 user_id: foundUser.id,
                 status: "confirmed",
                 display_name: foundUser.display_name || null,
-                email: foundUser.email,
+                email: invitation.participant_email,
               });
 
             if (!error) addedCount++;

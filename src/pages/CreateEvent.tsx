@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, AlertTriangle, MapPinned, Home, Sparkles, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { type LucideIcon, ArrowLeft, AlertTriangle, MapPinned, Home, Sparkles, Calendar as CalendarIcon, Clock, Flame, UtensilsCrossed, Cake, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -13,17 +13,24 @@ import { EventInviteSelector, Invitee } from '@/components/events/EventInviteSel
 import { AddressSelector } from '@/components/events/AddressSelector';
 import { Address } from '@/hooks/useAddresses';
 import { EventTemplate, templates } from '@/data/templates';
-import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
 import { TimePicker } from '@/components/ui/time-picker';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 interface CreateEventProps {
   onBack: () => void;
   onCreate: () => void;
   initialData?: EventTemplate | null;
 }
+
+const templateIcons: Record<string, LucideIcon> = {
+  churrasco: Flame,
+  jantar: UtensilsCrossed,
+  aniversario: Cake,
+  reuniao: Briefcase,
+};
 
 const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
   const { user } = useAuth();
@@ -184,20 +191,21 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
               "process_invitation",
               {
                 _event_id: eventData.id,
-                _invitee_email: invitee.email,
+                _invitee_email: invitee.email || null,
                 _invitee_name: invitee.name,
                 _is_organizer: false,
+                _invitee_user_id: invitee.user_id || null,
               }
             );
 
             if (inviteError) {
-              console.error("Erro ao enviar convite para", invitee.email, ":", inviteError);
+              console.error("Erro ao enviar convite para", invitee.email || invitee.name, ":", inviteError);
               continue;
             }
 
             const result = inviteData as any;
 
-            if (!result?.user_exists && result?.invitation_token) {
+            if (!result?.user_exists && result?.invitation_token && invitee.email) {
               const { error: emailError } = await supabase.functions.invoke("send-invitation-email", {
                 body: {
                   invitee_email: invitee.email,
@@ -211,7 +219,7 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
               });
 
               if (emailError) {
-                console.error("Erro ao enviar email para", invitee.email, ":", emailError);
+                console.error("Erro ao enviar email para", invitee.email || invitee.name, ":", emailError);
               }
             }
           } catch (err) {
@@ -232,7 +240,7 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
         if (pendingCount > 0 && confirmedCount > 0) {
           successMessage = `${confirmedCount} amigo(s) convidado(s) e ${pendingCount} convite(s) pendente(s) criado(s).`;
         } else if (pendingCount > 0) {
-          successMessage = `${pendingCount} convite(s) pendente(s) criado(s). Serão ativados quando a amizade for aceita.`;
+          successMessage = `${pendingCount} convite(s) pendente(s) criado(s).`;
         } else {
           successMessage = `${confirmedCount} amigo(s) foram convidados.`;
         }
@@ -315,36 +323,41 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
             <Sparkles className="w-5 h-5 text-primary" />
             Comece com um modelo (opcional)
           </Label>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {templates.map((template, index) => (
-              <motion.div
-                key={template.slug}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                whileHover={{ scale: 1.05, y: -4 }}
-                onClick={() => handleTemplateSelect(template)}
-                className={`
-                  relative flex-shrink-0 w-48 p-4 rounded-2xl border-2 cursor-pointer transition-all
-                  ${selectedTemplate?.slug === template.slug
-                    ? 'bg-gradient-to-br from-primary/10 to-primary/5 border-primary shadow-lg shadow-primary/20'
-                    : 'bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50'}
-                `}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${
-                    selectedTemplate?.slug === template.slug ? 'from-primary/20 to-primary/10' : 'from-muted to-muted/50'
-                  } flex items-center justify-center`}>
-                    <Sparkles className={`w-5 h-5 ${selectedTemplate?.slug === template.slug ? 'text-primary' : 'text-muted-foreground'}`} />
-                  </div>
-                  {selectedTemplate?.slug === template.slug && (
-                    <Badge className="text-[10px] h-5 bg-primary text-primary-foreground">Ativo</Badge>
+          <div className="flex flex-wrap gap-2">
+            {templates.map((template, index) => {
+              const Icon = templateIcons[template.slug] ?? Sparkles;
+              const isSelected = selectedTemplate?.slug === template.slug;
+
+              return (
+                <motion.button
+                  key={template.slug}
+                  type="button"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: index * 0.08 }}
+                  whileHover={{ y: -2 }}
+                  onClick={() => handleTemplateSelect(template)}
+                  aria-pressed={isSelected}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                    isSelected
+                      ? "border-primary/60 bg-primary/10 text-primary shadow-sm"
+                      : "border-border/60 bg-card/60 text-foreground/80 hover:border-primary/40 hover:bg-card/80"
                   )}
-                </div>
-                <h3 className="font-semibold text-sm mb-1">{template.title}</h3>
-                <p className="text-xs text-muted-foreground line-clamp-2">{template.description}</p>
-              </motion.div>
-            ))}
+                >
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 items-center justify-center rounded-full",
+                      isSelected ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <span>{template.title}</span>
+                </motion.button>
+              );
+            })}
           </div>
         </motion.section>
 

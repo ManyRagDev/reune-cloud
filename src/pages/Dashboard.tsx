@@ -25,7 +25,7 @@ interface Event {
   event_time: string;
   location: string | null;
   description: string | null;
-  user_id: string;
+  user_id: string | null;
   is_public: boolean | null;
   status: string | null;
   created_at: string;
@@ -162,14 +162,23 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
         const invitedEventIds = [...new Set(notifications.map(n => n.event_id).filter(Boolean))];
 
         if (invitedEventIds.length > 0) {
-          const { data: invitedEventsData, error: invitedError } = await supabase
-            .from('table_reune')
-            .select('*')
-            .in('id', invitedEventIds)
-            .order('event_date', { ascending: true });
+          const invitedDetails = await Promise.all(
+            invitedEventIds.map(async (eventId) => {
+              const { data, error } = await supabase.rpc('get_event_details_safe', {
+                _event_id: eventId,
+              });
 
-          if (invitedError) throw invitedError;
-          invitedEvents = invitedEventsData || [];
+              if (error) {
+                console.error('Erro ao buscar detalhes do evento convidado:', error);
+                return null;
+              }
+
+              const row = Array.isArray(data) ? data[0] : data;
+              return row || null;
+            })
+          );
+
+          invitedEvents = invitedDetails.filter(Boolean);
         }
       }
 

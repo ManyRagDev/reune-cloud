@@ -1196,6 +1196,7 @@ export type Database = {
           event_time: string
           finalidade_evento: string
           id: number
+          user_id: string
           inclui_bebidas: boolean
           inclui_entradas: boolean
           is_public: boolean
@@ -1238,8 +1239,8 @@ export type Database = {
         Returns: {
           avatar_url: string
           display_name: string
-          email: string
           friend_id: string
+          username: string | null
         }[]
       }
       get_item_assignments: {
@@ -1329,9 +1330,10 @@ export type Database = {
       process_invitation: {
         Args: {
           _event_id: number
-          _invitee_email: string
+          _invitee_email: string | null
           _invitee_name: string
           _is_organizer?: boolean
+          _invitee_user_id?: string | null
         }
         Returns: Json
       }
@@ -1348,7 +1350,7 @@ export type Database = {
         Returns: {
           avatar_url: string
           display_name: string
-          email: string
+          email: string | null
           id: string
           username: string
         }[]

@@ -8,6 +8,8 @@ import { Event, Item, UUID } from '@/types/domain';
 import { rpc } from '@/api/rpc';
 import { upsertEvent, setEventStatus } from '@/core/orchestrator/eventManager';
 import { isValidFutureDate, parseToIsoDate } from '@/core/nlp/date-parser';
+import { PlannerEnvelope, plannerEnvelopeSchema } from '@/api/llm/plannerSchemas';
+import { systemResponses } from '@/core/orchestrator/systemResponses';
 
 /**
  * Interface para acoes que o chatbot pode executar
@@ -145,6 +147,71 @@ Use essas informacoes como referencia, mas nao repita tudo que ja foi dito.`;
   }
 
   return basePrompt;
+}
+
+/**
+ * Prompt do planner: responde apenas JSON canônico.
+ */
+function buildPlannerPrompt(context?: EventContext): string {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const contextPayload = {
+    today: todayIso,
+    evento: context?.evento || null,
+    collected_data: context?.collectedData || {},
+  };
+
+  return `Voce e um planner de intencoes. Sua unica resposta deve ser um JSON valido, sem texto extra.
+
+Envelope obrigatorio:
+{
+  "intent": "create_event" | "update_event" | "generate_items" | "confirm_event" | "small_talk" | "unknown",
+  "payload": { ... },
+  "confidence": number (0 a 1)
+}
+
+Regras:
+- Nunca escreva texto fora do JSON.
+- Use apenas evento_id numerico quando existir.
+- Aplique as informacoes do contexto abaixo ao payload.
+
+Contexto (JSON):
+${JSON.stringify(contextPayload)}
+`;
+}
+
+function stripCodeFence(content: string): string {
+  const fenceMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+  return fenceMatch ? fenceMatch[1].trim() : content.trim();
+}
+
+function parsePlannerEnvelope(content: string) {
+  try {
+    const cleaned = stripCodeFence(content);
+    const parsed = JSON.parse(cleaned);
+    const validated = plannerEnvelopeSchema.safeParse(parsed);
+    if (!validated.success) {
+      const msg = validated.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+      return { ok: false as const, error: msg };
+    }
+    return { ok: true as const, data: validated.data };
+  } catch (error) {
+    return { ok: false as const, error: error instanceof Error ? error.message : 'json invalido' };
+  }
+}
+
+function plannerToAction(plan: PlannerEnvelope): ActionData | null {
+  if (
+    plan.intent === 'create_event'
+    || plan.intent === 'generate_items'
+    || plan.intent === 'update_event'
+    || plan.intent === 'confirm_event'
+  ) {
+    return {
+      action: plan.intent,
+      data: plan.payload as ActionData['data'],
+    };
+  }
+  return null;
 }
 
 /**
@@ -604,14 +671,42 @@ export async function processMessage(
 ): Promise<ProcessMessageResult> {
   try {
     const systemPrompt = buildSystemPrompt(context);
-
     const conversationMessages = history.filter(msg => msg.role !== 'system');
     conversationMessages.push({ role: 'user', content: userMessage });
 
+    // Planner-first (create/generate/update/confirm)
+    let plannerResult: ReturnType<typeof parsePlannerEnvelope> | null = null;
+    try {
+      const plannerPrompt = buildPlannerPrompt(context);
+      const plannerResponse = await callGroqAPI(
+        plannerPrompt,
+        [{ role: 'user', content: userMessage }],
+        0.1
+      );
+      plannerResult = parsePlannerEnvelope(plannerResponse);
+      if (plannerResult.ok) {
+        const plannedAction = plannerToAction(plannerResult.data);
+        if (plannedAction) {
+          const actionResult = await executeAction(plannedAction, userId, context);
+          return {
+            response: actionResult.message,
+            actionExecuted: {
+              type: plannedAction.action,
+              eventoId: actionResult.eventoId,
+            },
+          };
+        }
+
+        // small_talk/unknown ficam no fluxo legado para manter UX atual
+      }
+    } catch {
+      plannerResult = { ok: false as const, error: 'planner falhou' };
+    }
+
+    // Fallback: fluxo antigo quando o planner falhar ou nao cobrir o caso.
     const aiResponse = await callGroqAPI(systemPrompt, conversationMessages);
 
     const action = detectActionJSON(aiResponse);
-
     if (action) {
       const actionResult = await executeAction(action, userId, context);
       return {
@@ -623,7 +718,7 @@ export async function processMessage(
       };
     }
 
-    return { response: aiResponse };
+    return { response: aiResponse || systemResponses.plannerInvalid };
   } catch (error) {
     console.error('[GroqService] Erro ao processar mensagem:', error);
     if (error instanceof Error) {

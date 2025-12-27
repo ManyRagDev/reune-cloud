@@ -13,8 +13,9 @@ import { cn } from "@/lib/utils";
 interface UserInviteSearchProps {
   onUserInvited: (user: {
     id: string;
+    user_id?: string;
     name: string;
-    email: string;
+    email?: string;
     username?: string;
     avatar_url?: string;
     status: "convidado" | "pendente" | "convite_email";
@@ -30,7 +31,15 @@ export const UserInviteSearch = ({
   friends,
 }: UserInviteSearchProps) => {
   const [searchInput, setSearchInput] = useState("");
-  const [searchResult, setSearchResult] = useState<any>(null);
+  const [searchResult, setSearchResult] = useState<{
+    id: string;
+    display_name?: string | null;
+    username?: string | null;
+    avatar_url?: string | null;
+    email?: string | null;
+    identifier?: string;
+    isNonUser?: boolean;
+  } | null>(null);
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const { toast } = useToast();
@@ -48,6 +57,7 @@ export const UserInviteSearch = ({
 
     try {
       const query = searchInput.trim();
+      const identifier = query;
       
       // Usar a função RPC para buscar usuário (funciona para email ou username)
       const { data, error } = await supabase.rpc('search_user_by_identifier', {
@@ -63,7 +73,8 @@ export const UserInviteSearch = ({
           display_name: user.display_name,
           username: user.username,
           avatar_url: user.avatar_url,
-          email: user.email,
+          email: query.includes("@") ? query : null,
+          identifier,
           isNonUser: false
         });
       } else {
@@ -74,6 +85,7 @@ export const UserInviteSearch = ({
             id: `email_${query}`,
             email: query,
             display_name: query.split("@")[0],
+            identifier,
             isNonUser: true,
           });
         } else {
@@ -138,8 +150,9 @@ export const UserInviteSearch = ({
     // Se é amigo, adicionar
     const result = await onUserInvited({
       id: searchResult.id,
-      name: searchResult.display_name || searchResult.email.split("@")[0],
-      email: searchResult.email,
+      user_id: searchResult.id,
+      name: searchResult.display_name || searchResult.username || searchResult.email?.split("@")[0] || "Usuario",
+      email: searchResult.email || undefined,
       username: searchResult.username,
       avatar_url: searchResult.avatar_url,
       status: "convidado",
@@ -161,25 +174,17 @@ export const UserInviteSearch = ({
     if (!searchResult || searchResult.isNonUser) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const identifier = searchResult.identifier || searchResult.username || searchResult.email;
+      if (!identifier) {
+        throw new Error("Identificador invÇ­lido para enviar pedido.");
+      }
 
       // Criar pedido de amizade
-      const { error } = await supabase.from("friend_requests").insert({
-        sender_id: user.id,
-        receiver_id: searchResult.id,
-        receiver_email: searchResult.email,
+      const { error } = await supabase.rpc("send_friend_request", {
+        _receiver_identifier: identifier,
       });
 
       if (error) throw error;
-
-      // Criar notificação
-      await supabase.from("notifications").insert({
-        user_id: searchResult.id,
-        type: "friend_request",
-        title: "Novo pedido de amizade",
-        message: `${user.email} quer ser seu amigo`,
-      });
 
       toast({
         title: "Pedido enviado",
@@ -251,15 +256,15 @@ export const UserInviteSearch = ({
                 <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={searchResult.avatar_url} />
                   <AvatarFallback className="bg-primary/10 text-primary">
-                    {searchResult.display_name?.charAt(0) || searchResult.email.charAt(0)}
+                    {(searchResult.display_name || searchResult.username || searchResult.email || "U").charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">
-                    {searchResult.display_name || searchResult.email.split("@")[0]}
+                    {searchResult.display_name || searchResult.username || searchResult.email?.split("@")[0] || "Usuario"}
                   </p>
                   <p className="text-sm text-muted-foreground truncate">
-                    {searchResult.username ? `@${searchResult.username}` : searchResult.email}
+                    {searchResult.username ? `@${searchResult.username}` : "Usuario cadastrado"}
                   </p>
                 </div>
                 {!isFriend(searchResult.id) && (

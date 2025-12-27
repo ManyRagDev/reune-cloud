@@ -70,7 +70,6 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [newSupplyUnit, setNewSupplyUnit] = useState("un");
   const [friends, setFriends] = useState<{ friend_id: string }[]>([]);
   const [currentParticipantId, setCurrentParticipantId] = useState<number | null>(null);
-  const [isInvitedGuest, setIsInvitedGuest] = useState(false);
   const [isConfirmedGuest, setIsConfirmedGuest] = useState(false);
   const [editingSupplyId, setEditingSupplyId] = useState<number | null>(null);
   const [editingSupplyData, setEditingSupplyData] = useState<{ name: string; quantidade: number; unidade: string; valor_estimado: number | null }>({ name: '', quantidade: 1, unidade: 'un', valor_estimado: null });
@@ -134,14 +133,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           .eq('participant_email', user.email)
           .maybeSingle();
 
-        if (!error && data) {
-          if (data.status === 'accepted') {
-            setIsInvitedGuest(true);
-            setIsConfirmedGuest(true);
-          } else if (data.status === 'pending') {
-            setIsInvitedGuest(true);
-            setIsConfirmedGuest(false);
-          }
+        if (error) {
+          setIsConfirmedGuest(false);
+          return;
+        }
+        if (!data) {
+          setIsConfirmedGuest(false);
+          return;
+        }
+        if (data.status === 'accepted') {
+          setIsConfirmedGuest(true);
+        } else {
+          setIsConfirmedGuest(false);
         }
       } catch (err) {
         console.error('Erro ao verificar status de convite:', err);
@@ -249,7 +252,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   // Carregar participantes e itens do banco de dados
   useEffect(() => {
-    if (!event || !user) return;
+    if (!event || !user || (!isOrganizer && !isConfirmedGuest)) return;
 
     const loadEventData = async () => {
       try {
@@ -399,7 +402,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       supabase.removeChannel(itemsChannel);
       supabase.removeChannel(assignmentsChannel);
     };
-  }, [event, eventId, user]);
+  }, [event, eventId, user, isOrganizer, isConfirmedGuest]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -534,6 +537,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       });
       if (error) throw error;
       toast({ title: "Presença confirmada!", description: "Sua confirmação foi registrada com sucesso." });
+      setIsConfirmedGuest(true);
       setTimeout(() => {
         onBack();
       }, 1500);
@@ -548,8 +552,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   };
 
   const handleInvite = async (
-    userId: string,
-    email: string,
+    userId: string | null,
+    email: string | null,
     name: string,
     shouldBeOrganizer: boolean
   ) => {
@@ -562,6 +566,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         _invitee_email: email,
         _invitee_name: name,
         _is_organizer: shouldBeOrganizer,
+        _invitee_user_id: userId,
       });
 
       if (error) throw error;
@@ -575,7 +580,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       };
 
       // Se usuário não existe, enviar email
-      if (!result?.user_exists && result?.invitation_token) {
+      if (!result?.user_exists && result?.invitation_token && email) {
         const { error: emailError } = await supabase.functions.invoke("send-invitation-email", {
           body: {
             invitee_email: email,
@@ -1248,7 +1253,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         )}
 
         {/* Attendees - Visível para organizadores e convidados confirmados */}
-        {(isOrganizer || isInvitedGuest) && (
+        {(isOrganizer || isConfirmedGuest) && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1339,7 +1344,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         )}
 
         {/* Supplies List - Visível para organizadores e convidados confirmados */}
-        {(isOrganizer || isInvitedGuest) && (
+        {(isOrganizer || isConfirmedGuest) && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1349,7 +1354,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                     Lista de Insumos ({supplies.length})
                   </CardTitle>
                   <CardDescription className="mt-1">
-                    {isInvitedGuest && !isOrganizer
+                    {isConfirmedGuest && !isOrganizer
                       ? "Escolha os itens que você pode levar"
                       : "Gerencie os itens necessários para o evento"}
                   </CardDescription>
@@ -1641,7 +1646,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         )}
 
         {/* Dinâmicas do Evento - Visível para organizadores e convidados confirmados */}
-        {(isOrganizer || isInvitedGuest) && (
+        {(isOrganizer || isConfirmedGuest) && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">

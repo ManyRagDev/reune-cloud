@@ -11,7 +11,8 @@ import { UserInviteSearch } from "./UserInviteSearch";
 export interface Invitee {
   id: string;
   name: string;
-  email: string;
+  email?: string;
+  user_id?: string;
   username?: string;
   avatar_url?: string;
   status: "convidado" | "pendente" | "confirmado" | "convite_email";
@@ -27,7 +28,7 @@ interface Friend {
   friend_id: string;
   display_name: string;
   avatar_url?: string;
-  email: string;
+  username?: string | null;
 }
 
 export const EventInviteSelector = ({
@@ -122,7 +123,7 @@ export const EventInviteSelector = ({
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{invitee.name}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {invitee.username ? `@${invitee.username}` : invitee.email}
+                    {invitee.username ? `@${invitee.username}` : invitee.email || "Usuario"}
                   </p>
                 </div>
                 {getStatusBadge(invitee.status)}
@@ -142,7 +143,7 @@ export const EventInviteSelector = ({
               {selectedInvitees.some((inv) => inv.status === "pendente") && (
                 <p className="text-xs text-yellow-700 dark:text-yellow-400 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  Convites pendentes serão ativados quando a amizade for aceita
+                  Convites pendentes aguardam ação do convidado
                 </p>
               )}
               {selectedInvitees.some((inv) => inv.status === "convite_email") && (

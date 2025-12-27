@@ -23,7 +23,7 @@ interface Friend {
   friend_id: string;
   display_name: string;
   avatar_url?: string;
-  email: string;
+  username?: string | null;
 }
 
 interface FriendRequest {
@@ -411,7 +411,7 @@ export const FriendsDialog = () => {
                   friendId={friend.friend_id}
                   displayName={friend.display_name}
                   avatarUrl={friend.avatar_url}
-                  email={friend.email}
+                  username={friend.username || undefined}
                   onRemove={() => handleRemoveFriend(friend.friend_id)}
                   loading={actionLoading === friend.friend_id}
                 />
