@@ -226,7 +226,7 @@ export default function SecretSantaLanding() {
               <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 blur-xl opacity-30 animate-pulse" />
               <Badge className="relative px-6 py-3 text-base font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 shadow-lg">
                 <Zap className="w-5 h-5 mr-2 inline animate-pulse" />
-                GRÁTIS até 01/01/2026 - Todos os Recursos!
+                GRÁTIS até 01/02/2026 - Todos os Recursos!
               </Badge>
             </motion.div>
           </motion.div>
@@ -283,20 +283,17 @@ export default function SecretSantaLanding() {
                   className="flex flex-col items-center group"
                 >
                   <div className="relative">
-                    <div className={`absolute inset-0 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl ${
-                      idx % 2 === 0 ? 'bg-red-600/20' : 'bg-green-600/20'
-                    }`} />
+                    <div className={`absolute inset-0 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl ${idx % 2 === 0 ? 'bg-red-600/20' : 'bg-green-600/20'
+                      }`} />
 
                     <motion.div
                       key={item.value}
                       initial={{ scale: 1 }}
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 0.3 }}
-                      className={`relative text-3xl md:text-5xl font-mono font-bold mb-2 px-4 py-2 md:px-6 md:py-3 rounded-2xl bg-gradient-to-br ${
-                        idx % 2 === 0 ? 'from-red-500/10 to-red-500/5' : 'from-green-500/10 to-green-500/5'
-                      } border ${
-                        idx % 2 === 0 ? 'border-red-500/20' : 'border-green-500/20'
-                      } backdrop-blur-sm group-hover:border-primary/50 transition-all duration-300`}
+                      className={`relative text-3xl md:text-5xl font-mono font-bold mb-2 px-4 py-2 md:px-6 md:py-3 rounded-2xl bg-gradient-to-br ${idx % 2 === 0 ? 'from-red-500/10 to-red-500/5' : 'from-green-500/10 to-green-500/5'
+                        } border ${idx % 2 === 0 ? 'border-red-500/20' : 'border-green-500/20'
+                        } backdrop-blur-sm group-hover:border-primary/50 transition-all duration-300`}
                     >
                       {idx === 3 && (
                         <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-green-600/10 rounded-2xl animate-pulse" />

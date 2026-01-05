@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,13 +19,22 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/landing/ThemeToggle";
 import { Footer } from "@/components/landing/Footer";
-import videoPromo from "@/assets/video_promo.mp4";
+import reuneLogo from "@/assets/reunelogo.png";
+import videoAtual from "@/assets/video_atual.mp4";
 
 export default function Index2() {
   const navigate = useNavigate();
   const { scrollYProgress } = useScroll();
   const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
   const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
+
+  const handlePricingClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    toast.success("Aproveite os recursos gratuitamente até 01/02/2026", {
+      description: "Sem pegadinhas. Acesso liberado para você testar.",
+      duration: 5000,
+    });
+  };
 
   const features = [
     {
@@ -67,11 +77,10 @@ export default function Index2() {
 
   const benefits = [
     "Planejamento em minutos, não horas",
-    "Zero planilhas ou anotações perdidas",
-    "Confirmações automáticas via WhatsApp",
-    "Divisão de custos sem complicação",
-    "Templates para qualquer ocasião",
-    "100% gratuito para começar"
+    "Acompanhamento de confirmações em tempo real",
+    "Divisão de custos sem complicação (em breve)",
+    "Templates prontos para cada ocasião",
+    "Funciona em qualquer celular ou computador",
   ];
 
   const stats = [
@@ -98,7 +107,7 @@ export default function Index2() {
           <div className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="hover:text-primary transition-colors">Recursos</a>
             <a href="#how-it-works" className="hover:text-primary transition-colors">Como Funciona</a>
-            <a href="#pricing" className="hover:text-primary transition-colors">Preços</a>
+            <a href="#pricing" onClick={handlePricingClick} className="hover:text-primary transition-colors cursor-pointer">Preços</a>
           </div>
           <Button size="sm" onClick={() => navigate("/app")} className="ml-4">
             Entrar
@@ -157,7 +166,7 @@ export default function Index2() {
               <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 blur-xl opacity-30 animate-pulse" />
               <Badge className="relative px-6 py-3 text-base font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 shadow-lg">
                 <Zap className="w-5 h-5 mr-2 inline animate-pulse" />
-                GRÁTIS até 01/01/2026 - Todos os Recursos!
+                GRÁTIS até 01/02/2026 - Todos os Recursos!
               </Badge>
             </motion.div>
           </motion.div>
@@ -203,7 +212,7 @@ export default function Index2() {
               className="group h-14 px-8 text-lg bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
               onClick={() => navigate("/app")}
             >
-              Começar Grátis
+              Sem cartão de crédito. Sem instalação. Comece agora
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
             <Button
@@ -283,13 +292,13 @@ export default function Index2() {
             className="relative rounded-3xl overflow-hidden shadow-2xl border-2 border-border/50 bg-gradient-to-br from-orange-500/10 to-cyan-500/10 p-2 max-w-3xl mx-auto"
           >
             <video
-              src={videoPromo}
-              autoPlay
-              muted
-              playsInline
+              src={videoAtual}
+              className="w-full h-full object-cover"
               controls
-              className="w-full rounded-2xl"
-            />
+              poster="/placeholder.svg"
+            >
+              Seu navegador não suporta o elemento de vídeo.
+            </video>
           </motion.div>
         </div>
       </section>
@@ -538,7 +547,7 @@ export default function Index2() {
           </div>
 
           <p className="text-sm text-muted-foreground mt-8">
-            Sem cartão de crédito. Sem instalação. Comece em 30 segundos.
+            Sem cartão de crédito. Sem instalação. Comece agora
           </p>
         </motion.div>
       </section>

@@ -321,3 +321,5 @@ O método do Kliper pode simplificar significativamente o código do UNE.AI, red
 
 
 
+
+

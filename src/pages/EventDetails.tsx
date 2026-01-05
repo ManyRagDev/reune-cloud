@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus, Trash2, Edit2, Save, Gift, DollarSign } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus, Trash2, Edit2, Save, Gift, DollarSign, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -19,6 +20,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { rpc } from "@/api/rpc";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 
 interface Attendee {
   id: number;
@@ -71,6 +75,31 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [friends, setFriends] = useState<{ friend_id: string }[]>([]);
   const [currentParticipantId, setCurrentParticipantId] = useState<number | null>(null);
   const [isConfirmedGuest, setIsConfirmedGuest] = useState(false);
+
+  // Variáveis de permissão consolidadas para restaurar funcionalidade
+  const isEventCreator = event?.user_id === user?.id;
+  const canViewFullDetails = isOrganizer || isEventCreator || isConfirmedGuest;
+  // Permissão de edição: apenas criador ou organizador podem editar
+  const canEdit = isOrganizer || isEventCreator;
+
+  console.log('[EventDetails] Debug Permissions:', {
+    userId: user?.id,
+    eventUserId: event?.user_id,
+    isEventCreator,
+    isOrganizer,
+    canEdit,
+    canViewFullDetails,
+    eventData: event
+  });
+
+  // Estados para edição das informações básicas do evento
+  const [isEditingEventInfo, setIsEditingEventInfo] = useState(false);
+  const [editEventTitle, setEditEventTitle] = useState('');
+  const [editEventDate, setEditEventDate] = useState<Date | undefined>();
+  const [editEventTime, setEditEventTime] = useState('');
+  const [editEventLocation, setEditEventLocation] = useState('');
+  const [editEventDescription, setEditEventDescription] = useState('');
+
   const [editingSupplyId, setEditingSupplyId] = useState<number | null>(null);
   const [editingSupplyData, setEditingSupplyData] = useState<{ name: string; quantidade: number; unidade: string; valor_estimado: number | null }>({ name: '', quantidade: 1, unidade: 'un', valor_estimado: null });
   const [organizerInfo, setOrganizerInfo] = useState<{ username: string | null; email: string | null }>({
@@ -252,7 +281,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
   // Carregar participantes e itens do banco de dados
   useEffect(() => {
-    if (!event || !user || (!isOrganizer && !isConfirmedGuest)) return;
+    // Carregar dados para qualquer usuário autenticado com acesso ao evento
+    if (!event || !user) return;
 
     const loadEventData = async () => {
       try {
@@ -402,7 +432,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       supabase.removeChannel(itemsChannel);
       supabase.removeChannel(assignmentsChannel);
     };
-  }, [event, eventId, user, isOrganizer, isConfirmedGuest]);
+  }, [event, eventId, user]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -412,6 +442,73 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       month: "long",
       day: "numeric",
     });
+  };
+
+  // Funções para edição das informações do evento
+  const startEditingEventInfo = () => {
+    if (!event) return;
+    setEditEventTitle(event.title);
+    setEditEventDate(new Date(event.event_date + 'T12:00:00'));
+    setEditEventTime(event.event_time);
+    setEditEventLocation(event.location || '');
+    setEditEventDescription(event.description || '');
+    setIsEditingEventInfo(true);
+  };
+
+  // Auto-start edit mode for creators/organizers
+  const hasInitializedEditMode = useState(false); // Using state to track initialization
+  useEffect(() => {
+    if (event && canEdit && !isEditingEventInfo && !hasInitializedEditMode[0]) {
+      startEditingEventInfo();
+      hasInitializedEditMode[1](true);
+    }
+  }, [event, canEdit]);
+
+  const cancelEditingEventInfo = () => {
+    setIsEditingEventInfo(false);
+    setEditEventTitle('');
+    setEditEventDate(undefined);
+    setEditEventTime('');
+    setEditEventLocation('');
+    setEditEventDescription('');
+  };
+
+  const saveEventInfo = async () => {
+    if (!event || !editEventDate) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('table_reune')
+        .update({
+          title: editEventTitle,
+          event_date: format(editEventDate, 'yyyy-MM-dd'),
+          event_time: editEventTime,
+          location: editEventLocation,
+          description: editEventDescription || null,
+        })
+        .eq('id', Number(eventId));
+
+      if (error) throw error;
+
+      toast({
+        title: "Evento atualizado",
+        description: "As informações do evento foram salvas com sucesso.",
+      });
+
+      setIsEditingEventInfo(false);
+      // Força refetch do evento
+      window.location.reload();
+    } catch (err: any) {
+      console.error("Erro ao salvar evento:", err);
+      toast({
+        title: "Erro ao salvar",
+        description: err.message || "Não foi possível salvar as alterações.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Função para verificar se pode confirmar presença
@@ -1004,187 +1101,305 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         {/* Event Info */}
         <Card>
           <CardHeader>
-            <CardTitle>Informações do Evento</CardTitle>
-            {!isOrganizer && <CardDescription>Confirme ou sugira alternativas para cada item</CardDescription>}
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {/* Data */}
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center text-muted-foreground">
-                  <Calendar className="w-5 h-5 mr-3" />
-                  <div>
-                    <span className="font-medium text-foreground">Data:</span>
-                    <p>{formatDate(event.event_date)}</p>
-                  </div>
-                </div>
-                {!isOrganizer && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant={confirmation.date === "confirmed" ? "default" : "outline"}
-                      size="sm"
-                      onClick={handleConfirmDate}
-                    >
-                      <Check className="w-4 h-4 mr-1" />
-                      Confirmar
-                    </Button>
-                    <Popover open={showDatePopover} onOpenChange={setShowDatePopover}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={confirmation.date === "rejected" ? "destructive" : "outline"}
-                          size="sm"
-                          onClick={handleRejectDate}
-                        >
-                          <X className="w-4 h-4 mr-1" />
-                          Não posso
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-4">
-                        <div className="space-y-4">
-                          <h4 className="font-medium">Sugira uma data alternativa:</h4>
-                          <CalendarComponent
-                            mode="single"
-                            selected={alternativeDate}
-                            onSelect={setAlternativeDate}
-                            className="pointer-events-auto"
-                          />
-                          <Button onClick={saveAlternativeDate} className="w-full">
-                            Confirmar Alternativa
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                )}
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Informações do Evento</CardTitle>
+                {!canEdit && <CardDescription>Confirme ou sugira alternativas para cada item</CardDescription>}
+                {canEdit && !isEditingEventInfo && <CardDescription>Clique em editar para modificar as informações</CardDescription>}
+                {canEdit && isEditingEventInfo && <CardDescription className="text-primary">Modo de edição ativo</CardDescription>}
               </div>
-
-              {/* Horário */}
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center text-muted-foreground">
-                  <Clock className="w-5 h-5 mr-3" />
-                  <div>
-                    <span className="font-medium text-foreground">Horário:</span>
-                    <p>{event.event_time}</p>
-                  </div>
-                </div>
-                {!isOrganizer && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant={confirmation.time === "confirmed" ? "default" : "outline"}
-                      size="sm"
-                      onClick={handleConfirmTime}
-                    >
-                      <Check className="w-4 h-4 mr-1" />
-                      Confirmar
-                    </Button>
-                    <Popover open={showTimePopover} onOpenChange={setShowTimePopover}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={confirmation.time === "rejected" ? "destructive" : "outline"}
-                          size="sm"
-                          onClick={handleRejectTime}
-                        >
-                          <X className="w-4 h-4 mr-1" />
-                          Não posso
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-4">
-                        <div className="space-y-4">
-                          <h4 className="font-medium">Sugira um horário alternativo:</h4>
-                          <Select value={alternativeTime} onValueChange={setAlternativeTime}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um horário" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: 24 }, (_, i) => (
-                                <SelectItem key={i} value={`${i.toString().padStart(2, "0")}:00`}>
-                                  {`${i.toString().padStart(2, "0")}:00`}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button onClick={saveAlternativeTime} className="w-full">
-                            Confirmar Alternativa
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                )}
-              </div>
-
-              {/* Local */}
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center text-muted-foreground">
-                  <MapPin className="w-5 h-5 mr-3" />
-                  <div>
-                    <span className="font-medium text-foreground">Local:</span>
-                    <p>{event.location}</p>
-                  </div>
-                </div>
-                {!isOrganizer && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant={confirmation.location === "confirmed" ? "default" : "outline"}
-                      size="sm"
-                      onClick={handleConfirmLocation}
-                    >
-                      <Check className="w-4 h-4 mr-1" />
-                      Confirmar
-                    </Button>
-                    <Popover open={showLocationPopover} onOpenChange={setShowLocationPopover}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={confirmation.location === "rejected" ? "destructive" : "outline"}
-                          size="sm"
-                          onClick={handleRejectLocation}
-                        >
-                          <X className="w-4 h-4 mr-1" />
-                          Não posso
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80 p-4">
-                        <div className="space-y-4">
-                          <h4 className="font-medium">Sugira um local alternativo:</h4>
-                          <Textarea
-                            placeholder="Digite sua sugestão de local..."
-                            value={alternativeLocation}
-                            onChange={(e) => setAlternativeLocation(e.target.value)}
-                          />
-                          <Button onClick={saveAlternativeLocation} className="w-full">
-                            Confirmar Alternativa
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                )}
-              </div>
-
-              {event.description && (
-                <div className="pt-4 border-t">
-                  <p className="text-muted-foreground">{event.description}</p>
-                </div>
+              {canEdit && !isEditingEventInfo && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={startEditingEventInfo}
+                  className="gap-2"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Editar
+                </Button>
               )}
-
-              {/* Botão de confirmar presença - dentro do card */}
-              {!isOrganizer && canConfirmPresence() && (
-                <div className="pt-6 border-t mt-6">
+              {canEdit && isEditingEventInfo && (
+                <div className="flex gap-2">
                   <Button
-                    className="w-full"
-                    size="lg"
-                    disabled={saving}
-                    onClick={handleConfirmPresence}
-                    variant="default"
+                    variant="outline"
+                    size="sm"
+                    onClick={cancelEditingEventInfo}
                   >
-                    {saving ? "Confirmando..." : "✓ Confirmar Presença no Evento"}
+                    <X className="w-4 h-4 mr-1" />
+                    Cancelar
                   </Button>
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    Confirme sua presença após validar data, hora e local
-                  </p>
+                  <Button
+                    size="sm"
+                    onClick={saveEventInfo}
+                    disabled={saving || !editEventTitle || !editEventDate || !editEventTime}
+                  >
+                    <Save className="w-4 h-4 mr-1" />
+                    {saving ? "Salvando..." : "Salvar"}
+                  </Button>
                 </div>
               )}
             </div>
+          </CardHeader>
+          <CardContent>
+            {/* Modo de Edição para Organizadores */}
+            {isEditingEventInfo && canEdit ? (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="editTitle" className="text-sm font-semibold">Nome do Evento</Label>
+                  <Input
+                    id="editTitle"
+                    value={editEventTitle}
+                    onChange={(e) => setEditEventTitle(e.target.value)}
+                    className="mt-1"
+                    placeholder="Digite o título do evento"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-semibold flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Data
+                    </Label>
+                    <div className="mt-1">
+                      <DatePicker
+                        value={editEventDate}
+                        onChange={setEditEventDate}
+                        placeholder="Escolha a data"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Horário
+                    </Label>
+                    <div className="mt-1">
+                      <TimePicker
+                        value={editEventTime}
+                        onChange={setEditEventTime}
+                        placeholder="Escolha o horário"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="editLocation" className="text-sm font-semibold flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Local
+                  </Label>
+                  <Input
+                    id="editLocation"
+                    value={editEventLocation}
+                    onChange={(e) => setEditEventLocation(e.target.value)}
+                    className="mt-1"
+                    placeholder="Digite o local do evento"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="editDescription" className="text-sm font-semibold">Descrição</Label>
+                  <Textarea
+                    id="editDescription"
+                    value={editEventDescription}
+                    onChange={(e) => setEditEventDescription(e.target.value)}
+                    className="mt-1"
+                    placeholder="Descrição do evento (opcional)"
+                    rows={3}
+                  />
+                </div>
+              </div>
+            ) : (
+              /* Modo de Visualização */
+              <div className="space-y-6">
+                {/* Título - visível para todos */}
+                <div className="flex items-center p-4 border rounded-lg bg-muted/30">
+                  <div>
+                    <span className="font-medium text-foreground">Título:</span>
+                    <p className="text-lg font-semibold">{event.title}</p>
+                  </div>
+                </div>
+
+                {/* Data */}
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center text-muted-foreground">
+                    <Calendar className="w-5 h-5 mr-3" />
+                    <div>
+                      <span className="font-medium text-foreground">Data:</span>
+                      <p>{formatDate(event.event_date)}</p>
+                    </div>
+                  </div>
+                  {!canEdit && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant={confirmation.date === "confirmed" ? "default" : "outline"}
+                        size="sm"
+                        onClick={handleConfirmDate}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Confirmar
+                      </Button>
+                      <Popover open={showDatePopover} onOpenChange={setShowDatePopover}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={confirmation.date === "rejected" ? "destructive" : "outline"}
+                            size="sm"
+                            onClick={handleRejectDate}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Não posso
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-4">
+                          <div className="space-y-4">
+                            <h4 className="font-medium">Sugira uma data alternativa:</h4>
+                            <CalendarComponent
+                              mode="single"
+                              selected={alternativeDate}
+                              onSelect={setAlternativeDate}
+                              className="pointer-events-auto"
+                            />
+                            <Button onClick={saveAlternativeDate} className="w-full">
+                              Confirmar Alternativa
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+                </div>
+
+                {/* Horário */}
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center text-muted-foreground">
+                    <Clock className="w-5 h-5 mr-3" />
+                    <div>
+                      <span className="font-medium text-foreground">Horário:</span>
+                      <p>{event.event_time}</p>
+                    </div>
+                  </div>
+                  {!canEdit && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant={confirmation.time === "confirmed" ? "default" : "outline"}
+                        size="sm"
+                        onClick={handleConfirmTime}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Confirmar
+                      </Button>
+                      <Popover open={showTimePopover} onOpenChange={setShowTimePopover}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={confirmation.time === "rejected" ? "destructive" : "outline"}
+                            size="sm"
+                            onClick={handleRejectTime}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Não posso
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-4">
+                          <div className="space-y-4">
+                            <h4 className="font-medium">Sugira um horário alternativo:</h4>
+                            <Select value={alternativeTime} onValueChange={setAlternativeTime}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um horário" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: 24 }, (_, i) => (
+                                  <SelectItem key={i} value={`${i.toString().padStart(2, "0")}:00`}>
+                                    {`${i.toString().padStart(2, "0")}:00`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button onClick={saveAlternativeTime} className="w-full">
+                              Confirmar Alternativa
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+                </div>
+
+                {/* Local */}
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center text-muted-foreground">
+                    <MapPin className="w-5 h-5 mr-3" />
+                    <div>
+                      <span className="font-medium text-foreground">Local:</span>
+                      <p>{event.location}</p>
+                    </div>
+                  </div>
+                  {!canEdit && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant={confirmation.location === "confirmed" ? "default" : "outline"}
+                        size="sm"
+                        onClick={handleConfirmLocation}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Confirmar
+                      </Button>
+                      <Popover open={showLocationPopover} onOpenChange={setShowLocationPopover}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={confirmation.location === "rejected" ? "destructive" : "outline"}
+                            size="sm"
+                            onClick={handleRejectLocation}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Não posso
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-4">
+                          <div className="space-y-4">
+                            <h4 className="font-medium">Sugira um local alternativo:</h4>
+                            <Textarea
+                              placeholder="Digite sua sugestão de local..."
+                              value={alternativeLocation}
+                              onChange={(e) => setAlternativeLocation(e.target.value)}
+                            />
+                            <Button onClick={saveAlternativeLocation} className="w-full">
+                              Confirmar Alternativa
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+                </div>
+
+                {event.description && (
+                  <div className="pt-4 border-t">
+                    <span className="font-medium text-foreground text-sm">Descrição:</span>
+                    <p className="text-muted-foreground mt-1">{event.description}</p>
+                  </div>
+                )}
+
+                {/* Botão de confirmar presença - apenas para convidados */}
+                {!canEdit && canConfirmPresence() && (
+                  <div className="pt-6 border-t mt-6">
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      disabled={saving}
+                      onClick={handleConfirmPresence}
+                      variant="default"
+                    >
+                      {saving ? "Confirmando..." : "✓ Confirmar Presença no Evento"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Confirme sua presença após validar data, hora e local
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -1202,24 +1417,41 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   excludeUserIds={[event.user_id, ...organizers.map((o) => o.user_id)]}
                   friends={friends}
                   isOrganizer={true}
-                  triggerLabel="Adicionar Organizador"
+                  triggerLabel={
+                    <>
+                      <span className="hidden sm:inline">Adicionar Organizador</span>
+                      <span className="sm:hidden">Adicionar</span>
+                    </>
+                  }
                 />
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {/* Criador do evento */}
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium">
-                      {organizerInfo.username || organizerInfo.email || 'Criador do evento'}
+                {/* Criador do evento */}
+                <div className="flex items-center gap-4 p-3 sm:p-4 bg-muted/30 rounded-lg border">
+                  <Avatar className="h-12 w-12 border-2 border-primary/20">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
+                      {(organizerInfo.username || organizerInfo.email || '?').substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-base text-foreground truncate">
+                        {organizerInfo.username || organizerInfo.email || 'Criador do evento'}
+                      </p>
                       {user?.id === event.user_id && (
-                        <span className="text-muted-foreground ml-1">(você)</span>
+                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">
+                          Você
+                        </Badge>
                       )}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Criador do evento</p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="default" className="text-[10px] h-5 px-2 font-normal">Organizador Principal</Badge>
+                      <span className="text-xs text-muted-foreground">Criador do evento</span>
+                    </div>
                   </div>
-                  <Badge variant="default">Organizador Principal</Badge>
                 </div>
 
                 {/* Co-organizadores */}
@@ -1229,19 +1461,34 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   const isCurrentUser = user?.id === organizer.user_id;
 
                   return (
-                    <div key={organizer.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium">
-                          {displayName}
+                    <div key={organizer.id} className="flex items-center gap-4 p-3 sm:p-4 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
+                      <Avatar className="h-10 w-10">
+                        {/* Fallback to user initials if no avatar is available. For now, assuming no avatar URL in current data structure, using fallback. 
+                             Ideally, organizers join would include avatar_url. */}
+                        <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                          {displayName?.substring(0, 2).toUpperCase() || "OR"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground truncate">{displayName}</p>
                           {isCurrentUser && (
-                            <span className="text-muted-foreground ml-1">(você)</span>
+                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">
+                              Você
+                            </Badge>
                           )}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Adicionado em {new Date(organizer.added_at).toLocaleDateString("pt-BR")}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Incluso em {new Date(organizer.added_at).toLocaleDateString("pt-BR")}
                         </p>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => removeOrganizer(organizer.id)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8 shrink-0"
+                        onClick={() => removeOrganizer(organizer.id)}
+                        title="Remover co-organizador"
+                      >
                         <UserMinus className="w-4 h-4" />
                       </Button>
                     </div>
@@ -1252,8 +1499,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           </Card>
         )}
 
-        {/* Attendees - Visível para organizadores e convidados confirmados */}
-        {(isOrganizer || isConfirmedGuest) && (
+        {/* Attendees - Visível para todos os usuários com acesso ao evento */}
+        {event && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1272,7 +1519,12 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                     excludeUserIds={[]}
                     friends={friends}
                     isOrganizer={false}
-                    triggerLabel="Convidar Participante"
+                    triggerLabel={
+                      <>
+                        <span className="hidden sm:inline">Convidar Participante</span>
+                        <span className="sm:hidden">Convidar</span>
+                      </>
+                    }
                   />
                 )}
               </div>
@@ -1281,16 +1533,26 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
               <div className="space-y-3">
                 {/* Organizador - sempre aparece primeiro */}
                 {event && (
-                  <div className="flex items-center justify-between p-3 bg-primary/5 border-2 border-primary/20 rounded-lg">
+                  <div className="flex items-center gap-4 p-3 sm:p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                    <Avatar className="h-10 w-10 border border-primary/20">
+                      <AvatarFallback className="bg-primary text-primary-foreground font-medium">
+                        {(organizerInfo.username || organizerInfo.email || '?').substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {organizerInfo.username || organizerInfo.email || 'Organizador'}
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-foreground truncate">
+                          {organizerInfo.username || organizerInfo.email || 'Organizador'}
+                        </p>
                         {user?.id === event.user_id && (
-                          <span className="text-muted-foreground ml-1">(você)</span>
+                          <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-normal border-primary/30 text-primary">
+                            Você
+                          </Badge>
                         )}
-                      </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Organizador do Evento</p>
                     </div>
-                    <Badge variant="default" className="shrink-0 ml-2">
+                    <Badge variant="default" className="shrink-0 h-6">
                       Organizador
                     </Badge>
                   </div>
@@ -1302,27 +1564,38 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   const displayName = attendee.name || attendee.email || 'Participante';
 
                   return (
-                    <div key={attendee.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div key={attendee.id} className="flex items-center gap-4 p-3 sm:p-4 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-background border-2 border-muted text-muted-foreground font-medium">
+                          {displayName?.substring(0, 2).toUpperCase() || "PA"}
+                        </AvatarFallback>
+                      </Avatar>
+
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
-                          {displayName}
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground truncate">
+                            {displayName}
+                          </p>
                           {isCurrentUser && (
-                            <span className="text-muted-foreground ml-1">(você)</span>
+                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">
+                              Você
+                            </Badge>
                           )}
-                        </p>
-                        {isOrganizer && attendee.email && attendee.name && (
-                          <p className="text-sm text-muted-foreground truncate">{attendee.email}</p>
+                        </div>
+                        {isOrganizer && attendee.email && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{attendee.email}</p>
                         )}
                       </div>
+
                       <Badge
                         variant={
                           attendee.status === "confirmado"
                             ? "default"
                             : attendee.status === "pendente"
-                              ? "secondary"
+                              ? "outline"
                               : "destructive"
                         }
-                        className="shrink-0 ml-2"
+                        className={`shrink-0 h-6 ${attendee.status === "pendente" ? "bg-background border-dashed" : ""}`}
                       >
                         {attendee.status === "confirmado"
                           ? "Confirmado"
@@ -1343,8 +1616,8 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           </Card>
         )}
 
-        {/* Supplies List - Visível para organizadores e convidados confirmados */}
-        {(isOrganizer || isConfirmedGuest) && (
+        {/* Supplies List - Visível para todos os usuários com acesso ao evento */}
+        {event && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1354,13 +1627,13 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                     Lista de Insumos ({supplies.length})
                   </CardTitle>
                   <CardDescription className="mt-1">
-                    {isConfirmedGuest && !isOrganizer
+                    {isConfirmedGuest && !isOrganizer && !isEventCreator
                       ? "Escolha os itens que você pode levar"
                       : "Gerencie os itens necessários para o evento"}
                   </CardDescription>
                 </div>
                 {/* Botão destacado para adicionar itens */}
-                {(isOrganizer || isConfirmedGuest) && (
+                {canEdit && (
                   <Button
                     variant="default"
                     size="sm"
@@ -1517,7 +1790,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                                 )}
                               </div>
                             </div>
-                            {(isOrganizer || isConfirmedGuest) && (
+                            {canEdit && (
                               <div className="flex gap-1">
                                 <Button
                                   size="sm"
@@ -1550,7 +1823,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                             )}
                           </div>
 
-                          {(isConfirmedGuest || isOrganizer) && currentParticipantId && (
+                          {canViewFullDetails && currentParticipantId && (
                             <div className="flex items-center space-x-2 pt-2 border-t">
                               <Checkbox
                                 id={`supply-${supply.id}`}
@@ -1585,7 +1858,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                     <p className="text-muted-foreground mb-4">
                       Nenhum item adicionado ainda
                     </p>
-                    {(isOrganizer || isConfirmedGuest) && (
+                    {canViewFullDetails && (
                       <p className="text-sm text-muted-foreground">
                         Use o campo abaixo para adicionar o primeiro item
                       </p>
@@ -1593,11 +1866,11 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   </div>
                 )}
 
-                {/* Campo de adicionar item para organizadores e convidados confirmados */}
-                {(isOrganizer || isConfirmedGuest) && (
+                {/* Campo de adicionar item - APENAS ORGANIZADORES/CRIADORES */}
+                {canEdit && (
                   <div className="space-y-3 mt-4 p-4 bg-muted/50 rounded-lg border-2 border-dashed border-primary/30">
                     <Input
-                      placeholder="Digite o nome do item..."
+                      placeholder="Adicionar item..."
                       value={newSupply}
                       onChange={(e) => setNewSupply(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && addSupply()}
@@ -1646,7 +1919,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         )}
 
         {/* Dinâmicas do Evento - Visível para organizadores e convidados confirmados */}
-        {(isOrganizer || isConfirmedGuest) && (
+        {canViewFullDetails && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">

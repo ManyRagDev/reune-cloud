@@ -7,9 +7,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import aiChatIcon from '@/assets/ai-chat-icon.png';
 import { ContextManager } from '@/core/orchestrator/contextManager';
-// ðŸ”¥ NOVO: Usando orquestrador simplificado com Groq
+// 🔥 NOVO: Usando orquestrador simplificado com Groq
 import { simpleOrchestrate } from '@/core/orchestrator/simpleOrchestrator';
-// ðŸ”„ Para voltar ao orquestrador antigo, descomente a linha abaixo e comente a linha acima:
+// 🔄 Para voltar ao orquestrador antigo, descomente a linha abaixo e comente a linha acima:
 // import { orchestrate } from '@/core/orchestrator/chatOrchestrator';
 import { UUID } from '@/types/domain';
 import { useToast } from '@/components/ui/use-toast';
@@ -46,7 +46,7 @@ export default function ChatWidget() {
 
   const contextManager = useMemo(() => new ContextManager(), []);
 
-  // ðŸ”¥ NOVA FUNÃ‡ÃƒO: Reset completo do chat
+  // 🔥 NOVA FUNÇÃO: Reset completo do chat
   const resetEverything = async () => {
     if (!user?.id) return;
 
@@ -55,13 +55,13 @@ export default function ChatWidget() {
     try {
       // Limpar contexto no backend
       await contextManager.clearUserContext(user.id);
-      // console.log('[ChatWidget] âœ… Backend context reset');
+      // console.log('[ChatWidget] ✅ Backend context reset');
 
       // Limpar estado local
       setEventoId(undefined);
       setMessages([{
         role: 'assistant',
-        content: 'OlÃ¡! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+        content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
       }]);
       setHasGreeted(true);
       setWasMinimized(false);
@@ -74,7 +74,7 @@ export default function ChatWidget() {
       setEventoId(undefined);
       setMessages([{
         role: 'assistant',
-        content: 'OlÃ¡! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+        content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
       }]);
       setHasGreeted(true);
       setWasMinimized(false);
@@ -82,7 +82,7 @@ export default function ChatWidget() {
     }
   };
 
-  // ðŸ”¥ MODIFICADO: Load history com validaÃ§Ã£o de estado idle
+  // 🔥 MODIFICADO: Load history com validação de estado idle
   useEffect(() => {
     async function loadHistoryAndContext() {
       if (!open || !user?.id || hasLoadedHistory.current) return;
@@ -100,30 +100,30 @@ export default function ChatWidget() {
         //   wasMinimized
         // });
 
-        // ðŸ”¥ PATCH 1: Detectar se deve comeÃ§ar do zero
+        // 🔥 PATCH 1: Detectar se deve começar do zero
         const shouldReset =
           context.state === 'idle' &&
           context.historyLength === 0 &&
           !wasMinimized;
 
         if (shouldReset) {
-          // console.log('[ChatWidget] ðŸŽ¯ RESET CONDITION MET - Starting fresh conversation');
+          // console.log('[ChatWidget] 🎯 RESET CONDITION MET - Starting fresh conversation');
           await resetEverything();
           setIsLoadingHistory(false);
           return;
         }
 
-        // ðŸ”¥ PATCH 2: SÃ³ restaurar eventId se houver histÃ³rico OU estava minimizado
+        // 🔥 PATCH 2: Só restaurar eventId se houver histórico OU estava minimizado
         if (context.evento_id && (context.historyLength > 0 || wasMinimized)) {
-          // console.log('[ChatWidget] â™»ï¸ Restoring event ID:', context.evento_id);
+          // console.log('[ChatWidget] ♻️ Restoring event ID:', context.evento_id);
           setEventoId(String(context.evento_id));
         } else if (context.evento_id) {
-          // console.log('[ChatWidget] âš ï¸ Ignoring stale event ID (no history, not minimized)');
+          // console.log('[ChatWidget] ⚠️ Ignoring stale event ID (no history, not minimized)');
         }
 
-        // Restaurar histÃ³rico se existir
+        // Restaurar histórico se existir
         if (history && history.length > 0) {
-          // console.log('[ChatWidget] â™»ï¸ Restoring history:', history.length, 'messages');
+          // console.log('[ChatWidget] ♻️ Restoring history:', history.length, 'messages');
           const formattedMessages: ChatMessage[] = history.map(msg => ({
             role: msg.role as 'user' | 'assistant',
             content: msg.content,
@@ -134,7 +134,7 @@ export default function ChatWidget() {
           // console.log('[ChatWidget] No history, showing greeting');
           setMessages([{
             role: 'assistant',
-            content: 'OlÃ¡! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+            content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
           }]);
           setHasGreeted(true);
         }
@@ -143,7 +143,7 @@ export default function ChatWidget() {
         if (!hasGreeted) {
           setMessages([{
             role: 'assistant',
-            content: 'OlÃ¡! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
+            content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
           }]);
           setHasGreeted(true);
         }
@@ -182,7 +182,7 @@ export default function ChatWidget() {
 
     try {
       // console.log('[ChatWidget] Calling orchestrator...');
-      // ðŸ”¥ NOVO: Usando orquestrador simplificado
+      // 🔥 NOVO: Usando orquestrador simplificado
       const response = await simpleOrchestrate(
         text,
         user.id as UUID,
@@ -229,9 +229,9 @@ export default function ChatWidget() {
       setIsTyping(false);
       setMessages(prev => [...prev, assistantMessage]);
 
-      // ðŸ”¥ PATCH 3: IntegraÃ§Ã£o com closeChat do backend
+      // 🔥 PATCH 3: Integração com closeChat do backend
       if (response.closeChat) {
-        // console.log('[ChatWidget] ðŸŽ¯ Backend requested chat close');
+        // console.log('[ChatWidget] 🎯 Backend requested chat close');
         setTimeout(async () => {
           await handleClose();
           toast({
@@ -241,7 +241,7 @@ export default function ChatWidget() {
 
           // ðŸ”¥ Auto-refresh para atualizar dashboard
           setTimeout(() => {
-            // console.log('[ChatWidget] ðŸ”„ Recarregando pÃ¡gina para atualizar dashboard');
+            // console.log('[ChatWidget] 🔄 Recarregando página para atualizar dashboard');
             window.location.reload();
           }, 1000);
         }, 1500);
@@ -260,7 +260,7 @@ export default function ChatWidget() {
         ...prev,
         {
           role: 'assistant',
-          content: `âŒ ${errorMessage}`
+          content: `❌ ${errorMessage}`
         }
       ]);
     } finally {
@@ -273,24 +273,24 @@ export default function ChatWidget() {
     sendMessage(text);
   }
 
-  // ðŸ”¥ MODIFICADO: handleClose agora usa resetEverything
+  // 🔥 MODIFICADO: handleClose agora usa resetEverything
   const handleClose = async () => {
     if (!user?.id) return;
-    // console.log('[ChatWidget] ðŸšª CLOSING CHAT - Triggering full reset...');
+    // console.log('[ChatWidget] 🚪 CLOSING CHAT - Triggering full reset...');
 
     // Fechar o widget visualmente
     setOpen(false);
-    setWasMinimized(false); // ðŸ”¥ Marcar como fechado (nÃ£o minimizado)
+    setWasMinimized(false); // 🔥 Marcar como fechado (não minimizado)
 
     // Reset completo
     await resetEverything();
   };
 
-  // ðŸ”¥ NOVO: handleMinimize - apenas fecha visualmente, mantÃ©m contexto
+  // 🔥 NOVO: handleMinimize - apenas fecha visualmente, mantém contexto
   const handleMinimize = () => {
-    // console.log('[ChatWidget] ðŸ“¦ MINIMIZING CHAT - Keeping context...');
+    // console.log('[ChatWidget] 📦 MINIMIZING CHAT - Keeping context...');
     setOpen(false);
-    setWasMinimized(true); // ðŸ”¥ Marcar como minimizado
+    setWasMinimized(true); // 🔥 Marcar como minimizado
   };
 
   if (!user && !loading) return null;
@@ -303,7 +303,7 @@ export default function ChatWidget() {
           variant="ghost"
           size="lg"
           onClick={() => {
-            // console.log('[ChatWidget] ðŸ”“ Opening chat, wasMinimized:', wasMinimized);
+            // console.log('[ChatWidget] 🔓 Opening chat, wasMinimized:', wasMinimized);
             setOpen(true);
           }}
           aria-label="Abrir chat"
@@ -327,7 +327,7 @@ export default function ChatWidget() {
                   size="icon"
                   className="h-8 w-8"
                   onClick={handleMinimize}
-                  title="Minimizar (mantÃ©m conversa)"
+                  title="Minimizar (mantém conversa)"
                 >
                   <Minus className="w-4 h-4" />
                 </Button>
@@ -343,7 +343,7 @@ export default function ChatWidget() {
               </div>
             </div>
             <SheetDescription>
-              Planeje seu evento com inteligÃªncia artificial.
+              Planeje seu evento com inteligência artificial.
             </SheetDescription>
           </SheetHeader>
 

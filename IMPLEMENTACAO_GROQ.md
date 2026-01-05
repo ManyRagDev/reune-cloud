@@ -209,3 +209,5 @@ O sistema detecta automaticamente quando o LLM retorna JSON com ações:
 
 
 
+
+

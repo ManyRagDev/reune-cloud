@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { type LucideIcon, ArrowLeft, AlertTriangle, MapPinned, Home, Sparkles, Calendar as CalendarIcon, Clock, Flame, UtensilsCrossed, Cake, Briefcase } from 'lucide-react';
+import { type LucideIcon, ArrowLeft, AlertTriangle, MapPinned, Home, Sparkles, Calendar as CalendarIcon, Clock, Flame, UtensilsCrossed, Cake, Briefcase, Package, Plus, X, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,14 @@ import { TimePicker } from '@/components/ui/time-picker';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface ManualItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+}
 
 interface CreateEventProps {
   onBack: () => void;
@@ -47,6 +55,57 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
   const [isPublic, setIsPublic] = useState(true);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [useManualLocation, setUseManualLocation] = useState(false);
+
+  // Estado para lista de itens manual
+  const [manualItems, setManualItems] = useState<ManualItem[]>([]);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemQuantity, setNewItemQuantity] = useState(1);
+  const [newItemUnit, setNewItemUnit] = useState('un');
+
+  // Funções para gerenciar itens manuais
+  const addManualItem = () => {
+    if (!newItemName.trim()) return;
+
+    const newItem: ManualItem = {
+      id: crypto.randomUUID(),
+      name: newItemName.trim(),
+      quantity: newItemQuantity,
+      unit: newItemUnit,
+    };
+
+    setManualItems([...manualItems, newItem]);
+    setNewItemName('');
+    setNewItemQuantity(1);
+    setNewItemUnit('un');
+
+    toast({
+      title: "Item adicionado",
+      description: `"${newItem.name}" foi adicionado à lista.`,
+    });
+  };
+
+  const removeManualItem = (itemId: string) => {
+    setManualItems(manualItems.filter(item => item.id !== itemId));
+  };
+
+  // Combinar itens do template com itens manuais
+  const getAllItems = () => {
+    const templateItems = selectedTemplate?.defaultItems?.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      category: item.category,
+    })) || [];
+
+    const manualItemsMapped = manualItems.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      category: 'geral',
+    }));
+
+    return [...templateItems, ...manualItemsMapped];
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -163,9 +222,10 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
 
       if (error) throw error;
 
-      // Inserir itens do template, se houver
-      if (selectedTemplate?.defaultItems && eventData) {
-        const itemsToInsert = selectedTemplate.defaultItems.map(item => ({
+      // Inserir todos os itens (template + manuais)
+      const allItems = getAllItems();
+      if (allItems.length > 0 && eventData) {
+        const itemsToInsert = allItems.map(item => ({
           event_id: eventData.id,
           nome_item: item.name,
           quantidade: item.quantity,
@@ -179,7 +239,7 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
           .insert(itemsToInsert);
 
         if (itemsError) {
-          console.error("Erro ao inserir itens do template:", itemsError);
+          console.error("Erro ao inserir itens:", itemsError);
         }
       }
 
@@ -521,6 +581,113 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
                       rows={4}
                       className="mt-2 rounded-xl border-2 border-border/50 bg-background/50 backdrop-blur-sm transition-all focus:border-primary focus:shadow-lg focus:shadow-primary/20"
                     />
+                  </motion.div>
+
+                  {/* Lista de Itens */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.65 }}
+                    className="space-y-4"
+                  >
+                    <Label className="text-sm font-semibold flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      Lista de Itens (opcional)
+                    </Label>
+
+                    {/* Itens do template selecionado */}
+                    {selectedTemplate?.defaultItems && selectedTemplate.defaultItems.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Itens do modelo "{selectedTemplate.title}":</p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTemplate.defaultItems.map((item, index) => (
+                            <div
+                              key={`template-${index}`}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-sm"
+                            >
+                              <span>{item.name}</span>
+                              <span className="text-muted-foreground">({item.quantity} {item.unit})</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Itens manuais adicionados */}
+                    {manualItems.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Itens adicionados manualmente:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {manualItems.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-muted border border-border rounded-lg text-sm group"
+                            >
+                              <span>{item.name}</span>
+                              <span className="text-muted-foreground">({item.quantity} {item.unit})</span>
+                              <button
+                                type="button"
+                                onClick={() => removeManualItem(item.id)}
+                                className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Formulário para adicionar item */}
+                    <div className="p-4 bg-muted/50 rounded-xl border-2 border-dashed border-border/50 space-y-3">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Nome do item..."
+                          value={newItemName}
+                          onChange={(e) => setNewItemName(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addManualItem())}
+                          className="flex-1 h-10 rounded-lg bg-background"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={newItemQuantity}
+                          onChange={(e) => setNewItemQuantity(parseFloat(e.target.value) || 1)}
+                          placeholder="Qtd"
+                          className="w-20 h-10 rounded-lg bg-background"
+                          disabled={loading}
+                        />
+                        <Select value={newItemUnit} onValueChange={setNewItemUnit} disabled={loading}>
+                          <SelectTrigger className="w-32 h-10 rounded-lg bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="un">Unidade(s)</SelectItem>
+                            <SelectItem value="kg">Kg</SelectItem>
+                            <SelectItem value="g">Grama(s)</SelectItem>
+                            <SelectItem value="l">Litro(s)</SelectItem>
+                            <SelectItem value="ml">ml</SelectItem>
+                            <SelectItem value="pct">Pacote(s)</SelectItem>
+                            <SelectItem value="cx">Caixa(s)</SelectItem>
+                            <SelectItem value="dz">Dúzia(s)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={addManualItem}
+                          disabled={!newItemName.trim() || loading}
+                          className="h-10 gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Adicionar
+                        </Button>
+                      </div>
+                    </div>
                   </motion.div>
 
                   {/* Event Invite Selector */}

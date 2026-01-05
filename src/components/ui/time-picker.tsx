@@ -14,7 +14,7 @@ interface TimePickerProps {
 
 type HourRange = "0-11" | "12-23";
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
+const HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
 
 const padTime = (value: number) => value.toString().padStart(2, "0");
@@ -117,7 +117,7 @@ export function TimePicker({
     const nextHour = to24Hour(hour12, hourRange);
     const minute = selectedMinute ?? 0;
     onChange?.(`${padTime(nextHour)}:${padTime(minute)}`);
-    setMode("minute");
+    // setMode("minute"); // Removido para evitar confusão do usuário
   };
 
   const handleMinuteSelect = (minute: number) => {
@@ -178,7 +178,7 @@ export function TimePicker({
           <div className="relative h-64 w-64 rounded-full bg-gradient-to-br from-background to-muted/30 shadow-inner ring-1 ring-border/60">
             <ClockFace />
             {dialItems.map((item, index) => {
-              const label = mode === "hour" ? String(item) : padTime(item);
+              const label = mode === "hour" ? String(to24Hour(item, hourRange)) : padTime(item);
               const isSelected = mode === "hour"
                 ? selectedHour12 === item
                 : selectedMinute === item;

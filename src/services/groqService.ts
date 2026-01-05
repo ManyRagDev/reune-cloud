@@ -283,17 +283,17 @@ function generateFallbackItems(tipo_evento: string, qtd_pessoas: number): Partia
 
   const baseItems = isChurrasco
     ? [
-        { nome: 'Carne bovina', unidade: 'kg', categoria: 'comida', quantidade: Math.max(0.4 * qtd_pessoas, 1) },
-        { nome: 'Linguica', unidade: 'kg', categoria: 'comida', quantidade: Math.max(0.2 * qtd_pessoas, 0.5) },
-        { nome: 'Pao de alho', unidade: 'un', categoria: 'comida', quantidade: Math.max(2 * qtd_pessoas, 10) },
-        { nome: 'Cerveja', unidade: 'L', categoria: 'bebida', quantidade: Math.max(2 * qtd_pessoas, 6) },
-        { nome: 'Refrigerante', unidade: 'L', categoria: 'bebida', quantidade: Math.max(1 * qtd_pessoas, 3) },
-        { nome: 'Carvao', unidade: 'kg', categoria: 'combustivel', quantidade: Math.max(1 * qtd_pessoas, 3) },
-      ]
+      { nome: 'Carne bovina', unidade: 'kg', categoria: 'comida', quantidade: Math.max(0.4 * qtd_pessoas, 1) },
+      { nome: 'Linguica', unidade: 'kg', categoria: 'comida', quantidade: Math.max(0.2 * qtd_pessoas, 0.5) },
+      { nome: 'Pao de alho', unidade: 'un', categoria: 'comida', quantidade: Math.max(2 * qtd_pessoas, 10) },
+      { nome: 'Cerveja', unidade: 'L', categoria: 'bebida', quantidade: Math.max(2 * qtd_pessoas, 6) },
+      { nome: 'Refrigerante', unidade: 'L', categoria: 'bebida', quantidade: Math.max(1 * qtd_pessoas, 3) },
+      { nome: 'Carvao', unidade: 'kg', categoria: 'combustivel', quantidade: Math.max(1 * qtd_pessoas, 3) },
+    ]
     : [
-        { nome: 'Comida', unidade: 'kg', categoria: 'comida', quantidade: Math.max(0.3 * qtd_pessoas, 1) },
-        { nome: 'Bebida', unidade: 'L', categoria: 'bebida', quantidade: Math.max(1 * qtd_pessoas, 2) },
-      ];
+      { nome: 'Comida', unidade: 'kg', categoria: 'comida', quantidade: Math.max(0.3 * qtd_pessoas, 1) },
+      { nome: 'Bebida', unidade: 'L', categoria: 'bebida', quantidade: Math.max(1 * qtd_pessoas, 2) },
+    ];
 
   return baseItems.map(item => ({
     nome_item: item.nome,
@@ -308,7 +308,97 @@ function generateFallbackItems(tipo_evento: string, qtd_pessoas: number): Partia
 /**
  * Gera lista de itens usando Groq diretamente
  */
+
+/**
+ * Gera lista de itens usando Groq diretamente
+ */
 async function generateItemsWithGroqLocal(params: {
+  tipo_evento: string;
+  qtd_pessoas: number;
+  menu?: string;
+}): Promise<Partial<Item>[]> {
+
+  // MUDANÇA AQUI: Prompt com contexto cultural e regras de cálculo
+  const systemPrompt = `
+  ROLE:
+  Você é um organizador de eventos brasileiro experiente (Party Planner), especializado em calcular quantidades exatas de comida e bebida para evitar desperdícios ou falta.
+
+  TASK:
+  Crie uma lista de compras detalhada e culturalmente adequada para o evento abaixo.
+
+  CONTEXTO DO EVENTO:
+  - Tipo: "${params.tipo_evento}"
+  - Quantidade de pessoas: ${params.qtd_pessoas}
+  ${params.menu ? `- Menu/Prato Principal: "${params.menu}"` : ''}
+
+  DIRETRIZES DE INTELIGÊNCIA CULTURAL:
+  1. ADAPTAÇÃO AO TEMA (CRÍTICO):
+     - Se for "Churrasco": OBRIGATÓRIO incluir carnes variadas (Picanha, Linguiça, Frango), Pão de Alho, Farofa, Vinagrete, Carvão e Sal Grosso.
+     - Se for "Reveillon" ou "Natal": OBRIGATÓRIO incluir itens de Ceia (Lombo/Pernil, Lentilha, Arroz à grega, Frutas secas, Espumante).
+     - Se for "Aniversário": Inclua bolo decorado, docinhos (brigadeiro/beijinho) e salgadinhos.
+     - Se for "Jantar": Foque nos ingredientes do prato principal e acompanhamentos refinados.
+
+  2. CÁLCULO DE QUANTIDADES (HEURÍSTICA):
+     - Considere um evento de 4 a 5 horas.
+     - Comida (Refeição): Calcule aprox. 400g a 500g de carne/massa por pessoa.
+     - Comida (Coquetel): Calcule 12 a 15 salgados por pessoa.
+     - Bebida: Calcule com sobra (ex: 2 a 3 garrafas de 600ml de cerveja por pessoa se for churrasco).
+
+  3. RESTRIÇÕES E REGRAS:
+     - NÃO sugira "Bolo de aniversário" se o evento NÃO for um aniversário.
+     - NÃO encha a lista apenas de descartáveis. A prioridade é a COMIDA e BEBIDA.
+     - Use nomes de produtos comuns no Brasil (ex: "Alcatra" em vez de "Carne bovina", "Refrigerante 2L" em vez de "Bebida gasosa").
+     - "valor_estimado": Use preços médios de mercado em Reais (R$).
+
+  FORMATO DE SAÍDA (JSON array puro, sem markdown):
+  [
+    {
+      "nome_item": "Picanha (ou carne principal)",
+      "quantidade": 0,
+      "unidade": "kg",
+      "valor_estimado": 0,
+      "categoria": "comida", 
+      "prioridade": "A"
+    }
+  ]
+  (Categorias permitidas: "comida", "bebida", "descartaveis", "decoracao", "combustivel", "outros")
+  (Prioridades: "A" = Essencial, "B" = Importante, "C" = Opcional)
+
+  IMPORTANTE:
+  - Responda APENAS o JSON.
+  - Sem texto introdutório.
+  - Sem markdown (\`\`\`json).
+  `;
+
+  const userPrompt = `Gere a lista para: ${params.tipo_evento}, ${params.qtd_pessoas} convidados.`;
+
+  try {
+    // Mantive a temperature em 0.3 para manter consistência, mas com o novo prompt ele será mais criativo nos itens
+    const aiResponse = await callGroqAPI(systemPrompt, [{ role: 'user', content: userPrompt }], 0.3);
+
+    if (!aiResponse) {
+      console.warn('[GroqService] Groq nao retornou resposta, usando fallback');
+      return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
+    }
+
+    const { parseLlmItemsResponse } = await import('@/core/orchestrator/itemAdapter');
+    try {
+      const items = parseLlmItemsResponse(aiResponse);
+      console.info('[GroqService] Itens gerados pela Groq:', items.length);
+      return items;
+    } catch (adapterError) {
+      console.error('[GroqService] Erro no adapter, usando fallback:', adapterError);
+      return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
+    }
+  } catch (error) {
+    console.error('[GroqService] Erro ao gerar itens com Groq:', error);
+    return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
+  }
+}
+
+
+
+/*async function generateItemsWithGroqLocal(params: {
   tipo_evento: string;
   qtd_pessoas: number;
   menu?: string;
@@ -370,7 +460,7 @@ Importante:
     console.error('[GroqService] Erro ao gerar itens com Groq:', error);
     return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
   }
-}
+}*/
 
 /**
  * Resultado da execucao de acao
@@ -381,7 +471,7 @@ interface ExecuteActionResult {
 }
 
 function resolveEventType(data: ActionData['data']): string | undefined {
-  const tipo = data.tipo_evento || data.categoria_evento || data.subtipo_evento;
+  const tipo = data.tipo_evento || data.categoria_evento || data.subtipo_evento || data.finalidade_evento;
   return tipo ? String(tipo) : undefined;
 }
 

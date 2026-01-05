@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,7 @@ interface OrganizerInviteDialogProps {
   excludeUserIds: string[];
   friends: { friend_id: string }[];
   isOrganizer?: boolean;
-  triggerLabel?: string;
+  triggerLabel?: ReactNode;
 }
 
 export const OrganizerInviteDialog = ({

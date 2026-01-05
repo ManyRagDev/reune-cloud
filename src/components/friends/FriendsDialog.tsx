@@ -103,7 +103,7 @@ export const FriendsDialog = () => {
 
       const normalizedSearch = searchTerm.trim().toLowerCase();
       const isEmail = normalizedSearch.includes("@") && normalizedSearch.includes(".");
-      
+
       if (isEmail) {
         // Para email, apenas validar formato e permitir envio
         // A função RPC fará a busca real
@@ -111,7 +111,7 @@ export const FriendsDialog = () => {
           title: "Busca por email",
           description: "Enviaremos a solicitação para este email se ele existir.",
         });
-        
+
         setSearchResult({
           id: "", // Não temos o ID ainda
           display_name: normalizedSearch,
@@ -122,7 +122,7 @@ export const FriendsDialog = () => {
       } else {
         // Buscar por username (remover @ se houver)
         const usernameSearch = normalizedSearch.replace(/^@/, "");
-        
+
         const { data, error } = await supabase
           .from("profiles")
           .select("id, display_name, username, avatar_url")
@@ -179,27 +179,44 @@ export const FriendsDialog = () => {
       setSearchTerm("");
       fetchFriends();
     } catch (error) {
-      const err = error as { message?: string };
-      
-      // Mensagens específicas
-      if (err?.message?.includes("já são amigos")) {
+      const err = error as { message?: string; error_description?: string };
+      const errorMessage = err.message || err.error_description || "Erro desconhecido";
+
+      console.error("Erro detalhado ao enviar solicitação:", error);
+
+      // Tenta usar a mensagem direta do backend se parecer uma mensagem amigável de erro
+      if (errorMessage !== "Erro desconhecido" &&
+        (errorMessage.includes("já existe") ||
+          errorMessage.includes("pendente") ||
+          errorMessage.includes("encontrado") ||
+          errorMessage.includes("auto") ||
+          errorMessage.includes("amigos"))) {
         toast({
-          title: "Vocês já são amigos",
-          description: "Esta pessoa já está na sua lista de amigos.",
-          variant: "destructive",
-        });
-      } else if (err?.message?.includes("Usuário não encontrado")) {
-        toast({
-          title: "Usuário não encontrado",
-          description: "Não foi possível encontrar este usuário.",
+          title: "Atenção",
+          description: errorMessage,
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "Erro ao enviar solicitação",
-          description: err?.message || "Tente novamente mais tarde.",
-          variant: "destructive",
-        });
+        // Fallback para mensagens específicas mapeadas
+        if (errorMessage.includes("já são amigos")) {
+          toast({
+            title: "Vocês já são amigos",
+            description: "Esta pessoa já está na sua lista de amigos.",
+            variant: "destructive",
+          });
+        } else if (errorMessage.includes("Usuário não encontrado")) {
+          toast({
+            title: "Usuário não encontrado",
+            description: "Não foi possível encontrar este usuário.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Não foi possível enviar",
+            description: errorMessage || "Tente novamente mais tarde.",
+            variant: "destructive",
+          });
+        }
       }
     } finally {
       setActionLoading(null);
@@ -309,7 +326,7 @@ export const FriendsDialog = () => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} >
       <DialogTrigger asChild>
         <Button variant="outline" size="default">
           <Users className="w-4 h-4 mr-2" />
@@ -447,6 +464,6 @@ export const FriendsDialog = () => {
           </TabsContent>
         </Tabs>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 };

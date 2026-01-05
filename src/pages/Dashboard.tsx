@@ -331,10 +331,10 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="fixed top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-6xl px-4"
+        className="fixed top-6 z-40 w-full md:w-auto left-0 md:left-auto right-0 md:right-20 flex justify-center md:block px-4 pointer-events-none"
       >
-        <div className="rounded-3xl bg-background/80 backdrop-blur-xl border border-border/50 shadow-2xl px-6 py-4">
-          <div className="flex justify-between items-center">
+        <div className="pointer-events-auto rounded-3xl bg-background/80 backdrop-blur-xl border border-border/50 shadow-2xl px-6 py-4 w-full max-w-md md:w-auto md:max-w-none">
+          <div className="flex justify-between md:justify-start items-center md:gap-12">
             <div className="flex items-center gap-4">
               <motion.img
                 src={reUneLogo}
@@ -362,7 +362,6 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                   variant="link"
                   size="sm"
                   onClick={() => setAccountDialogOpen(true)}
-                  className="text-xs text-primary hover:text-primary/80 p-0 h-auto font-medium"
                 >
                   Minha Conta →
                 </Button>
