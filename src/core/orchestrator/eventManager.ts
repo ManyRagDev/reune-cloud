@@ -1,10 +1,13 @@
-import { Event, EventSnapshot, Item, UUID } from "@/types/domain";
+import { Event, EventSnapshot, Item, UUID, EventStatus } from "@/types/domain";
 import { getLlmSuggestions } from "@/api/llm/chat";
 import { rpc } from "@/api/rpc";
 import { supabase } from "@/integrations/supabase/client";
 import { parseLlmItemsResponse } from "./itemAdapter";
 import { parseToIsoDate } from "@/core/nlp/date-parser";
 
+/**
+ * Busca snapshot completo do evento (evento + itens + participantes)
+ */
 export async function getPlanSnapshot(eventoId: UUID): Promise<EventSnapshot | null> {
   console.log(`[Manager] getPlanSnapshot called with eventoId: ${eventoId}`);
   try {
@@ -16,10 +19,12 @@ export async function getPlanSnapshot(eventoId: UUID): Promise<EventSnapshot | n
   }
 }
 
+/**
+ * Busca o rascunho (draft) mais recente do usuário
+ */
 export async function findDraftEventByUser(userId: UUID): Promise<EventSnapshot | null> {
   console.log(`[Manager] findDraftEventByUser called with userId: ${userId}`);
   try {
-    // Busca eventos do usuário com status 'draft'
     const { data, error } = await supabase
       .from('table_reune')
       .select('*')
@@ -36,7 +41,6 @@ export async function findDraftEventByUser(userId: UUID): Promise<EventSnapshot 
 
     console.log('[Manager] Draft encontrado:', data);
 
-    // Monta o snapshot a partir dos dados do draft
     const snapshot: EventSnapshot = {
       evento: {
         id: data.id.toString(),
@@ -45,7 +49,7 @@ export async function findDraftEventByUser(userId: UUID): Promise<EventSnapshot 
         tipo_evento: data.tipo_evento || '',
         data_evento: data.event_date,
         qtd_pessoas: data.qtd_pessoas || 0,
-        status: 'collecting_core',
+        status: 'draft',
       },
       itens: [],
       participantes: [],
@@ -59,127 +63,125 @@ export async function findDraftEventByUser(userId: UUID): Promise<EventSnapshot 
   }
 }
 
+/**
+ * Cria ou atualiza um evento (Upsert)
+ * Normaliza datas e define status inicial como 'draft'
+ */
 export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID; created_by_ai?: boolean }): Promise<Event> {
-  console.log('[Manager] upsertEvent called with:', event);
-
   try {
-    // 🔹 Normalizar data para formato ISO se fornecida
-    let eventDate: string;
+    let eventDate: string | undefined;
+
     if (event.data_evento) {
       const parsedDate = parseToIsoDate(event.data_evento);
-      eventDate = parsedDate || new Date().toISOString().split('T')[0];
-      console.log('[Manager] Data normalizada:', { original: event.data_evento, parsed: eventDate });
-    } else {
-      eventDate = new Date().toISOString().split('T')[0];
+      if (parsedDate) eventDate = parsedDate;
+    }
+
+    // Fallback de data para hoje (Local) se for novo evento e sem data explícita
+    if (!event.id && !eventDate) {
+      const now = new Date();
+      // YYYY-MM-DD Local
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      eventDate = `${year}-${month}-${day}`;
+      console.log('[Manager] Data de fallback gerada (Local):', eventDate);
     }
 
     const eventData: any = {
       user_id: event.usuario_id,
-      title: event.nome_evento || 'Rascunho',
-      description: '',
-      event_date: eventDate,
-      event_time: '12:00',
-      status: event.status === 'collecting_core' ? 'draft' : event.status || 'draft',
-      is_public: false,
-      tipo_evento: event.tipo_evento,
-      qtd_pessoas: event.qtd_pessoas,
+      event_time: '12:00', // Default time to avoid timezone shifts
+      status: event.status || 'draft',
       created_by_ai: event.created_by_ai ?? true,
-      categoria_evento: (event as any).categoria_evento,
-      subtipo_evento: (event as any).subtipo_evento,
-      menu: (event as any).menu,
-      finalidade_evento: (event as any).finalidade_evento,
     };
 
-    if (event.id) {
-      // Update existing event
-      const eventIdNum = typeof event.id === 'string' ? parseInt(event.id, 10) : event.id;
-      const { data, error } = await supabase
-        .from('table_reune')
-        .update(eventData)
-        .eq('id', eventIdNum)
-        .select()
-        .single();
+    // Populando campos opcionais
+    if (event.nome_evento) eventData.title = event.nome_evento;
+    if (eventDate) eventData.event_date = eventDate;
+    if (event.tipo_evento) eventData.tipo_evento = event.tipo_evento;
+    if (event.qtd_pessoas) eventData.qtd_pessoas = event.qtd_pessoas;
+    if ((event as any).categoria_evento) eventData.categoria_evento = (event as any).categoria_evento;
+    if ((event as any).subtipo_evento) eventData.subtipo_evento = (event as any).subtipo_evento;
+    if ((event as any).menu) eventData.menu = (event as any).menu;
+    if ((event as any).finalidade_evento) eventData.finalidade_evento = (event as any).finalidade_evento;
 
-      if (error) throw error;
+    const { data, error } = event.id
+      ? await supabase.from('table_reune').update(eventData).eq('id', parseInt(event.id, 10)).select().single()
+      : await supabase.from('table_reune').insert(eventData).select().single();
 
-      return {
-        id: data.id.toString(),
-        usuario_id: data.user_id,
-        nome_evento: data.title,
-        tipo_evento: event.tipo_evento || '',
-        data_evento: data.event_date,
-        qtd_pessoas: event.qtd_pessoas || 0,
-        status: data.status === 'draft' ? 'collecting_core' : data.status as Event['status'],
-      };
-    } else {
-      // Create new event
-      const { data, error } = await supabase
-        .from('table_reune')
-        .insert(eventData)
-        .select()
-        .single();
+    if (error) throw error;
 
-      if (error) throw error;
-
-      return {
-        id: data.id.toString(),
-        usuario_id: data.user_id,
-        nome_evento: data.title,
-        tipo_evento: event.tipo_evento || '',
-        data_evento: data.event_date,
-        qtd_pessoas: event.qtd_pessoas || 0,
-        status: data.status === 'draft' ? 'collecting_core' : data.status as Event['status'],
-      };
-    }
+    return {
+      id: data.id.toString(),
+      usuario_id: data.user_id,
+      nome_evento: data.title,
+      tipo_evento: data.tipo_evento || '',
+      data_evento: data.event_date,
+      qtd_pessoas: data.qtd_pessoas || 0,
+      status: data.status as EventStatus,
+    };
   } catch (error) {
-    console.error('[Manager] Erro ao criar/atualizar evento:', error);
+    console.error('[Manager] Erro no upsertEvent:', error);
     throw error;
   }
 }
 
+/**
+ * Atualiza apenas o status do evento
+ */
+export async function setEventStatus(eventoId: UUID, status: EventStatus): Promise<void> {
+  console.log(`[Manager] setEventStatus called with eventoId: ${eventoId}, status: ${status}`);
+  try {
+    const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
+
+    const { error } = await supabase
+      .from('table_reune')
+      .update({ status: status })
+      .eq('id', eventIdNum);
+
+    if (error) {
+      console.error('[Manager] Erro ao atualizar status:', error);
+      throw error;
+    }
+  } catch (error) {
+    console.error('[Manager] Erro ao atualizar status do evento:', error);
+    throw error;
+  }
+}
+
+/**
+ * Gera lista de itens usando a IA (com fallback)
+ */
 export async function generateItemList(params: {
   tipo_evento: string;
   qtd_pessoas: number;
   menu?: string;
+  finalidade_evento?: string;
+  excluir_alcool?: boolean;
 }): Promise<Partial<Item>[]> {
   console.log('[Manager] generateItemList called with:', params);
 
-  /*const systemPrompt = `Você é um especialista em planejamento de eventos.
-Gere uma lista de itens para um evento do tipo "${params.tipo_evento}" para ${params.qtd_pessoas} pessoas.
+  const perfilEvento = params.finalidade_evento
+    ? `${params.tipo_evento} de ${params.finalidade_evento}`
+    : params.tipo_evento;
 
-Retorne APENAS um array JSON válido, sem markdown ou explicações.
-Cada item deve ter exatamente estes campos (sem campos extras):
-{
-  "nome_item": string,
-  "quantidade": number,
-  "unidade": string,
-  "valor_estimado": number,
-  "categoria": string,
-  "prioridade": "A" | "B" | "C"
-}
+  const excluirAlcool = params.excluir_alcool !== false;
 
-Categorias comuns: comida, bebida, descartaveis, decoracao, combustivel.
-Prioridade: A = essencial, B = importante, C = opcional.
-Use a quantidade de pessoas para calcular as quantidades.`;*/
-
-  const systemPrompt = `Você é um especialista em planejamento e organização de eventos sociais e corporativos.
-
-Sua função é montar uma lista estruturada de itens e quantidades necessários para o evento descrito abaixo.
+  const systemPrompt = `Você é um especialista em planejamento e organização de eventos sociais e corporativos no Brasil.
+Sua função é montar uma lista estruturada de itens e quantidades necessários.
 
 EVENTO:
-- Tipo: "${params.tipo_evento}"
-- Quantidade de pessoas: ${params.qtd_pessoas}${params.menu ? `\n- Menu: "${params.menu}"` : ''}
+- Tipo/Perfil: "${perfilEvento}"
+- Quantidade de pessoas: ${params.qtd_pessoas}
+${params.menu ? `- Menu: "${params.menu}"` : ''}
+${params.finalidade_evento ? `- Ocasião: "${params.finalidade_evento}"` : ''}
 
-Regras de geração:
-1. Pense de forma prática e realista, considerando proporções adequadas à quantidade de pessoas.
-2. Priorize itens realmente necessários para a boa execução do evento.
-3. Inclua comidas, bebidas, descartáveis, combustíveis e decoração apenas se forem adequados ao tipo de evento.
-4. Mantenha as quantidades coerentes com o público informado (não exagere nem reduza demais).
-5. Se o tipo de evento não for totalmente claro, assuma um cenário genérico e seguro.
+REGRAS:
+1. Adapte os itens à cultura brasileira e ao tipo de evento.
+2. Calcule quantidades para 4-5 horas de duração.
+3. ${excluirAlcool ? 'NÃO inclua bebidas alcoólicas.' : 'Inclua bebidas se apropriado.'}
+4. Retorne APENAS JSON válido (array de objetos).
 
-Formato de saída:
-Retorne APENAS um array JSON **válido** (sem markdown, texto adicional ou comentários).
-Cada item deve seguir EXATAMENTE esta estrutura:
+FORMATO JSON:
 [
   {
     "nome_item": string,
@@ -189,24 +191,9 @@ Cada item deve seguir EXATAMENTE esta estrutura:
     "categoria": "comida" | "bebida" | "descartaveis" | "decoracao" | "combustivel" | "outros",
     "prioridade": "A" | "B" | "C"
   }
-]
+]`;
 
-Definições:
-- **categoria:** classifique corretamente cada item conforme sua natureza.
-- **prioridade:** 
-  - "A" = essencial (itens obrigatórios para o evento acontecer)
-  - "B" = importante (melhoram a experiência, mas o evento ocorre sem eles)
-  - "C" = opcional (complementos ou itens estéticos)
-- **valor_estimado:** use valores aproximados e proporcionais às quantidades.
-- **quantidade:** deve refletir o consumo médio esperado para ${params.qtd_pessoas} pessoas.
-
-Importante:
-- NÃO use markdown.
-- NÃO adicione texto explicativo antes ou depois do JSON.
-- O retorno deve ser apenas o JSON puro.`;
-
-
-  const userPrompt = `Evento: ${params.tipo_evento}, Pessoas: ${params.qtd_pessoas}`;
+  const userPrompt = `Gere a lista para o evento "${perfilEvento}" com ${params.qtd_pessoas} pessoas.`;
 
   try {
     const llmResponse = await getLlmSuggestions(systemPrompt, [
@@ -214,241 +201,85 @@ Importante:
     ], 0.3);
 
     if (!llmResponse || !llmResponse.content) {
-      console.warn('[Manager] LLM não retornou resposta, usando fallback');
+      console.warn('[Manager] LLM vazia, usando fallback');
       return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
     }
 
-    // Usa o adapter robusto para processar a resposta
     try {
       const items = parseLlmItemsResponse(llmResponse.content);
       console.info('[Manager] Itens gerados pela LLM:', items.length);
       return items;
     } catch (adapterError) {
-      console.error('[Manager] Erro no adapter, usando fallback:', adapterError);
+      console.error('[Manager] Erro no adapter:', adapterError);
       return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
     }
   } catch (error) {
-    console.error('[Manager] Erro ao gerar itens com LLM:', error);
+    console.error('[Manager] Erro na LLM:', error);
     return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
   }
 }
 
-// Função de fallback para gerar itens básicos
 function generateFallbackItems(tipo_evento: string, qtd_pessoas: number): Partial<Item>[] {
-  const baseItems = [
+  const isChurrasco = tipo_evento.toLowerCase().includes('churrasco');
+
+  const items = [
     {
-      nome_item: 'Item principal',
-      quantidade: Math.max(1, qtd_pessoas * 0.2),
+      nome_item: isChurrasco ? 'Carne Bovina' : 'Prato Principal',
+      quantidade: Math.max(1, qtd_pessoas * 0.4),
       unidade: 'kg',
-      valor_estimado: 25.90 * qtd_pessoas * 0.2,
+      valor_estimado: 40 * qtd_pessoas * 0.4,
       categoria: 'comida',
       prioridade: 'A'
     },
     {
-      nome_item: 'Bebidas',
-      quantidade: Math.max(1, qtd_pessoas * 0.5),
+      nome_item: 'Refrigerante',
+      quantidade: Math.max(2, qtd_pessoas * 0.6),
       unidade: 'L',
-      valor_estimado: 8.90 * qtd_pessoas * 0.5,
+      valor_estimado: 6 * qtd_pessoas * 0.6,
       categoria: 'bebida',
       prioridade: 'A'
-    },
-    {
-      nome_item: 'Copos/Pratos',
-      quantidade: qtd_pessoas * 1.2,
-      unidade: 'un',
-      valor_estimado: 0.50 * qtd_pessoas * 1.2,
-      categoria: 'descartaveis',
-      prioridade: 'B'
     }
   ];
 
-  // Personaliza baseado no tipo de evento
-  if (tipo_evento.toLowerCase().includes('churrasco')) {
-    baseItems[0].nome_item = 'Carne';
-    baseItems.push({
-      nome_item: 'Carvão',
-      quantidade: Math.max(1, qtd_pessoas * 0.1),
-      unidade: 'kg',
-      valor_estimado: 12.90 * qtd_pessoas * 0.1,
-      categoria: 'combustivel',
-      prioridade: 'A'
-    });
-  } else if (tipo_evento.toLowerCase().includes('pizza')) {
-    baseItems[0].nome_item = 'Pizzas';
-    baseItems[0].unidade = 'un';
-    baseItems[0].quantidade = Math.max(1, qtd_pessoas * 0.3);
-  }
-
-  return baseItems.map(item => ({
-    ...item,
-    prioridade: item.prioridade as 'A' | 'B' | 'C'
-  }));
-}
-
-export async function generateEventName(params: {
-  tipo_evento: string;
-  qtd_pessoas: number;
-  data_evento?: string;
-}): Promise<string> {
-  console.log('[Manager] generateEventName called with:', params);
-
-  const systemPrompt = `Você é um especialista em criar nomes criativos e curtos para eventos sociais.
-Gere um nome único e convidativo para o evento, com base nos dados fornecidos.
-O nome deve ser curto (máximo 50 caracteres), criativo e em português.
-Retorne APENAS o nome do evento, sem aspas, sem explicações adicionais.`;
-
-  const userPrompt = `Evento: ${params.tipo_evento}, ${params.qtd_pessoas} pessoas${params.data_evento ? `, data: ${params.data_evento}` : ''}`;
-
-  try {
-    const llmResponse = await getLlmSuggestions(systemPrompt, [
-      { role: 'user', content: userPrompt }
-    ], 0.7);
-
-    if (!llmResponse || !llmResponse.content) {
-      console.warn('[Manager] LLM não retornou nome, usando fallback');
-      return `${params.tipo_evento.charAt(0).toUpperCase() + params.tipo_evento.slice(1)} - ${params.qtd_pessoas} pessoas`;
-    }
-
-    const generatedName = llmResponse.content.trim().replace(/^["']|["']$/g, '');
-    console.info('[Manager] Nome gerado pela LLM:', generatedName);
-    return generatedName;
-  } catch (error) {
-    console.error('[Manager] Erro ao gerar nome com LLM:', error);
-    return `${params.tipo_evento.charAt(0).toUpperCase() + params.tipo_evento.slice(1)} - ${params.qtd_pessoas} pessoas`;
-  }
-}
-
-export async function setEventStatus(eventoId: UUID, status: Event['status']): Promise<void> {
-  console.log(`[Manager] setEventStatus called with eventoId: ${eventoId}, status: ${status}`);
-  try {
-    const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
-    const mappedStatus = status === 'collecting_core' ? 'draft' : status;
-
-    const { error } = await supabase
-      .from('table_reune')
-      .update({ status: mappedStatus })
-      .eq('id', eventIdNum);
-
-    if (error) {
-      console.error('[Manager] Erro ao atualizar status:', error);
-      throw error;
-    }
-  } catch (error) {
-    console.error('[Manager] Erro ao atualizar status do evento:', error);
-  }
+  return items.map(i => ({ ...i, prioridade: i.prioridade as 'A' | 'B' | 'C' }));
 }
 
 /**
- * Finaliza evento SEM data definida
- * - Atualiza status para "criado_sem_data"
- * - Não regenera itens
- * - Não chama LLM
+ * Finaliza o evento (Status: finalized)
  */
-export async function finalizeEventSemData(eventoId: UUID): Promise<EventSnapshot | null> {
-  console.log(`[Manager] finalizeEventSemData called with eventoId: ${eventoId}`);
+export async function finalizeEvent(eventoId: UUID): Promise<EventSnapshot | null> {
+  console.log(`[Manager] finalizeEvent called with eventoId: ${eventoId}`);
   try {
-    const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
-
-    const { error } = await supabase
-      .from('table_reune')
-      .update({
-        status: 'criado_sem_data',
-        event_date: null
-      })
-      .eq('id', eventIdNum);
-
-    if (error) {
-      console.error('[Manager] Erro ao finalizar evento sem data:', error);
-      throw error;
-    }
-
-    console.info('[Manager] Evento finalizado sem data com sucesso');
+    await setEventStatus(eventoId, 'finalized');
     return await getFinalSnapshot(eventoId);
   } catch (error) {
-    console.error('[Manager] Erro ao finalizar evento sem data:', error);
-    throw error;
-  }
-}
-
-/**
- * Finaliza evento COM data definida
- * - Atualiza status para "criado"
- * - Normaliza e salva a data
- * - Não regenera itens
- * - Não chama LLM
- */
-export async function finalizeEventComData(eventoId: UUID, data: string): Promise<EventSnapshot | null> {
-  console.log(`[Manager] finalizeEventComData called with eventoId: ${eventoId}, data: ${data}`);
-  try {
-    const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
-    
-    // Normaliza a data para ISO
-    const parsedDate = parseToIsoDate(data);
-    const eventDate = parsedDate || new Date().toISOString().split('T')[0];
-
-    const { error } = await supabase
-      .from('table_reune')
-      .update({
-        status: 'criado',
-        event_date: eventDate
-      })
-      .eq('id', eventIdNum);
-
-    if (error) {
-      console.error('[Manager] Erro ao finalizar evento com data:', error);
-      throw error;
-    }
-
-    console.info('[Manager] Evento finalizado com data:', eventDate);
-    return await getFinalSnapshot(eventoId);
-  } catch (error) {
-    console.error('[Manager] Erro ao finalizar evento com data:', error);
+    console.error('[Manager] Erro ao finalizar evento:', error);
     throw error;
   }
 }
 
 /**
  * Retorna snapshot final do evento com itens e participantes
- * - Usado após finalização para atualizar o frontend
  */
 export async function getFinalSnapshot(eventoId: UUID): Promise<EventSnapshot | null> {
-  console.log(`[Manager] getFinalSnapshot called with eventoId: ${eventoId}`);
   try {
     const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
 
-    // Busca evento
     const { data: evento, error: eventoError } = await supabase
       .from('table_reune')
       .select('*')
       .eq('id', eventIdNum)
       .single();
 
-    if (eventoError || !evento) {
-      console.error('[Manager] Erro ao buscar evento:', eventoError);
-      return null;
-    }
+    if (eventoError || !evento) return null;
 
     // Busca itens
-    const { data: itens, error: itensError } = await supabase
-      .from('event_items')
-      .select('*')
-      .eq('event_id', eventIdNum);
-
-    if (itensError) {
-      console.error('[Manager] Erro ao buscar itens:', itensError);
-    }
+    const { data: itens } = await supabase.from('event_items').select('*').eq('event_id', eventIdNum);
 
     // Busca participantes
-    const { data: participantes, error: participantesError } = await supabase
-      .from('event_participants')
-      .select('*')
-      .eq('event_id', eventIdNum);
+    const { data: participantes } = await supabase.from('event_participants').select('*').eq('event_id', eventIdNum);
 
-    if (participantesError) {
-      console.error('[Manager] Erro ao buscar participantes:', participantesError);
-    }
-
-    const snapshot: EventSnapshot = {
+    return {
       evento: {
         id: evento.id.toString(),
         usuario_id: evento.user_id,
@@ -456,7 +287,7 @@ export async function getFinalSnapshot(eventoId: UUID): Promise<EventSnapshot | 
         tipo_evento: evento.tipo_evento || '',
         data_evento: evento.event_date,
         qtd_pessoas: evento.qtd_pessoas || 0,
-        status: evento.status as Event['status'],
+        status: evento.status as EventStatus,
       },
       itens: (itens || []).map(item => ({
         id: item.id.toString(),
@@ -477,49 +308,13 @@ export async function getFinalSnapshot(eventoId: UUID): Promise<EventSnapshot | 
       })),
       distribuicao: [],
     };
-
-    return snapshot;
   } catch (error) {
     console.error('[Manager] Erro ao buscar snapshot final:', error);
     return null;
   }
 }
 
-/**
- * Finaliza evento (legado - mantido para compatibilidade)
- * @deprecated Use finalizeEventComData ou finalizeEventSemData
- */
-export async function finalizeEvent(eventoId: UUID, eventData: Partial<Event>): Promise<void> {
-  console.log(`[Manager] finalizeEvent called with eventoId: ${eventoId}`);
-  try {
-    const eventIdNum = typeof eventoId === 'string' ? parseInt(eventoId, 10) : eventoId;
-
-    // Gera nome do evento se não houver
-    let eventName = eventData.nome_evento || 'Rascunho';
-    if (eventName === 'Rascunho' && eventData.tipo_evento && eventData.qtd_pessoas) {
-      eventName = await generateEventName({
-        tipo_evento: eventData.tipo_evento,
-        qtd_pessoas: eventData.qtd_pessoas,
-        data_evento: eventData.data_evento
-      });
-    }
-
-    const { error } = await supabase
-      .from('table_reune')
-      .update({
-        status: 'active',
-        title: eventName
-      })
-      .eq('id', eventIdNum);
-
-    if (error) {
-      console.error('[Manager] Erro ao finalizar evento:', error);
-      throw error;
-    }
-
-    console.info('[Manager] Evento finalizado com sucesso:', eventName);
-  } catch (error) {
-    console.error('[Manager] Erro ao finalizar evento:', error);
-    throw error;
-  }
+// Re-export auxiliar para manter compatibilidade com algumas chamadas
+export async function generateEventName(params: { tipo_evento: string; qtd_pessoas: number }): Promise<string> {
+  return `${params.tipo_evento.charAt(0).toUpperCase() + params.tipo_evento.slice(1)} - ${params.qtd_pessoas} pessoas`;
 }

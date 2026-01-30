@@ -1,36 +1,34 @@
 /**
- * Servico de IA usando Groq API
- * Baseado no metodo do Kliper, adaptado para UNE.AI
+ * Serviço de IA usando Groq API
+ * Baseado no método do Kliper, adaptado para UNE.AI
  */
 
 import { LlmMessage } from '@/types/llm';
-import { Event, Item, UUID } from '@/types/domain';
+import { Event, Item, UUID, EventStatus } from '@/types/domain';
 import { rpc } from '@/api/rpc';
 import { upsertEvent, setEventStatus } from '@/core/orchestrator/eventManager';
 import { isValidFutureDate, parseToIsoDate } from '@/core/nlp/date-parser';
 import { PlannerEnvelope, plannerEnvelopeSchema } from '@/api/llm/plannerSchemas';
 import { systemResponses } from '@/core/orchestrator/systemResponses';
 
-/**
- * Interface para acoes que o chatbot pode executar
- */
+
 interface ActionData {
   action: 'create_event' | 'generate_items' | 'confirm_event' | 'update_event';
   data: {
     tipo_evento?: string;
     categoria_evento?: string;
     subtipo_evento?: string;
+    event_name?: string;
+    event_description?: string;
     qtd_pessoas?: number;
     data_evento?: string;
     menu?: string;
     finalidade_evento?: string;
+    descricao?: string;
     evento_id?: string;
   };
 }
 
-/**
- * Contexto atual do evento (para passar ao prompt)
- */
 interface EventContext {
   evento?: {
     id?: string;
@@ -47,9 +45,6 @@ interface EventContext {
   collectedData?: Record<string, unknown>;
 }
 
-/**
- * Gera o system prompt completo para o UNE.AI
- */
 function buildSystemPrompt(context?: EventContext): string {
   const todayIso = new Date().toISOString().slice(0, 10);
   const basePrompt = `Voce e o UNE.AI, um assistente especializado em planejamento de eventos sociais.
@@ -105,9 +100,9 @@ Voce deve retornar JSON APENAS quando tiver informacoes suficientes para executa
 }
 
 **Acoes Disponiveis:**
-- create_event: Quando tiver tipo_evento E qtd_pessoas
-- generate_items: Quando evento ja existe e precisa gerar lista de itens
-- confirm_event: Quando usuario confirmar lista de itens
+- create_event: Quando tiver tipo_evento E qtd_pessoas (Cria status 'draft')
+- generate_items: Quando evento ja existe e precisa gerar lista de itens (Muda status para 'created')
+- confirm_event: APENAS quando usuario confirmar EXPLICITAMENTE ("ok, confirmado", "finalizar"). NUNCA chame isso apos gerar itens se o usuario nao confirmou. (Muda para 'finalized')
 - update_event: Quando usuario quiser alterar dados do evento
 
 **IMPORTANTE:**
@@ -115,7 +110,8 @@ Voce deve retornar JSON APENAS quando tiver informacoes suficientes para executa
 - Use os dados coletados e nao pergunte novamente o que ja foi informado
 - Se retornar JSON, NAO escreva nada alem do JSON puro (sem markdown, sem explicacoes)
 - Se nao tiver informacoes suficientes, continue a conversa normalmente perguntando o que falta
-- Seja objetivo e nao divague`;
+- Seja objetivo e nao divague
+- **INTELIGENCIA TEMPORAL:** Se o contexto ja tiver uma data definida (ex: vinda do banco de dados para feriados), USE essa data. Nao invente datas nem pergunte novamente se ja estiver no contexto.`;
 
   if (context?.evento) {
     const evento = context.evento;
@@ -149,44 +145,54 @@ Use essas informacoes como referencia, mas nao repita tudo que ja foi dito.`;
   return basePrompt;
 }
 
-/**
- * Prompt do planner: responde apenas JSON canônico.
- */
+const PLANNER_SYSTEM_PROMPT = `
+Você é o Orquestrador Logístico do ReUNE.
+Sua missão é extrair dados estruturados para organizar eventos.
+
+REGRAS RÍGIDAS DE JSON (Sua resposta deve ser APENAS JSON):
+1. Use SEMPRE a chave "tipo_evento" para o nome do evento (ex: "Festa Junina", "Jantar", "Churrasco").
+2. Use SEMPRE a chave "qtd_pessoas" para o número de convidados (número puro).
+3. Use SEMPRE a chave "data_evento" para datas (YYYY-MM-DD).
+4. Use SEMPRE a chave "menu" para o prato ou comida que será servida (ex: "Massas", "Pizza", "Japonês").
+
+INTENÇÕES:
+- "create_event": APENAS para eventos NOVOS (sem ID no contexto).
+- "generate_items": APENAS se o usuário pedir EXPLICITAMENTE ("gerar lista", "ver itens"). NÃO assuma isso apenas por mudar data/pessoas.
+- "update_event": Para alterar dados de um evento JÁ EXISTENTE (mudança de data, pessoas, nome, etc).
+- "confirm_event": Quando o usuário confirmar lista, disser "ok", "tá bom" ou "pode ser".
+
+Exemplo de Resposta Válida:
+{
+  "intent": "create_event",
+  "payload": {
+    "tipo_evento": "Festa Junina",
+    "qtd_pessoas": 20,
+    "categoria_evento": "festa"
+  }
+}
+`;
+
 function buildPlannerPrompt(context?: EventContext): string {
-  const todayIso = new Date().toISOString().slice(0, 10);
   const contextPayload = {
-    today: todayIso,
+    today: new Date().toISOString().slice(0, 10),
     evento: context?.evento || null,
     collected_data: context?.collectedData || {},
   };
 
-  return `Voce e um planner de intencoes. Sua unica resposta deve ser um JSON valido, sem texto extra.
-
-Envelope obrigatorio:
-{
-  "intent": "create_event" | "update_event" | "generate_items" | "confirm_event" | "small_talk" | "unknown",
-  "payload": { ... },
-  "confidence": number (0 a 1)
-}
-
-Regras:
-- Nunca escreva texto fora do JSON.
-- Use apenas evento_id numerico quando existir.
-- Aplique as informacoes do contexto abaixo ao payload.
+  return `${PLANNER_SYSTEM_PROMPT}
 
 Contexto (JSON):
 ${JSON.stringify(contextPayload)}
 `;
 }
 
-function stripCodeFence(content: string): string {
-  const fenceMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-  return fenceMatch ? fenceMatch[1].trim() : content.trim();
+function cleanGroqResponse(text: string): string {
+  return text.replace(/```json/g, '').replace(/```/g, '').trim();
 }
 
 function parsePlannerEnvelope(content: string) {
   try {
-    const cleaned = stripCodeFence(content);
+    const cleaned = cleanGroqResponse(content);
     const parsed = JSON.parse(cleaned);
     const validated = plannerEnvelopeSchema.safeParse(parsed);
     if (!validated.success) {
@@ -214,9 +220,6 @@ function plannerToAction(plan: PlannerEnvelope): ActionData | null {
   return null;
 }
 
-/**
- * Chama a Edge Function (llm-chat) que usa Groq server-side.
- */
 async function callGroqAPI(
   systemPrompt: string,
   messages: LlmMessage[],
@@ -254,12 +257,10 @@ async function callGroqAPI(
   return content as string;
 }
 
-/**
- * Detecta e extrai JSON de acao na resposta
- */
 function detectActionJSON(content: string): ActionData | null {
   try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const cleaned = cleanGroqResponse(content);
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return null;
 
     const jsonStr = jsonMatch[0];
@@ -275,9 +276,6 @@ function detectActionJSON(content: string): ActionData | null {
   return null;
 }
 
-/**
- * Fallback para gerar itens basicos quando LLM falhar
- */
 function generateFallbackItems(tipo_evento: string, qtd_pessoas: number): Partial<Item>[] {
   const isChurrasco = tipo_evento.toLowerCase().includes('churrasco');
 
@@ -305,200 +303,10 @@ function generateFallbackItems(tipo_evento: string, qtd_pessoas: number): Partia
   }));
 }
 
-/**
- * Gera lista de itens usando Groq diretamente
- */
-
-/**
- * Gera lista de itens usando Groq diretamente
- */
-async function generateItemsWithGroqLocal(params: {
-  tipo_evento: string;
-  qtd_pessoas: number;
-  menu?: string;
-}): Promise<Partial<Item>[]> {
-
-  // MUDANÇA AQUI: Prompt com contexto cultural e regras de cálculo
-  const systemPrompt = `
-  ROLE:
-  Você é um organizador de eventos brasileiro experiente (Party Planner), especializado em calcular quantidades exatas de comida e bebida para evitar desperdícios ou falta.
-
-  TASK:
-  Crie uma lista de compras detalhada e culturalmente adequada para o evento abaixo.
-
-  CONTEXTO DO EVENTO:
-  - Tipo: "${params.tipo_evento}"
-  - Quantidade de pessoas: ${params.qtd_pessoas}
-  ${params.menu ? `- Menu/Prato Principal: "${params.menu}"` : ''}
-
-  DIRETRIZES DE INTELIGÊNCIA CULTURAL:
-  1. ADAPTAÇÃO AO TEMA (CRÍTICO):
-     - Se for "Churrasco": OBRIGATÓRIO incluir carnes variadas (Picanha, Linguiça, Frango), Pão de Alho, Farofa, Vinagrete, Carvão e Sal Grosso.
-     - Se for "Reveillon" ou "Natal": OBRIGATÓRIO incluir itens de Ceia (Lombo/Pernil, Lentilha, Arroz à grega, Frutas secas, Espumante).
-     - Se for "Aniversário": Inclua bolo decorado, docinhos (brigadeiro/beijinho) e salgadinhos.
-     - Se for "Jantar": Foque nos ingredientes do prato principal e acompanhamentos refinados.
-
-  2. CÁLCULO DE QUANTIDADES (HEURÍSTICA):
-     - Considere um evento de 4 a 5 horas.
-     - Comida (Refeição): Calcule aprox. 400g a 500g de carne/massa por pessoa.
-     - Comida (Coquetel): Calcule 12 a 15 salgados por pessoa.
-     - Bebida: Calcule com sobra (ex: 2 a 3 garrafas de 600ml de cerveja por pessoa se for churrasco).
-
-  3. RESTRIÇÕES E REGRAS:
-     - NÃO sugira "Bolo de aniversário" se o evento NÃO for um aniversário.
-     - NÃO encha a lista apenas de descartáveis. A prioridade é a COMIDA e BEBIDA.
-     - Use nomes de produtos comuns no Brasil (ex: "Alcatra" em vez de "Carne bovina", "Refrigerante 2L" em vez de "Bebida gasosa").
-     - "valor_estimado": Use preços médios de mercado em Reais (R$).
-
-  FORMATO DE SAÍDA (JSON array puro, sem markdown):
-  [
-    {
-      "nome_item": "Picanha (ou carne principal)",
-      "quantidade": 0,
-      "unidade": "kg",
-      "valor_estimado": 0,
-      "categoria": "comida", 
-      "prioridade": "A"
-    }
-  ]
-  (Categorias permitidas: "comida", "bebida", "descartaveis", "decoracao", "combustivel", "outros")
-  (Prioridades: "A" = Essencial, "B" = Importante, "C" = Opcional)
-
-  IMPORTANTE:
-  - Responda APENAS o JSON.
-  - Sem texto introdutório.
-  - Sem markdown (\`\`\`json).
-  `;
-
-  const userPrompt = `Gere a lista para: ${params.tipo_evento}, ${params.qtd_pessoas} convidados.`;
-
-  try {
-    // Mantive a temperature em 0.3 para manter consistência, mas com o novo prompt ele será mais criativo nos itens
-    const aiResponse = await callGroqAPI(systemPrompt, [{ role: 'user', content: userPrompt }], 0.3);
-
-    if (!aiResponse) {
-      console.warn('[GroqService] Groq nao retornou resposta, usando fallback');
-      return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
-    }
-
-    const { parseLlmItemsResponse } = await import('@/core/orchestrator/itemAdapter');
-    try {
-      const items = parseLlmItemsResponse(aiResponse);
-      console.info('[GroqService] Itens gerados pela Groq:', items.length);
-      return items;
-    } catch (adapterError) {
-      console.error('[GroqService] Erro no adapter, usando fallback:', adapterError);
-      return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
-    }
-  } catch (error) {
-    console.error('[GroqService] Erro ao gerar itens com Groq:', error);
-    return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
-  }
-}
-
-
-
-/*async function generateItemsWithGroqLocal(params: {
-  tipo_evento: string;
-  qtd_pessoas: number;
-  menu?: string;
-}): Promise<Partial<Item>[]> {
-  const systemPrompt = `Voce e um especialista em planejamento e organizacao de eventos sociais e corporativos.
-
-Sua funcao e montar uma lista estruturada de itens e quantidades necessarios para o evento descrito abaixo.
-
-EVENTO:
-- Tipo: "${params.tipo_evento}"
-- Quantidade de pessoas: ${params.qtd_pessoas}${params.menu ? `\n- Menu: "${params.menu}"` : ''}
-
-Regras de geracao:
-1. Pense de forma pratica e realista, considerando proporcoes adequadas a quantidade de pessoas.
-2. Priorize itens realmente necessarios para a boa execucao do evento.
-3. Inclua comidas, bebidas, descartaveis, combustiveis e decoracao apenas se forem adequados ao tipo de evento.
-4. Mantenha as quantidades coerentes com o publico informado (nao exagere nem reduza demais).
-5. Se o tipo de evento nao for totalmente claro, assuma um cenario generico e seguro.
-
-Formato de saida:
-Retorne APENAS um array JSON valido (sem markdown, texto adicional ou comentarios).
-Cada item deve seguir EXATAMENTE esta estrutura:
-[
-  {
-    "nome_item": string,
-    "quantidade": number,
-    "unidade": string,
-    "valor_estimado": number,
-    "categoria": "comida" | "bebida" | "descartaveis" | "decoracao" | "combustivel" | "outros",
-    "prioridade": "A" | "B" | "C"
-  }
-]
-
-Importante:
-- NAO use markdown.
-- NAO adicione texto explicativo antes ou depois do JSON.
-- O retorno deve ser apenas o JSON puro.`;
-
-  const userPrompt = `Evento: ${params.tipo_evento}, Pessoas: ${params.qtd_pessoas}`;
-
-  try {
-    const aiResponse = await callGroqAPI(systemPrompt, [{ role: 'user', content: userPrompt }], 0.3);
-
-    if (!aiResponse) {
-      console.warn('[GroqService] Groq nao retornou resposta, usando fallback');
-      return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
-    }
-
-    const { parseLlmItemsResponse } = await import('@/core/orchestrator/itemAdapter');
-    try {
-      const items = parseLlmItemsResponse(aiResponse);
-      console.info('[GroqService] Itens gerados pela Groq:', items.length);
-      return items;
-    } catch (adapterError) {
-      console.error('[GroqService] Erro no adapter, usando fallback:', adapterError);
-      return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
-    }
-  } catch (error) {
-    console.error('[GroqService] Erro ao gerar itens com Groq:', error);
-    return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
-  }
-}*/
-
-/**
- * Resultado da execucao de acao
- */
-interface ExecuteActionResult {
-  message: string;
-  eventoId?: string;
-}
-
-function resolveEventType(data: ActionData['data']): string | undefined {
-  const tipo = data.tipo_evento || data.categoria_evento || data.subtipo_evento || data.finalidade_evento;
-  return tipo ? String(tipo) : undefined;
-}
-
-function resolveEventoId(...candidates: Array<string | undefined>): string | undefined {
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    const text = String(candidate);
-    if (/^\d+$/.test(text)) return text;
-  }
-  return undefined;
-}
-
-function normalizePeopleCount(value: unknown): number | undefined {
-  if (value === null || value === undefined) return undefined;
-  const parsed = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
-  return Math.round(parsed);
-}
-
 function buildMissingEventDataMessage(tipo?: string, qtd?: number): string {
-  const missing: string[] = [];
-  if (!tipo) missing.push('o tipo de evento');
-  if (!qtd) missing.push('a quantidade de pessoas');
-  if (missing.length === 1) {
-    return 'Perfeito! So preciso de ' + missing[0] + ' para criar o evento.';
-  }
-  return 'Perfeito! So preciso de ' + missing.join(' e ') + ' para criar o evento.';
+  if (tipo && !qtd) return `Legal, ${tipo}! E para quantas pessoas seria?`;
+  if (!tipo && qtd) return `Entendido, para ${qtd} pessoas. E qual é o tipo do evento (ex: Churrasco, Jantar)?`;
+  return "Para começar, qual o tipo de evento e quantas pessoas?";
 }
 
 function formatDateForName(isoDate?: string): string | undefined {
@@ -522,237 +330,311 @@ function buildEventName(tipo?: string, dataIso?: string): string {
   return base;
 }
 
-/**
- * Executa uma acao detectada no JSON
- */
-async function executeAction(
-  actionData: ActionData,
-  userId: UUID,
-  context?: EventContext
-): Promise<ExecuteActionResult> {
+async function generateItemsWithGroqLocal(params: {
+  tipo_evento: string;
+  qtd_pessoas: number;
+  menu?: string;
+  finalidade_evento?: string;
+  excluir_alcool?: boolean;
+}): Promise<Partial<Item>[]> {
+  const perfilEvento = params.finalidade_evento
+    ? `${params.tipo_evento} de ${params.finalidade_evento}`
+    : params.tipo_evento;
+
+  const excluirAlcool = params.excluir_alcool !== false;
+
+  const systemPrompt = `
+  ROLE:
+  Você é um organizador de eventos brasileiro experiente (Party Planner), especializado em calcular quantidades exatas de comida e bebida para evitar desperdícios ou falta.
+
+  TASK:
+  Crie uma lista de compras detalhada e culturalmente adequada para o evento abaixo.
+
+  CONTEXTO DO EVENTO:
+  - Tipo/Perfil: "${perfilEvento}"
+  - Quantidade de pessoas: ${params.qtd_pessoas}
+  ${params.menu ? `- Menu/Prato Principal: "${params.menu}"` : ''}
+  ${params.finalidade_evento ? `- Ocasião especial: "${params.finalidade_evento}" (adapte para essa celebração no Brasil)` : ''}
+
+  DIRETRIZES DE INTELIGÊNCIA CULTURAL E COERÊNCIA (CRÍTICO):
+  1. ADAPTAÇÃO INTELIGENTE AO TEMA:
+     - Use seu conhecimento sobre a cultura brasileira para selecionar itens TÍPICOS e COERENTES com o evento.
+     - A lista deve "ter a cara" do evento. Evite sugestões genéricas ou sofisticadas demais se o evento for tradicional/rústico.
+     - Analise a "vibe" do evento: um "Churrasco na laje" é diferente de um "Jantar de Gala". Adapte os itens.
+
+  2. EXEMPLOS DE PADRÕES ESPERADOS (Use como referência de raciocínio):
+     - Exemplo "Festa Junina": Espera-se Paçoca, Quentão, Milho, Canjica, Cachorro-quente. (Evite itens de churrasco como Picanha ou Linguiça, a menos que explicitamente pedido Espetinho).
+     - Exemplo "Churrasco": Espera-se Picanha, Linguiça, Pão de Alho, Farofa.
+     - Exemplo "Natal/Ceia": Espera-se Peru/Chester, Rabanada, Frutas Secas.
+     -> APLIQUE ESSE MESMO NÍVEL DE COERÊNCIA PARA QUALQUER OUTRO TEMA SOLICITADO.
+     -> CASO O TEMA NÃO ESTEJA NOS EXEMPLOS (ex: "Aniversário Infantil", "Bodas", "Reunião", "Festa"): Use sua inteligência para sugerir itens clássicos e adequados a esse tipo específico de evento. NÃO use os exemplos acima se não fizerem sentido.
+
+  3. CÁLCULO DE QUANTIDADES (HEURÍSTICA):
+     - Considere um evento de 4 a 5 horas.
+     - Comida (Refeição): Calcule aprox. 400g a 500g de carne/massa por pessoa.
+     - Comida (Coquetel): Calcule 12 a 15 salgados por pessoa.
+     - Bebida: Calcule com sobra (ex: 2 a 3 garrafas de 600ml de cerveja por pessoa se for churrasco).
+
+  4. RESTRIÇÕES E REGRAS:
+     - NÃO sugira "Bolo de aniversário" se o evento NÃO for um aniversário.
+     - NÃO encha a lista apenas de descartáveis. A prioridade é a COMIDA e BEBIDA.
+     - Use nomes de produtos comuns no Brasil (ex: "Alcatra" em vez de "Carne bovina", "Refrigerante 2L" em vez de "Bebida gasosa").
+     - "valor_estimado": Use preços médios de mercado em Reais (R$).
+     ${excluirAlcool ? '- NÃO inclua bebidas alcoólicas (cerveja, vinho, etc.) na lista. Apenas refrigerantes, sucos e água.' : ''}
+
+  FORMATO DE SAÍDA (JSON array puro, sem markdown):
+  [
+    {
+      "nome_item": "Picanha (ou carne principal)",
+      "quantidade": 0,
+      "unidade": "kg",
+      "valor_estimado": 0,
+      "categoria": "comida", 
+      "prioridade": "A"
+    }
+  ]
+  (Categorias permitidas: "comida", "bebida", "descartaveis", "decoracao", "combustivel", "outros")
+  (Prioridades: "A" = Essencial, "B" = Importante, "C" = Opcional)
+
+  IMPORTANTE:
+  - Responda APENAS o JSON.
+  - Sem texto introdutório.
+  - Sem markdown (\`\`\`json).
+  `;
+
+  const userPrompt = `Gere a lista para o evento "${perfilEvento}" com ${params.qtd_pessoas} pessoas.
+Siga as diretrizes culturais. Se for um evento temático, respeite as tradições. Se for um evento comum (aniversário, reunião), sugira itens adequados ao público e ocasião.`;
+
+  try {
+    const aiResponse = await callGroqAPI(systemPrompt, [{ role: 'user', content: userPrompt }], 0.3);
+
+    if (!aiResponse) {
+      console.warn('[GroqService] Groq nao retornou resposta, usando fallback');
+      return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
+    }
+
+    const { parseLlmItemsResponse } = await import('@/core/orchestrator/itemAdapter');
+    try {
+      const items = parseLlmItemsResponse(aiResponse);
+      console.info('[GroqService] Itens gerados pela Groq:', items.length);
+      return items;
+    } catch (adapterError) {
+      console.error('[GroqService] Erro no adapter, usando fallback:', adapterError);
+      return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
+    }
+  } catch (error) {
+    console.error('[GroqService] Erro ao gerar itens com Groq:', error);
+    return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
+  }
+}
+
+async function executeAction(actionData: ActionData, userId: UUID, context?: any): Promise<any> {
   const { action, data } = actionData;
-  const collected = (context?.collectedData || {}) as Record<string, unknown>;
 
-  const merged: ActionData['data'] = {
-    ...collected,
-  } as ActionData['data'];
+  const merged = { ...(context?.collectedData || {}), ...data };
 
-  if (data) {
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        (merged as any)[key] = value;
-      }
-    });
+  let tipo = merged.tipo_evento;
+  let qtd = merged.qtd_pessoas;
+  let eventoIdCandidate = merged.evento_id || context?.evento?.id;
+
+  const { ContextManager } = await import('@/core/orchestrator/contextManager');
+  const contextManager = new ContextManager();
+
+  if (action === 'create_event') {
+    const currentStatus = context?.evento?.status;
+    const isAdvancedStatus = ['created', 'finalized'].includes(currentStatus || '');
+
+    if (isAdvancedStatus) {
+      console.log('[GroqService] Detectado início de NOVA thread de evento. Limpando contexto anterior.');
+      eventoIdCandidate = undefined;
+
+      await contextManager.clearUserContext(userId);
+
+      merged.finalidade_evento = data.finalidade_evento;
+      merged.categoria_evento = data.categoria_evento;
+      merged.subtipo_evento = data.subtipo_evento;
+      merged.menu = data.menu;
+
+      tipo = data.tipo_evento;
+      qtd = data.qtd_pessoas;
+    }
   }
 
-  console.log('[GroqService] executeAction', {
-    action,
-    merged,
-    contextEventoId: context?.evento?.id,
-  });
+  console.log('[GroqService] Dados Identificados:', { tipo, qtd, raw: data });
 
   switch (action) {
-    case 'create_event': {
-      const tipo = resolveEventType(merged);
-      const qtd = normalizePeopleCount(merged.qtd_pessoas);
+    case 'create_event':
+    case 'generate_items': {
+      if ((!tipo || !qtd) && action === 'generate_items') {
+        console.log('[GroqService] Falta dados para gerar itens. Pedindo mais detalhes...');
+      }
+
+      if (!merged.menu) {
+        const dataAny = data as any;
+        const menuCandidate = dataAny.sugestao_prato || dataAny.prato || dataAny.comida || dataAny.cardapio;
+        if (menuCandidate) {
+          merged.menu = menuCandidate;
+          console.log('[GroqService] Recuperado menu de chave alternativa:', menuCandidate);
+        }
+      }
+
       if (!tipo || !qtd) {
-        return { message: buildMissingEventDataMessage(tipo, qtd) };
-      }
-
-      const normalizedDate = merged.data_evento ? parseToIsoDate(String(merged.data_evento)) : undefined;
-      if (normalizedDate && !isValidFutureDate(normalizedDate)) {
-        return { message: 'Essa data ja passou. Pode me dizer uma data futura para o evento?' };
-      }
-
-      const tipoFinal = String(merged.categoria_evento || merged.subtipo_evento || merged.tipo_evento || tipo);
-      const categoriaFinal = merged.categoria_evento || (merged.subtipo_evento ? 'almoco' : undefined);
-      const nomeEvento = buildEventName(tipoFinal, normalizedDate || String(merged.data_evento || ''));
-
-      const newEvent = await upsertEvent({
-        usuario_id: userId,
-        nome_evento: nomeEvento,
-        tipo_evento: tipoFinal,
-        categoria_evento: categoriaFinal,
-        subtipo_evento: merged.subtipo_evento,
-        finalidade_evento: merged.finalidade_evento as string | undefined,
-        qtd_pessoas: Number(qtd),
-        menu: merged.menu as string | undefined,
-        data_evento: normalizedDate,
-        status: 'collecting_core',
-      });
-
-      if (tipoFinal && qtd) {
-        const itensGerados = await generateItemsWithGroqLocal({
-          tipo_evento: tipoFinal,
-          qtd_pessoas: Number(qtd),
-          menu: merged.menu as string | undefined,
-        });
-
-        const itensComIds = itensGerados.map(item => ({
-          ...item,
-          id: item.id || crypto.randomUUID(),
-          evento_id: newEvent.id,
-          nome_item: item.nome_item || '',
-          quantidade: item.quantidade || 0,
-          unidade: item.unidade || 'un',
-          valor_estimado: item.valor_estimado || 0,
-          categoria: item.categoria || 'geral',
-          prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
-        })) as Item[];
-
-        console.log('[GroqService] items_replace_for_event', {
-          eventoId: newEvent.id,
-          itemsCount: itensComIds.length,
-        });
-
-        await rpc.items_replace_for_event(String(newEvent.id), itensComIds);
-        await setEventStatus(newEvent.id, 'itens_pendentes_confirmacao');
-
         return {
-          message: `Perfeito! Criei o evento "${tipoFinal}" para ${qtd} pessoas e ja gerei a lista de itens. Quer dar uma olhada?`,
-          eventoId: newEvent.id,
+          message: buildMissingEventDataMessage(tipo, qtd ? Number(qtd) : undefined),
+          extractedData: merged
         };
       }
 
-      return {
-        message: `Otimo! Criei o evento "${tipoFinal}" para ${qtd} pessoas. Quer que eu gere a lista de itens agora?`,
-        eventoId: newEvent.id,
-      };
-    }
+      const holidayData = await rpc.get_holiday_date_by_name(tipo);
+      let dataFinal = merged.data_evento;
 
-    case 'generate_items': {
-      const eventoId = resolveEventoId(merged.evento_id as string | undefined, context?.evento?.id);
-      const tipo = resolveEventType(merged);
-      const qtd = normalizePeopleCount(merged.qtd_pessoas);
-      if (!tipo || !qtd) {
-        return { message: 'Preciso do tipo do evento e da quantidade de pessoas para gerar os itens.' };
+      if (holidayData && !dataFinal) {
+        dataFinal = holidayData.date;
       }
 
-      let eventoIdStr = eventoId;
-      if (!eventoIdStr) {
-        const normalizedDate = merged.data_evento ? parseToIsoDate(String(merged.data_evento)) : undefined;
-        if (normalizedDate && !isValidFutureDate(normalizedDate)) {
-          return { message: 'Essa data ja passou. Me diga uma data futura para eu continuar.' };
-        }
-        const tipoFinal = String(merged.categoria_evento || merged.subtipo_evento || merged.tipo_evento || tipo);
-        const categoriaFinal = merged.categoria_evento || (merged.subtipo_evento ? 'almoco' : undefined);
-        const nomeEvento = buildEventName(tipoFinal, normalizedDate || String(merged.data_evento || ''));
+      const GENERIC_TYPES = ['jantar', 'almoco', 'almoço', 'ceia', 'lanche', 'cafe da manha', 'brunch', 'refeição', 'refeicao'];
+      const isGeneric = GENERIC_TYPES.some(t => tipo?.toLowerCase().includes(t));
+      const hasMenu = !!merged.menu;
+      const hasDate = !!dataFinal;
 
-        const newEvent = await upsertEvent({
-          usuario_id: userId,
-          nome_evento: nomeEvento,
-          tipo_evento: tipoFinal,
-          categoria_evento: categoriaFinal,
-          subtipo_evento: merged.subtipo_evento,
-          finalidade_evento: merged.finalidade_evento as string | undefined,
-          qtd_pessoas: Number(qtd),
-          menu: merged.menu as string | undefined,
-          data_evento: normalizedDate,
-          status: 'collecting_core',
-        });
-        eventoIdStr = String(newEvent.id);
+      // Status inicial simplificado: sempre 'draft' durante a coleta
+      let initialStatus: EventStatus = 'draft';
+      let missingFieldMessage = '';
+
+      if (!hasDate && isGeneric && !hasMenu) {
+        // Logica de perguntas mantida, mas status no banco é DRAFT
+        missingFieldMessage = `Combinado, um ${tipo} para ${qtd} pessoas. \n\n**Para quando é o evento e o que você pensa em servir?**`;
+      } else if (!hasDate) {
+        missingFieldMessage = `Combinado, um ${tipo} para ${qtd} pessoas. \n\n**Para qual data devo agendar?**`;
+      } else if (isGeneric && !hasMenu) {
+        missingFieldMessage = `Combinado, um ${tipo} para ${qtd} pessoas no dia ${formatDateForName(dataFinal)}. \n\nPara eu montar a lista certa: **O que você pensa em servir?**`;
       }
 
-      const itensGerados = await generateItemsWithGroqLocal({
-        tipo_evento: String(tipo),
+      const eventPayload = {
+        usuario_id: userId,
+        nome_evento: tipo,
+        tipo_evento: tipo,
         qtd_pessoas: Number(qtd),
-        menu: merged.menu as string | undefined,
-      });
-
-      const itensComIds = itensGerados.map(item => ({
-        ...item,
-        id: item.id || crypto.randomUUID(),
-        evento_id: eventoIdStr,
-        nome_item: item.nome_item || '',
-        quantidade: item.quantidade || 0,
-        unidade: item.unidade || 'un',
-        valor_estimado: item.valor_estimado || 0,
-        categoria: item.categoria || 'geral',
-        prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
-      })) as Item[];
-
-      console.log('[GroqService] items_replace_for_event', {
-        eventoId: eventoIdStr,
-        itemsCount: itensComIds.length,
-      });
-
-      await rpc.items_replace_for_event(eventoIdStr, itensComIds);
-      await setEventStatus(eventoIdStr, 'itens_pendentes_confirmacao');
-
-      return {
-        message: 'Pronto! Gerei a lista de itens para seu evento. Quer conferir?',
-        eventoId: eventoIdStr,
+        data_evento: dataFinal,
+        status: initialStatus,
+        id: eventoIdCandidate
       };
+
+      try {
+        console.log('[GroqService] Tentando criar/atualizar evento:', {
+          payload: eventPayload,
+          initialStatus,
+          missingFieldMessage
+        });
+
+        const newEvent = await upsertEvent(eventPayload);
+
+        console.log('[GroqService] Evento criado/atualizado com sucesso:', {
+          eventId: newEvent.id,
+          tipo: newEvent.tipo_evento,
+          data: newEvent.data_evento
+        });
+
+        if (missingFieldMessage) {
+          return {
+            message: missingFieldMessage,
+            eventoId: newEvent.id,
+            extractedData: merged
+          };
+        }
+
+        if (action === 'generate_items' || (tipo && qtd && dataFinal)) {
+          console.log('[GroqService] Gerando itens...');
+          const itensGerados = await generateItemsWithGroqLocal({
+            tipo_evento: String(tipo),
+            qtd_pessoas: Number(qtd),
+            menu: merged.menu as string | undefined,
+            finalidade_evento: (merged.finalidade_evento || merged.subtipo_evento || merged.categoria_evento || merged.descricao) as string | undefined,
+          });
+
+          const itensComIds = itensGerados.map(item => ({
+            ...item,
+            id: item.id || crypto.randomUUID(),
+            evento_id: String(newEvent.id),
+            nome_item: item.nome_item || '',
+            quantidade: item.quantidade || 0,
+            unidade: item.unidade || 'un',
+            valor_estimado: item.valor_estimado || 0,
+            categoria: item.categoria || 'geral',
+            prioridade: (item.prioridade || 'B') as 'A' | 'B' | 'C',
+          })) as Item[];
+
+          await rpc.items_replace_for_event(String(newEvent.id), itensComIds);
+
+          // MUDANÇA DE STATUS: Itens gerados -> 'created'
+          await setEventStatus(String(newEvent.id), 'created');
+
+          return {
+            message: `Criei sua lista para o ${tipo} (${qtd} pessoas). Quer dar uma olhada?`,
+            eventoId: newEvent.id,
+            extractedData: merged
+          };
+        }
+
+        return {
+          message: `Evento "${tipo}" criado! Data sugerida: ${dataFinal || 'a definir'}. Posso gerar a lista de itens?`,
+          eventoId: newEvent.id,
+          extractedData: merged
+        };
+
+      } catch (error) {
+        console.error('[GroqService] Erro ao salvar evento:', error);
+        return {
+          message: "Tive um pequeno problema técnico ao salvar. Podemos tentar de novo?",
+          extractedData: { ...merged, evento_id: undefined }
+        };
+      }
     }
 
     case 'confirm_event': {
-      const eventoId = resolveEventoId(merged.evento_id as string | undefined, context?.evento?.id);
-      if (!eventoId) {
-        return { message: 'Nao encontrei o evento para confirmar.' };
-      }
-
-      await setEventStatus(eventoId, 'finalizado');
+      if (!eventoIdCandidate) return { message: 'Nao encontrei o evento para confirmar.' };
+      await setEventStatus(eventoIdCandidate, 'finalized'); // NEW STATUS
       return {
         message: 'Perfeito! Seu evento foi confirmado e finalizado.',
-        eventoId,
+        eventoId: eventoIdCandidate,
       };
     }
 
     case 'update_event': {
-      const eventoId = resolveEventoId(merged.evento_id as string | undefined, context?.evento?.id);
-      if (!eventoId) {
-        return { message: 'Nao encontrei o evento para atualizar.' };
-      }
+      if (!eventoIdCandidate) return { message: 'Não encontrei o evento para atualizar.' };
 
-      const updateData: Partial<Event> = {
-        usuario_id: userId,
-      };
-
-      if (merged.tipo_evento) updateData.tipo_evento = String(merged.tipo_evento);
-      if (merged.categoria_evento) (updateData as any).categoria_evento = merged.categoria_evento;
-      if (merged.subtipo_evento) (updateData as any).subtipo_evento = merged.subtipo_evento;
+      const updateData: Partial<Event> = { usuario_id: userId };
+      if (merged.tipo_evento) updateData.tipo_evento = merged.tipo_evento;
       if (merged.qtd_pessoas) updateData.qtd_pessoas = Number(merged.qtd_pessoas);
-      if (merged.menu) (updateData as any).menu = merged.menu;
-      if (merged.finalidade_evento) (updateData as any).finalidade_evento = merged.finalidade_evento;
-      if (merged.data_evento) {
-        const rawDate = String(merged.data_evento);
-        const parsedDate = parseToIsoDate(rawDate);
-        if (parsedDate && !isValidFutureDate(parsedDate)) {
-          return { message: 'Essa data ja passou. Pode escolher uma data futura?' };
-        }
-        updateData.data_evento = parsedDate || rawDate;
-      }
+      if (merged.data_evento) updateData.data_evento = merged.data_evento;
 
-      await upsertEvent({
-        ...updateData,
-        id: eventoId,
-      } as any);
+      await upsertEvent({ ...updateData, id: eventoIdCandidate } as any);
+
+      // Feedback mais natural
+      const parts = [];
+      if (merged.data_evento) parts.push(`Data alterada para ${formatDateForName(merged.data_evento as string)}`);
+      if (merged.qtd_pessoas) parts.push(`Quantidade ajustada para ${merged.qtd_pessoas} pessoas`);
 
       return {
-        message: 'Evento atualizado com sucesso!',
-        eventoId,
+        message: parts.length > 0 ? `Pronto! ${parts.join('. ')}.` : 'Evento atualizado com sucesso!',
+        eventoId: eventoIdCandidate
       };
     }
 
     default:
-      return { message: 'Acao nao reconhecida.' };
+      return { message: 'Ação não reconhecida.' };
   }
 }
 
-/**
- * Resultado do processamento de mensagem
- */
 export interface ProcessMessageResult {
   response: string;
   actionExecuted?: {
     type: ActionData['action'];
     eventoId?: string;
+    extractedData?: Record<string, any>;
   };
 }
 
-/**
- * Processa uma mensagem do usuario usando Groq
- */
 export async function processMessage(
   userMessage: string,
   history: LlmMessage[],
@@ -764,7 +646,6 @@ export async function processMessage(
     const conversationMessages = history.filter(msg => msg.role !== 'system');
     conversationMessages.push({ role: 'user', content: userMessage });
 
-    // Planner-first (create/generate/update/confirm)
     let plannerResult: ReturnType<typeof parsePlannerEnvelope> | null = null;
     try {
       const plannerPrompt = buildPlannerPrompt(context);
@@ -783,19 +664,16 @@ export async function processMessage(
             actionExecuted: {
               type: plannedAction.action,
               eventoId: actionResult.eventoId,
+              extractedData: actionResult.extractedData,
             },
           };
         }
-
-        // small_talk/unknown ficam no fluxo legado para manter UX atual
       }
     } catch {
       plannerResult = { ok: false as const, error: 'planner falhou' };
     }
 
-    // Fallback: fluxo antigo quando o planner falhar ou nao cobrir o caso.
     const aiResponse = await callGroqAPI(systemPrompt, conversationMessages);
-
     const action = detectActionJSON(aiResponse);
     if (action) {
       const actionResult = await executeAction(action, userId, context);
@@ -804,6 +682,7 @@ export async function processMessage(
         actionExecuted: {
           type: action.action,
           eventoId: actionResult.eventoId,
+          extractedData: actionResult.extractedData,
         },
       };
     }
@@ -821,9 +700,6 @@ export async function processMessage(
   }
 }
 
-/**
- * Gera lista de itens usando Groq diretamente (versao exportada)
- */
 export async function generateItemsWithGroq(params: {
   tipo_evento: string;
   qtd_pessoas: number;
@@ -832,9 +708,6 @@ export async function generateItemsWithGroq(params: {
   return generateItemsWithGroqLocal(params);
 }
 
-/**
- * Servico Groq exportado
- */
 export const GroqService = {
   processMessage,
   generateItemsWithGroq,

@@ -4,7 +4,7 @@ import {
   ConversationMessagesRepository,
   ConversationMessage,
 } from '@/db/repositories/conversationMessages';
-import {
+import {   
   ConversationContextsRepository,
   ConversationContext,
 } from '@/db/repositories/conversationContexts';
@@ -198,5 +198,24 @@ export class ContextManager {
   async resetContextKeepHistory(userId: UUID): Promise<void> {
     // console.log('[ContextManager] Resetando contexto (mantendo histórico)');
     await this.contextsRepo.createInitial(userId);
+  }
+
+  /**
+   * Limpa apenas o evento_id do contexto, mantém outros dados coletados
+   */
+  async clearEventId(userId: UUID): Promise<void> {
+    const context = await this.contextsRepo.getByUserId(userId);
+    if (context?.evento_id) {
+      await this.contextsRepo.upsert(
+        userId,
+        context.state,
+        context.collected_data,
+        context.missing_slots,
+        context.confidence_level,
+        context.last_intent,
+        undefined, // evento_id = undefined
+        context.summary
+      );
+    }
   }
 }

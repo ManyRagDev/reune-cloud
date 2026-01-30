@@ -1,16 +1,13 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Send, Minus, X } from 'lucide-react';
+import { Send, Minus, RotateCcw, Sparkles, Calendar } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import aiChatIcon from '@/assets/ai-chat-icon.png';
 import { ContextManager } from '@/core/orchestrator/contextManager';
-// 🔥 NOVO: Usando orquestrador simplificado com Groq
 import { simpleOrchestrate } from '@/core/orchestrator/simpleOrchestrator';
-// 🔄 Para voltar ao orquestrador antigo, descomente a linha abaixo e comente a linha acima:
-// import { orchestrate } from '@/core/orchestrator/chatOrchestrator';
 import { UUID } from '@/types/domain';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -25,7 +22,15 @@ type ChatMessage = {
     valor_estimado: number;
     categoria: string;
   }>;
+  eventSelect?: Array<{
+    id: number;
+    title: string;
+    date: string;
+    status: string;
+  }>;
 };
+
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 
 export default function ChatWidget() {
   const { user, loading } = useAuth();
@@ -35,10 +40,11 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [eventoId, setEventoId] = useState<string | undefined>(undefined);
+  const [eventoId, setEventoId] = useState<number | undefined>(undefined);
   const [hasGreeted, setHasGreeted] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [wasMinimized, setWasMinimized] = useState(false); // ðŸ”¥ NOVO: distinguir minimizar vs fechar
+  const [wasMinimized, setWasMinimized] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(true);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -46,107 +52,177 @@ export default function ChatWidget() {
 
   const contextManager = useMemo(() => new ContextManager(), []);
 
-  // 🔥 NOVA FUNÇÃO: Reset completo do chat
+  const handleCreateNewEvent = async () => {
+    if (!user?.id) return;
+
+    await contextManager.clearUserContext(user.id);
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    setEventoId(undefined);
+    setMessages([]);
+    setHasGreeted(false);
+    setWasMinimized(false);
+    hasLoadedHistory.current = false;
+    setShowOnboarding(false);
+
+    setMessages([{
+      role: 'assistant',
+      content: 'Olá! Vou te ajudar a criar um novo evento. Me conte o que você está planejando (tipo de festa, quantidade de pessoas, data, etc.)'
+    }]);
+    setHasGreeted(true);
+  };
+
+  const formatDateDisplay = (dateString?: string): string => {
+    if (!dateString) return 'Data não definida';
+    try {
+      const date = new Date(dateString + 'T00:00:00');
+      return date.toLocaleDateString('pt-BR');
+    } catch {
+      return dateString;
+    }
+  };
+
+  const handleListEvents = async () => {
+    console.log('[ChatWidget] Listar eventos clicado');
+
+    try {
+      const result = await simpleOrchestrate('', user.id as UUID, undefined, 'list_events');
+
+      if (result.success && result.events && result.events.length > 0) {
+        const eventMessages: ChatMessage[] = [{
+          role: 'assistant',
+          content: `Você tem ${result.events.length} eventos em aberto. Qual deles você gostaria de editar?`,
+          eventSelect: result.events.map((event: any) => ({
+            id: Number(event.id),
+            title: event.title,
+            date: event.event_date,
+            status: event.status
+          }))
+        }];
+
+        setMessages(eventMessages);
+        setShowOnboarding(false);
+
+        toast({
+          title: 'Eventos carregados',
+          description: `Selecione um evento para continuar.`,
+        });
+      } else if (result.success && (!result.events || result.events.length === 0)) {
+        setMessages([{
+          role: 'assistant',
+          content: 'Você não tem eventos pendentes para editar no momento. Que tal criar um novo?',
+          suggestedReplies: ['Criar novo evento']
+        }]);
+        setShowOnboarding(false);
+
+        toast({
+          title: 'Nenhum evento',
+          description: 'Você não tem eventos pendentes.',
+        });
+      }
+    } catch (error) {
+      console.error('[ChatWidget] Erro ao listar eventos:', error);
+      toast({
+        title: 'Erro ao carregar eventos',
+        description: 'Não foi possível carregar seus eventos.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleEditEvent = async (event: any) => {
+    if (!user?.id) return;
+
+    console.log('[ChatWidget] Editar evento:', event);
+
+    setEventoId(event.id);
+    setShowOnboarding(false);
+
+    setMessages([{
+      role: 'assistant',
+      content: `Vou ajudar você a editar o evento "${event.title}". O que você gostaria de modificar?`
+    }]);
+    setHasGreeted(true);
+
+    await contextManager.updateContext(
+      user.id as UUID,
+      'draft',
+      {},
+      [],
+      0.5,
+      undefined,
+      event.id,
+      undefined
+    );
+  };
+
   const resetEverything = async () => {
     if (!user?.id) return;
 
-    // console.log('[ChatWidget] ðŸ§¹ RESET EVERYTHING - Starting complete reset...');
-
     try {
-      // Limpar contexto no backend
       await contextManager.clearUserContext(user.id);
-      // console.log('[ChatWidget] ✅ Backend context reset');
+      localStorage.removeItem(`reune_last_chat_${String(user.id)}`);
 
-      // Limpar estado local
       setEventoId(undefined);
-      setMessages([{
-        role: 'assistant',
-        content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
-      }]);
-      setHasGreeted(true);
+      setMessages([]);
+      setHasGreeted(false);
+      setShowOnboarding(true);
       setWasMinimized(false);
       hasLoadedHistory.current = false;
-
-      // console.log('[ChatWidget] âœ… Local state reset completed');
     } catch (error) {
-      // console.error('[ChatWidget] âŒ Error during reset:', error);
-      // Mesmo com erro, garantir estado limpo localmente
+      console.error('[ChatWidget] Error during reset:', error);
       setEventoId(undefined);
-      setMessages([{
-        role: 'assistant',
-        content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
-      }]);
-      setHasGreeted(true);
+      setMessages([]);
+      setHasGreeted(false);
+      setShowOnboarding(true);
       setWasMinimized(false);
       hasLoadedHistory.current = false;
     }
   };
 
-  // 🔥 MODIFICADO: Load history com validação de estado idle
   useEffect(() => {
     async function loadHistoryAndContext() {
       if (!open || !user?.id || hasLoadedHistory.current) return;
 
-      // console.log('[ChatWidget] Opening chat, loading history...');
       setIsLoadingHistory(true);
       hasLoadedHistory.current = true;
 
       try {
         const { history, context } = await contextManager.loadUserContext(user.id);
-        // console.log('[ChatWidget] Context loaded:', {
-        //   state: context.state,
-        //   historyLength: context.historyLength,
-        //   evento_id: context.evento_id,
-        //   wasMinimized
-        // });
 
-        // 🔥 PATCH 1: Detectar se deve começar do zero
+        const lastChatTime = localStorage.getItem(`reune_last_chat_${String(user.id)}`);
+        const isTimeout = lastChatTime ? (Date.now() - Number(lastChatTime) > SESSION_TIMEOUT_MS) : false;
+
+        const isFinishedEvent = ['finalized', 'cancelled'].includes(context.state || '');
+
         const shouldReset =
-          context.state === 'idle' &&
-          context.historyLength === 0 &&
-          !wasMinimized;
+          (context.state === 'idle' && context.historyLength === 0 && !wasMinimized) ||
+          isTimeout ||
+          isFinishedEvent;
 
         if (shouldReset) {
-          // console.log('[ChatWidget] 🎯 RESET CONDITION MET - Starting fresh conversation');
           await resetEverything();
           setIsLoadingHistory(false);
           return;
         }
 
-        // 🔥 PATCH 2: Só restaurar eventId se houver histórico OU estava minimizado
         if (context.evento_id && (context.historyLength > 0 || wasMinimized)) {
-          // console.log('[ChatWidget] ♻️ Restoring event ID:', context.evento_id);
-          setEventoId(String(context.evento_id));
-        } else if (context.evento_id) {
-          // console.log('[ChatWidget] ⚠️ Ignoring stale event ID (no history, not minimized)');
+          setEventoId(Number(context.evento_id));
         }
 
-        // Restaurar histórico se existir
         if (history && history.length > 0) {
-          // console.log('[ChatWidget] ♻️ Restoring history:', history.length, 'messages');
-          const formattedMessages: ChatMessage[] = history.map(msg => ({
+          const formattedMessages = history.map(msg => ({
             role: msg.role as 'user' | 'assistant',
             content: msg.content,
           }));
           setMessages(formattedMessages);
-          // console.log('[ChatWidget] Restored messages content:', formattedMessages);
+          setShowOnboarding(false);
         } else if (!hasGreeted) {
-          // console.log('[ChatWidget] No history, showing greeting');
-          setMessages([{
-            role: 'assistant',
-            content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
-          }]);
-          setHasGreeted(true);
+          setShowOnboarding(true);
         }
       } catch (err) {
-        // console.error('[ChatWidget] Error loading context:', err);
-        if (!hasGreeted) {
-          setMessages([{
-            role: 'assistant',
-            content: 'Olá! Sou o UNE.AI e vou ajudar a organizar seus eventos. Diga o tipo de evento e quantas pessoas.'
-          }]);
-          setHasGreeted(true);
-        }
+        console.error('[ChatWidget] Error loading context:', err);
+        setShowOnboarding(true);
       } finally {
         setIsLoadingHistory(false);
       }
@@ -155,7 +231,6 @@ export default function ChatWidget() {
     loadHistoryAndContext();
   }, [open, user?.id, contextManager, hasGreeted, wasMinimized]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (endRef.current) {
       endRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -165,51 +240,28 @@ export default function ChatWidget() {
   async function sendMessage(text: string) {
     if (!user?.id || !text.trim() || isLoading) return;
 
-    console.log('[ChatWidget] sendMessage', {
-      userId: user.id,
-      eventoId,
-      text,
-    });
-
-    // console.log('[ChatWidget] Sending message:', text);
     setIsLoading(true);
     setIsTyping(true);
 
-    // Optimistic update
     setMessages(prev => [...prev, { role: 'user', content: text }]);
-    // console.log('[ChatWidget] User message added to state:', { role: 'user', content: text });
     setInput('');
 
+    localStorage.setItem(`reune_last_chat_${String(user.id)}`, Date.now().toString());
+
     try {
-      // console.log('[ChatWidget] Calling orchestrator...');
-      // 🔥 NOVO: Usando orquestrador simplificado
       const response = await simpleOrchestrate(
         text,
         user.id as UUID,
-        eventoId as UUID | undefined
+        eventoId ? String(eventoId) : undefined
       );
-      console.log('[ChatWidget] orchestrator response', {
-        eventoId: response.evento_id,
-        estado: response.estado,
-        closeChat: response.closeChat,
-        showItems: response.showItems,
-        suggestedReplies: response.suggestedReplies,
-      });
-      // console.log('[ChatWidget] Orchestrator response:', response);
 
-      // Update event ID if changed
       if (response.evento_id) {
-        const newId = String(response.evento_id);
-        if (newId !== eventoId) {
-          // console.log('[ChatWidget] Updating event ID to:', newId);
-          setEventoId(newId);
-        }
+        const newId = Number(response.evento_id);
+        setEventoId(newId);
       }
 
-      // Extract items if available
-      let items: ChatMessage['items'] = undefined;
+      let items = undefined;
       if (response.showItems && response.snapshot?.itens) {
-        // console.log('[ChatWidget] Showing items from snapshot');
         items = response.snapshot.itens.map((item: any) => ({
           nome_item: item.nome_item,
           quantidade: item.quantidade,
@@ -229,19 +281,15 @@ export default function ChatWidget() {
       setIsTyping(false);
       setMessages(prev => [...prev, assistantMessage]);
 
-      // 🔥 PATCH 3: Integração com closeChat do backend
       if (response.closeChat) {
-        // console.log('[ChatWidget] 🎯 Backend requested chat close');
         setTimeout(async () => {
-          await handleClose();
+          await resetEverything();
           toast({
-            title: response.toast || "Evento criado com sucesso!",
-            description: "Atualizando dashboard...",
+            title: response.toast || 'Evento criado com sucesso!',
+            description: 'Atualizando dashboard...',
           });
 
-          // ðŸ”¥ Auto-refresh para atualizar dashboard
           setTimeout(() => {
-            // console.log('[ChatWidget] 🔄 Recarregando página para atualizar dashboard');
             window.location.reload();
           }, 1000);
         }, 1500);
@@ -269,41 +317,23 @@ export default function ChatWidget() {
   }
 
   function handleSuggestedReply(text: string) {
-    console.log('[ChatWidget] suggested reply clicked', { text });
     sendMessage(text);
   }
 
-  // 🔥 MODIFICADO: handleClose agora usa resetEverything
-  const handleClose = async () => {
-    if (!user?.id) return;
-    // console.log('[ChatWidget] 🚪 CLOSING CHAT - Triggering full reset...');
-
-    // Fechar o widget visualmente
-    setOpen(false);
-    setWasMinimized(false); // 🔥 Marcar como fechado (não minimizado)
-
-    // Reset completo
-    await resetEverything();
-  };
-
-  // 🔥 NOVO: handleMinimize - apenas fecha visualmente, mantém contexto
   const handleMinimize = () => {
-    // console.log('[ChatWidget] 📦 MINIMIZING CHAT - Keeping context...');
     setOpen(false);
-    setWasMinimized(true); // 🔥 Marcar como minimizado
+    setWasMinimized(true);
   };
 
   if (!user && !loading) return null;
 
   return (
     <>
-      {/* Floating Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           variant="ghost"
           size="lg"
           onClick={() => {
-            // console.log('[ChatWidget] 🔓 Opening chat, wasMinimized:', wasMinimized);
             setOpen(true);
           }}
           aria-label="Abrir chat"
@@ -314,7 +344,7 @@ export default function ChatWidget() {
       </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-[400px] flex flex-col border-l sm:max-w-sm p-0 gap-0">
+        <SheetContent side="right" className="w-[400px] flex flex-col border-l sm:max-w-sm p-0 gap-0" hideCloseButton={true}>
           <SheetHeader className="p-4 border-b">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
@@ -334,11 +364,13 @@ export default function ChatWidget() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
-                  onClick={handleClose}
-                  title="Fechar e Limpar"
+                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={async () => {
+                    await resetEverything();
+                  }}
+                  title="Voltar ao menu inicial"
                 >
-                  <X className="w-4 h-4" />
+                  <RotateCcw className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -349,7 +381,50 @@ export default function ChatWidget() {
 
           <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
             <div className="space-y-4 pb-4">
-              {messages.map((msg, index) => (
+              {showOnboarding && (
+                <div className="space-y-4">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-lg font-semibold">O que você gostaria de fazer hoje?</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Escolha uma opção abaixo para começar
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={handleCreateNewEvent}
+                    className="w-full h-auto py-4 gap-3 justify-start"
+                    variant="outline"
+                  >
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold">Criar Novo Evento</div>
+                      <div className="text-xs text-muted-foreground">
+                        Começar do zero com um novo evento
+                      </div>
+                    </div>
+                  </Button>
+
+                  <Button
+                    onClick={handleListEvents}
+                    className="w-full h-auto py-4 gap-3 justify-start"
+                    variant="outline"
+                  >
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <Calendar className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold">Editar Eventos</div>
+                      <div className="text-xs text-muted-foreground">
+                        Ver seus eventos em aberto para editar
+                      </div>
+                    </div>
+                  </Button>
+                </div>
+              )}
+
+              {!showOnboarding && messages.map((msg, index) => (
                 <div
                   key={index}
                   className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
@@ -385,6 +460,27 @@ export default function ChatWidget() {
                         </div>
                       </div>
                     )}
+
+                    {msg.eventSelect && msg.eventSelect.length > 0 && (
+                      <div className="mt-3 grid gap-2">
+                        {msg.eventSelect.map((event) => (
+                          <Button
+                            key={event.id}
+                            variant="outline"
+                            className="justify-between h-auto py-3 px-4 bg-background/50 hover:bg-background border-white/10"
+                            onClick={() => handleEditEvent(event)}
+                          >
+                            <div className="flex flex-col items-start gap-0.5">
+                              <span className="font-semibold">{event.title}</span>
+                              <span className="text-xs opacity-70">{event.date}</span>
+                            </div>
+                            <div className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                              Editar
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {msg.suggestedReplies && msg.suggestedReplies.length > 0 && (
@@ -405,7 +501,7 @@ export default function ChatWidget() {
                 </div>
               ))}
 
-              {isTyping && (
+              {isTyping && !showOnboarding && (
                 <div className="flex items-center gap-1 ml-2">
                   <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                   <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -428,9 +524,9 @@ export default function ChatWidget() {
                     sendMessage(input);
                   }
                 }}
-                disabled={isLoading}
+                disabled={isLoading || showOnboarding}
               />
-              <Button onClick={() => sendMessage(input)} disabled={isLoading || !input.trim()}>
+              <Button onClick={() => sendMessage(input)} disabled={isLoading || !input.trim() || showOnboarding}>
                 <Send size={18} />
               </Button>
             </div>
@@ -440,7 +536,3 @@ export default function ChatWidget() {
     </>
   );
 }
-
-
-
-

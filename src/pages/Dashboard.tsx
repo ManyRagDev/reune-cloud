@@ -142,8 +142,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
       const { data: ownEvents, error: ownError } = await supabase
         .from('table_reune')
         .select('*')
-        .eq('user_id', userId)
-        .order('event_date', { ascending: true });
+        .eq('user_id', userId);
 
       if (ownError) throw ownError;
 
@@ -260,7 +259,12 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
   }, [userId]);
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+    if (!dateStr) return '';
+    // Fix timezone issue by parsing components manually
+    // Treating YYYY-MM-DD as local date instead of UTC midnight
+    const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
     return date.toLocaleDateString('pt-BR', {
       day: 'numeric',
       month: 'short'

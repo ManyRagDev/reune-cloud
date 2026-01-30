@@ -511,6 +511,33 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     }
   };
 
+  const handleStatusChange = async (newStatus: string) => {
+    if (!event) return;
+    try {
+      const { error } = await supabase
+        .from('table_reune')
+        .update({ status: newStatus })
+        .eq('id', Number(eventId));
+
+      if (error) throw error;
+
+      toast({
+        title: "Status atualizado",
+        description: `O evento foi marcado como ${newStatus === 'finalized' ? 'finalizado' : newStatus === 'cancelled' ? 'cancelado' : newStatus}.`,
+        variant: newStatus === 'finalized' ? 'default' : newStatus === 'cancelled' ? 'destructive' : 'default',
+      });
+
+      window.location.reload();
+    } catch (err: any) {
+      console.error("Erro ao atualizar status:", err);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Função para verificar se pode confirmar presença
   const canConfirmPresence = () => {
     return (
@@ -1087,11 +1114,35 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
               <h1 className="text-xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
                 {event.title}
               </h1>
-              {isOrganizer && (
-                <Badge className="mt-1 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400">
-                  👑 Organizador
-                </Badge>
-              )}
+              <div className="flex items-center gap-2 mt-1">
+                {isOrganizer && (
+                  <Badge className="bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400">
+                    👑 Organizador
+                  </Badge>
+                )}
+                {canEdit ? (
+                  <div className="inline-block" onClick={(e) => e.stopPropagation()}>
+                    <Select
+                      defaultValue={event.status || 'draft'}
+                      onValueChange={handleStatusChange}
+                    >
+                      <SelectTrigger className="h-7 w-[130px] text-xs bg-background/50 backdrop-blur-sm border-border/50">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">📝 Rascunho</SelectItem>
+                        <SelectItem value="created">✨ Criado</SelectItem>
+                        <SelectItem value="finalized">✅ Finalizado</SelectItem>
+                        <SelectItem value="cancelled">🚫 Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <Badge variant="outline" className="text-xs uppercase">
+                    {event.status === 'finalized' ? 'Finalizado' : event.status === 'cancelled' ? 'Cancelado' : event.status}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </div>

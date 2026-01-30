@@ -2,13 +2,7 @@
 
 export type UUID = string;
 
-export type EventStatus =
-  | 'collecting_core'
-  | 'itens_pendentes_confirmacao'
-  | 'distrib_pendente_confirmacao'
-  | 'finalizado'
-  | 'aguardando_data'
-  | 'aguardando_decisao_data';
+export type EventStatus = 'draft' | 'created' | 'finalized' | 'cancelled';
 
 export interface Event {
   id: UUID;
@@ -114,4 +108,31 @@ export interface EventSnapshot {
   participantes: Participant[];
   distribuicao: DistributionRow[];
   mensagem?: string;
+}
+
+export interface RecentEvent {
+  id: number;
+  title: string;
+  tipo_evento: string;
+  event_date: string; // Formatado como 'dd/mm'
+  status: string;
+  qtd_pessoas: number;
+}
+
+export interface ListEventsPayload {
+  success: boolean;
+  events: RecentEvent[];
+}
+
+export interface ChatUiPayload {
+  estado: EventStatus;
+  evento_id: string | null;
+  mensagem: string;
+  snapshot?: any; // EventSnapshot is used but to avoid circular deps or complexity just keep it flexible or use EventSnapshot if possible
+  showItems: boolean;
+  suggestedReplies?: string[];
+  closeChat?: boolean;
+  toast?: string;
+  success?: boolean; // Adicionado para listagem de eventos
+  events?: RecentEvent[]; // Adicionado para listagem de eventos
 }
