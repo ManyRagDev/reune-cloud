@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Novo Rolê - Pop Brutalista</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&amp;family=Space+Mono:wght@400;700&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#CCFF00", // Acid Lime
+                        "secondary": "#FF00FF", // Electric Magenta
+                        "background-light": "#F2F0E9", // Off-white Newsprint
+                        "surface": "#FFFFFF",
+                        "alert": "#FF4800",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["Space Mono", "monospace"],
+                        "marker": ["Permanent Marker", "cursive"],
+                    },
+                    boxShadow: {
+                        "hard": "4px 4px 0px 0px #000000",
+                        "hard-sm": "2px 2px 0px 0px #000000",
+                    },
+                    borderWidth: {
+                        "3": "3px",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Styles for specific component behaviors */
+        .brutalist-input:focus {
+            background-color: #CCFF00; /* Primary color on focus */
+            outline: none;
+        }
+        
+        /* Hide scrollbar for horizontal scroll */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .squiggly-underline {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 4' fill='none' stroke='%23000000' stroke-width='2'%3E%3Cpath d='M0 3.5c5 0 5-3 10-3s5 3 10 3 5-3 10-3 5 3 10 3' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+            background-repeat: repeat-x;
+            background-size: 20px 10px;
+            background-position: 0 100%;
+            padding-bottom: 8px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light min-h-screen font-display text-black flex items-center justify-center p-0 md:p-4 overflow-x-hidden">
+<!-- Modal Container -->
+<div class="relative w-full max-w-md bg-background-light min-h-screen md:min-h-0 md:h-auto border-3 border-black md:shadow-hard overflow-hidden flex flex-col">
+<!-- Header -->
+<div class="flex items-center justify-between p-4 border-b-3 border-black bg-surface sticky top-0 z-10">
+<button class="flex items-center justify-center w-10 h-10 border-3 border-black hover:bg-primary transition-colors shadow-hard-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none bg-white">
+<span class="material-symbols-outlined font-bold text-2xl">close</span>
+</button>
+<h2 class="-rotate-1 text-2xl font-bold tracking-tight uppercase squiggly-underline">NOVO ROLÊ</h2>
+<div class="w-10"></div> <!-- Spacer for visual balance -->
+</div>
+<!-- Main Form Content -->
+<div class="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
+<!-- SECTION: WHAT -->
+<div class="space-y-2">
+<label class="font-mono text-sm font-bold uppercase tracking-wider block pl-1">O QUE VAI ROLAR?</label>
+<div class="relative group">
+<textarea class="brutalist-input w-full bg-white border-3 border-black p-4 text-3xl font-bold uppercase placeholder:text-black/30 resize-none shadow-hard focus:shadow-none transition-all focus:translate-x-[4px] focus:translate-y-[4px] h-32 leading-tight rounded-none" placeholder="EX: CHURRAS DA LAJE"></textarea>
+</div>
+</div>
+<!-- SECTION: WHEN -->
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="font-mono text-sm font-bold uppercase tracking-wider block pl-1">QUANDO?</label>
+<input class="brutalist-input w-full bg-white border-3 border-black p-3 h-14 font-mono text-sm font-bold uppercase shadow-hard focus:shadow-none transition-all focus:translate-x-[4px] focus:translate-y-[4px] rounded-none" type="date"/>
+</div>
+<div class="space-y-2">
+<label class="font-mono text-sm font-bold uppercase tracking-wider block pl-1">QUE HORAS?</label>
+<input class="brutalist-input w-full bg-white border-3 border-black p-3 h-14 font-mono text-sm font-bold uppercase shadow-hard focus:shadow-none transition-all focus:translate-x-[4px] focus:translate-y-[4px] rounded-none" type="time"/>
+</div>
+</div>
+<!-- SECTION: WHERE -->
+<div class="space-y-2">
+<label class="font-mono text-sm font-bold uppercase tracking-wider block pl-1">ONDE?</label>
+<div class="relative">
+<input class="brutalist-input w-full bg-white border-3 border-black p-4 pr-12 text-lg font-bold uppercase shadow-hard focus:shadow-none transition-all focus:translate-x-[4px] focus:translate-y-[4px] rounded-none" placeholder="RUA DOS BOBOS, 0" type="text"/>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-black pointer-events-none text-2xl">location_on</span>
+</div>
+<!-- Map Preview (Static Image) -->
+<div class="w-full h-24 border-3 border-black mt-3 overflow-hidden grayscale hover:grayscale-0 transition-all bg-gray-200 relative">
+<img alt="Map location preview" class="w-full h-full object-cover opacity-60 hover:opacity-100" data-alt="Abstract map texture view of a city street" data-location="Sao Paulo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMktdPsJJg-G7xYRztsMdiR2AcEyA5U412aP2Xh9MjArzEh5AZFup2PnH1ZM1FnA-2oAvxNgcXU1TSlgPD9e5-yZ2kbxvE--H6hc6pThmX2xL07YhQ7OUt9VaXejLrDIzLClW08P7AQBqFzdG0cBcNJafyub0lrkIZMjn-E5j3BWMoegQ2V3Jh0R-O_LZptKn5XW1wSEeInZjkibMC58w2u3-p8T_UtsfspeK2jXpcklyrTgzb1_vFGLz9dkGr8h-m-wf_L7e6c-U"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="bg-primary px-2 py-1 border-2 border-black font-mono text-xs font-bold -rotate-2">VER NO MAPA</span>
+</div>
+</div>
+</div>
+<!-- SECTION: VIBE (Sticker Selector) -->
+<div class="space-y-3 pt-2">
+<label class="font-mono text-sm font-bold uppercase tracking-wider block pl-1">QUAL A VIBE?</label>
+<div class="flex space-x-4 overflow-x-auto no-scrollbar pb-2 px-1">
+<!-- Selected Item -->
+<button class="flex-shrink-0 w-20 h-20 bg-primary border-3 border-black shadow-hard flex items-center justify-center text-4xl hover:translate-y-[-2px] transition-transform relative group">
+<span>🥩</span>
+<div class="absolute -top-3 -right-3 bg-secondary text-white text-xs border-2 border-black px-1 font-bold rotate-12 hidden group-hover:block">ISSO!</div>
+</button>
+<!-- Unselected Items -->
+<button class="flex-shrink-0 w-20 h-20 bg-white border-3 border-black flex items-center justify-center text-4xl hover:bg-primary hover:shadow-hard transition-all">
+<span>🍺</span>
+</button>
+<button class="flex-shrink-0 w-20 h-20 bg-white border-3 border-black flex items-center justify-center text-4xl hover:bg-primary hover:shadow-hard transition-all">
+<span>🍕</span>
+</button>
+<button class="flex-shrink-0 w-20 h-20 bg-white border-3 border-black flex items-center justify-center text-4xl hover:bg-primary hover:shadow-hard transition-all">
+<span>🎉</span>
+</button>
+<button class="flex-shrink-0 w-20 h-20 bg-white border-3 border-black flex items-center justify-center text-4xl hover:bg-primary hover:shadow-hard transition-all">
+<span>🔥</span>
+</button>
+</div>
+</div>
+<!-- Description/Notes -->
+<div class="space-y-2">
+<label class="font-mono text-sm font-bold uppercase tracking-wider block pl-1">DETALHES SUJOS</label>
+<textarea class="brutalist-input w-full bg-white border-3 border-black p-3 font-mono text-sm shadow-hard focus:shadow-none transition-all focus:translate-x-[4px] focus:translate-y-[4px] h-24 rounded-none" placeholder="Traz o que for beber..."></textarea>
+</div>
+</div>
+<!-- Footer Action -->
+<div class="absolute bottom-0 left-0 w-full p-4 bg-background-light border-t-3 border-black z-20">
+<button class="w-full bg-primary border-3 border-black h-[60px] flex items-center justify-center shadow-hard hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-hard-sm active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all">
+<span class="font-display font-bold text-xl uppercase tracking-tight">BOTA PRA GERAR</span>
+<span class="material-symbols-outlined ml-2 font-bold">bolt</span>
+</button>
+</div>
+</div>
+<!-- Background decoration for desktop view context -->
+<div class="fixed top-0 left-0 w-full h-full -z-10 bg-[#e0e0e0] hidden md:block pattern-dots">
+<div class="absolute top-10 left-10 w-32 h-32 bg-secondary border-3 border-black rounded-full mix-blend-multiply opacity-50 blur-xl"></div>
+<div class="absolute bottom-10 right-10 w-48 h-48 bg-primary border-3 border-black rounded-full mix-blend-multiply opacity-50 blur-xl"></div>
+</div>
+<style>
+        .pattern-dots {
+            background-image: radial-gradient(#000000 2px, transparent 2px);
+            background-size: 24px 24px;
+            opacity: 0.2;
+        }
+    </style>
+</body></html>

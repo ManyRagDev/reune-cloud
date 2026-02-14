@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import LandingPage from './LandingPage';
+import LandingV3 from './LandingV3';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import CreateEvent from './CreateEvent';
 import EventDetails from './EventDetails';
 import ChatWidget from '@/components/ChatWidget';
-import { ThemeToggle } from '@/components/landing/ThemeToggle';
+// import { ThemeToggle } from '@/components/landing/ThemeToggle'; // Removed to avoid duplication
 import { motion } from 'framer-motion';
 
 import { useSearchParams } from 'react-router-dom';
@@ -41,7 +41,9 @@ const Index = () => {
         setCurrentScreen('dashboard');
       }
     } else if (!loading) {
-      setCurrentScreen('landing');
+      // If not logged in and not loading, for the /app route we want to show LOGIN.
+      // LandingV3 is already at /
+      setCurrentScreen('login');
     }
   }, [user, loading, initialTemplate]);
 
@@ -110,12 +112,14 @@ const Index = () => {
     }
 
     if (!user && currentScreen !== 'login') {
+      // Guard: if not logged in, enforce login screen.
+      // We allow 'landing' here only if explicitly requested, but for /app we prefer login.
       return <Login onLogin={handleLogin} />;
     }
 
     switch (currentScreen) {
       case 'landing':
-        return <LandingPage />;
+        return <LandingV3 />;
 
       case 'login':
         return <Login onLogin={handleLogin} />;
@@ -154,7 +158,7 @@ const Index = () => {
 
   return (
     <>
-      <ThemeToggle className="fixed top-4 right-4 z-50" />
+      {/* <ThemeToggle className="fixed top-4 right-4 z-50" /> */}
       {renderScreen()}
       <ChatWidget />
     </>

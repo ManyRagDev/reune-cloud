@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Rolê - Home Feed</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#CCFF00", // Acid Lime
+                        "secondary": "#FF00FF", // Electric Magenta
+                        "bg-newsprint": "#F2F0E9",
+                        "surface": "#FFFFFF",
+                        "text-main": "#000000",
+                        "alert": "#FF4800",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["Space Mono", "monospace"],
+                    },
+                    borderWidth: {
+                        '3': '3px',
+                    },
+                    boxShadow: {
+                        'hard': '4px 4px 0px 0px #000000',
+                        'hard-sm': '2px 2px 0px 0px #000000',
+                    },
+                    rotate: {
+                        'negative-1': '-1deg',
+                        'negative-2': '-2deg',
+                        'negative-5': '-5deg',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom utilities for the specific brutalist look */
+        .brutalist-border {
+            border: 3px solid #000000;
+        }
+        
+        .brutalist-shadow {
+            box-shadow: 4px 4px 0px 0px #000000;
+        }
+
+        .brutalist-shadow-hover:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px #000000;
+        }
+
+        .brutalist-shadow-active:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px 0px #000000;
+        }
+
+        /* SVG Squiggle Animation attempt (simple css) */
+        @keyframes draw {
+            to { stroke-dashoffset: 0; }
+        }
+        
+        .squiggle-path {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: draw 2s linear forwards;
+        }
+        
+        body {
+            background-color: #F2F0E9; /* Fallback */
+            background-image: radial-gradient(#000000 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-opacity: 0.1;
+        }
+        
+        /* Hide scrollbar for clean look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-bg-newsprint text-text-main antialiased min-h-screen relative overflow-x-hidden selection:bg-secondary selection:text-white">
+<!-- Sticky Header -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-bg-newsprint border-b-3 border-black p-4 pb-6">
+<div class="flex items-center justify-between max-w-md mx-auto relative">
+<!-- Logo Area -->
+<div class="relative group cursor-pointer">
+<h1 class="text-5xl font-bold tracking-tighter transform -rotate-negative-5 -skew-y-3 z-10 relative">
+                    ROLÊ
+                </h1>
+<!-- Squiggle Underline -->
+<svg class="absolute -bottom-2 -left-2 w-32 h-6 text-primary z-0 pointer-events-none" fill="none" viewbox="0 0 148 18" xmlns="http://www.w3.org/2000/svg">
+<path d="M2.5 8.5C15.5 8.5 24 2.5 35 2.5C46 2.5 52 14.5 65 14.5C78 14.5 87.5 4.5 98.5 4.5C109.5 4.5 116.5 14.5 128.5 14.5C140.5 14.5 145.5 8.5 145.5 8.5" stroke="currentColor" stroke-linecap="round" stroke-width="5"></path>
+</svg>
+</div>
+<!-- User Avatar -->
+<div class="relative">
+<button class="w-12 h-12 rounded-full border-3 border-black overflow-hidden hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2">
+<img alt="User profile avatar showing a smiling person" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXvGbbx10_6yD-yTwQUbfsOHSCXlDtRxWDbChJGABhMpxCcUbEvxNCnHx_ETEJPPH-NHTGGqqLC4n2onuqHzleXXVIcKSm9FGOKoyLoaR53Gm-pDCFEnVaSq9TtOltb1Gk243wmi_d-BkmqGNNTLtML0eMcOeewqcU82n7xUkjkE01WEnC4Ix7asXy_zM2A7i1P_J5V_AXPH2uzxiLOE1IY_5-gole9wEM62B_DJVbCuq4A39sDS74YNeuWWZqmlbGTJW_o2VkpEA"/>
+</button>
+<div class="absolute -top-1 -right-1 w-4 h-4 bg-alert rounded-full border-2 border-black z-20"></div>
+</div>
+</div>
+</header>
+<!-- Main Feed Content -->
+<main class="pt-28 pb-32 px-4 max-w-md mx-auto flex flex-col gap-8">
+<!-- Status Bar / Motto -->
+<div class="bg-black text-white p-2 rotate-1 border-3 border-transparent shadow-hard transform mb-2">
+<marquee class="font-mono text-sm uppercase font-bold tracking-widest" scrollamount="8">
+                SEM PLANILHAS • SÓ BAGUNÇA • QUEM VAMOS? • TRAZ O GELO •
+            </marquee>
+</div>
+<!-- Event Card 1: Upcoming -->
+<article class="relative group">
+<!-- Card Container -->
+<div class="bg-surface border-3 border-black brutalist-shadow p-0 flex flex-col relative z-10 hover:-translate-y-1 transition-transform duration-200">
+<!-- Date & Status Header -->
+<div class="flex justify-between items-start border-b-3 border-black">
+<div class="bg-primary p-3 border-r-3 border-black flex flex-col items-center justify-center min-w-[80px]">
+<span class="font-mono font-bold text-2xl leading-none">12</span>
+<span class="font-mono text-sm font-bold uppercase">OUT</span>
+</div>
+<div class="p-3 flex-1 flex justify-end items-center bg-[url('https://www.transparenttextures.com/patterns/dot-grid.png')]">
+<span class="bg-secondary text-white px-3 py-1 rounded-full border-3 border-black text-xs font-bold shadow-hard-sm transform rotate-2">
+                            FALTAM 2 DIAS
+                        </span>
+</div>
+</div>
+<!-- Card Body -->
+<div class="p-5 flex flex-col gap-4">
+<div class="flex justify-between items-start gap-2">
+<h2 class="text-3xl font-bold leading-none tracking-tight">Churras do Pedro</h2>
+<span class="material-symbols-outlined text-3xl transform rotate-12">local_fire_department</span>
+</div>
+<div class="flex items-center gap-2 text-sm font-mono border-l-4 border-primary pl-3">
+<span class="material-symbols-outlined text-lg">schedule</span>
+<span>14:00 - O Fim do Mundo</span>
+</div>
+<div class="flex items-center gap-2 text-sm font-mono border-l-4 border-primary pl-3">
+<span class="material-symbols-outlined text-lg">location_on</span>
+<span>Casa do Pedro, Rua da Lama</span>
+</div>
+<!-- Footer: Guests -->
+<div class="mt-2 pt-4 border-t-3 border-dashed border-gray-300 flex justify-between items-center">
+<div class="flex -space-x-3 items-center">
+<img alt="Guest 1 avatar" class="w-10 h-10 rounded-full border-3 border-black bg-gray-200 z-30" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARmJVQEkX1aTMJBnMFm4ru7_CX-D8LONhhpxPS47b3ROGPgUPJus5cH92gBryG_HJJBmHpRc9ov5XG3gZjkfKpCuep0pQqLwxY8gElQNZXoIdBCRCdSjDwW_VgY1uBRM26DH7Fbydg9gZ1fYyU0K0IJAR0jo_HSOBEPc-ph5NqiWC1qtOn1BxCJ8Hh6bbbcUb3ICSonfDtPN5Q-I7yrs20LEWBO8X2ZJ1uSwKALU0deklgSUSuxXZ01H9h5bccIE6IgaoP9PxN6fc" title="João"/>
+<img alt="Guest 2 avatar" class="w-10 h-10 rounded-full border-3 border-black bg-gray-200 z-20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNnBHoWbTtNDtaR1SWlAlh7vAHU2x6XAxdrd9SMsHiNfx7wUYpC8Ll2DmTZCoKy5FZhvA1suRkFf6v84Yw1V8GyTOfePqcg_1wI5V1Q830-m-bjnb45rRZsbImf2PcLFwIFVFFjDqL0SF8KgNFFOIva_MPP49qzr1jqZbxOX8FjNAH-5WLILSwAB-yFAv0r-Ah5sPFAo8NylrjMZdyggOkMFsihJimUXUfGA_HGOeW_WDRlEDjNtVgU62zIgTraYmqzIDf2jvrdso" title="Maria"/>
+<img alt="Guest 3 avatar" class="w-10 h-10 rounded-full border-3 border-black bg-gray-200 z-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxNxWQjjmMTNXJEaBK5Q3wzfxBZEiaP_6heYuccR22OqGKVMoOUYpBl31x0FJHW3QmPCDBSAth3bCa6XeIBxU5C6xCg984YNvs3DHdWuLq2lNSCxvOjS1pqMk66XROVl16ve3ewaqZvSAUSd5rBOEAO33aYjWdHq7Dre4du9BFaSgggTKmYkvwqEYb4okXRQFmeF9zF2PBriSUh9wrgXboMnO15Jy-EKnlbtLSB8ojiIZVKDN_lPOQmkwqjiZGJfJuaztgfK-zPqQ" title="Carlos"/>
+<div class="w-10 h-10 rounded-full border-3 border-black bg-primary flex items-center justify-center text-xs font-bold z-0 relative">
+                                +8
+                            </div>
+</div>
+<button class="bg-black text-white px-4 py-2 font-bold text-sm uppercase hover:bg-secondary transition-colors">
+                            VER
+                        </button>
+</div>
+</div>
+</div>
+<!-- Decorative underlay element -->
+<div class="absolute inset-0 bg-secondary border-3 border-black transform translate-x-2 translate-y-2 -z-10"></div>
+</article>
+<!-- Event Card 2: Today -->
+<article class="relative group">
+<div class="bg-surface border-3 border-black brutalist-shadow p-0 flex flex-col relative z-10">
+<div class="flex justify-between items-start border-b-3 border-black">
+<div class="bg-alert p-3 border-r-3 border-black flex flex-col items-center justify-center min-w-[80px] text-white">
+<span class="font-mono font-bold text-2xl leading-none">10</span>
+<span class="font-mono text-sm font-bold uppercase">OUT</span>
+</div>
+<div class="p-3 flex-1 flex justify-end items-center bg-gray-100">
+<span class="bg-primary text-black px-3 py-1 rounded-full border-3 border-black text-xs font-bold shadow-hard-sm transform -rotate-1 animate-pulse">
+                            É HOJE!
+                        </span>
+</div>
+</div>
+<div class="p-5 flex flex-col gap-4">
+<div class="flex justify-between items-start gap-2">
+<h2 class="text-3xl font-bold leading-none tracking-tight">Pizza da Firma</h2>
+<span class="material-symbols-outlined text-3xl transform -rotate-6">local_pizza</span>
+</div>
+<div class="flex items-center gap-2 text-sm font-mono border-l-4 border-alert pl-3">
+<span class="material-symbols-outlined text-lg">schedule</span>
+<span>19:00 - 22:00</span>
+</div>
+<div class="mt-2 pt-4 border-t-3 border-dashed border-gray-300 flex justify-between items-center">
+<div class="flex -space-x-3 items-center">
+<img alt="Guest 4 avatar" class="w-10 h-10 rounded-full border-3 border-black bg-gray-200 z-30" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaUt1-UFHfMEeLJhgXkYrUkZ9O4AMhZ5D-YCt_FYfeCGUDVV8TflzeyGnVmZBSOxW98NXmhZHwWVptHpbRo5_pRGWrZRZiLnxPMWgATtUMpw486evoEOO_gF0ldPOQL0lCc0OZAqOZWk2u10ZkAG46Gqcgfwj8saiYi_w0LHlQsAZ81DRTBY3PYma_-avvdjKfCry19MIs30-hIIuNJNGR5L-gs1RoWYXl1mQY_f2d8wdRiXbNMZFcoHamjeu2ZQZf1K-dps1an60"/>
+<img alt="Guest 5 avatar" class="w-10 h-10 rounded-full border-3 border-black bg-gray-200 z-20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXehoDjNARXwXRc8QbjaDNOGeyVVImyUttpl17YLTLi1RgX22mJLhrI-VSVaQvcNeI3DBQn7LZNb7_nFMzJDsg_H-CgooxMeD9YAhHZQy5Y0YAwByNy5YRk1Vfu4H4ssvROWHG9l13lxq_OeY790uykMXssz5EeAYxMs_iKsN_pyeWBQDfHvvgvE_o_VJWRWNnsPOlfmMgu_78w9tTc3kBQooPhDiUierr0V20SObTbiwkFfqBvS5i0gyZ8zN3EkSIMI46VJR-p3E"/>
+<div class="w-10 h-10 rounded-full border-3 border-black bg-primary flex items-center justify-center text-xs font-bold z-0 relative">
+                                +12
+                            </div>
+</div>
+<button class="bg-black text-white px-4 py-2 font-bold text-sm uppercase hover:bg-secondary transition-colors">
+                            VER
+                        </button>
+</div>
+</div>
+</div>
+</article>
+<!-- Event Card 3: Future (Different Style) -->
+<article class="relative group opacity-80 hover:opacity-100 transition-opacity">
+<div class="bg-gray-100 border-3 border-black border-dashed brutalist-shadow p-0 flex flex-col relative z-10">
+<div class="flex justify-between items-start border-b-3 border-black border-dashed">
+<div class="bg-white p-3 border-r-3 border-black border-dashed flex flex-col items-center justify-center min-w-[80px]">
+<span class="font-mono font-bold text-2xl leading-none">25</span>
+<span class="font-mono text-sm font-bold uppercase">DEZ</span>
+</div>
+<div class="p-3 flex-1 flex justify-end items-center">
+<span class="bg-white text-black px-3 py-1 rounded-full border-3 border-black text-xs font-bold shadow-hard-sm transform rotate-1">
+                            PLANEJANDO
+                        </span>
+</div>
+</div>
+<div class="p-5 flex flex-col gap-4">
+<div class="flex justify-between items-start gap-2">
+<h2 class="text-3xl font-bold leading-none tracking-tight text-gray-500">Natal dos Primos</h2>
+<span class="material-symbols-outlined text-3xl transform rotate-12 text-gray-400">celebration</span>
+</div>
+<div class="text-sm font-mono text-gray-500 italic">
+                        Ainda definindo o local...
+                    </div>
+</div>
+</div>
+</article>
+<!-- Empty State Illustration (Visual placeholder for scrolling) -->
+<div class="py-8 flex flex-col items-center justify-center opacity-40 rotate-2">
+<div class="w-32 h-32 border-3 border-black rounded-full flex items-center justify-center bg-white mb-4">
+<span class="material-symbols-outlined text-6xl">sentiment_satisfied</span>
+</div>
+<p class="font-mono font-bold text-center">FIM DA BAGUNÇA</p>
+</div>
+</main>
+<!-- FAB: New Mess Button -->
+<div class="fixed bottom-6 right-6 z-50">
+<button class="group relative w-16 h-16">
+<!-- Shadow layer -->
+<div class="absolute inset-0 bg-black translate-x-1 translate-y-1 group-hover:translate-x-2 group-hover:translate-y-2 transition-transform duration-200"></div>
+<!-- Main Button -->
+<div class="absolute inset-0 bg-primary border-3 border-black flex items-center justify-center group-hover:-translate-x-1 group-hover:-translate-y-1 group-active:translate-x-1 group-active:translate-y-1 transition-transform duration-200 cursor-pointer">
+<span class="material-symbols-outlined text-4xl font-bold text-black group-hover:rotate-90 transition-transform duration-300">add</span>
+</div>
+</button>
+<!-- Tooltip Label for FAB (Optional nice touch) -->
+<div class="absolute right-20 top-4 bg-white border-3 border-black px-3 py-1 whitespace-nowrap hidden group-hover:block brutalist-shadow transform -rotate-2">
+<span class="font-bold text-sm">NOVA BAGUNÇA</span>
+</div>
+</div>
+<!-- Bottom Gradients/Overlay for scroll hint (Optional) -->
+<div class="fixed bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-bg-newsprint to-transparent pointer-events-none z-40"></div>
+</body></html>

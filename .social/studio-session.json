@@ -1,0 +1,45 @@
+{
+    "assunto": "Exemplo",
+    "chosen_proposal": {
+        "slides": [
+            {
+                "headline": "Slide 1",
+                "copy": "Copy 1",
+                "visual": "Visual 1",
+                "cta": "CTA 1"
+            },
+            {
+                "headline": "Slide 2",
+                "copy": "Copy 2",
+                "visual": "Visual 2",
+                "cta": "CTA 2"
+            },
+            {
+                "headline": "Slide 3",
+                "copy": "Copy 3",
+                "visual": "Visual 3",
+                "cta": "CTA 3"
+            }
+        ],
+        "story": {
+            "headline": "Story",
+            "copy": "Story Copy",
+            "visual": "Story Visual",
+            "cta": "Story CTA"
+        }
+    },
+    "metadata": {
+        "identity": {
+            "data": {
+                "colors": {
+                    "primary": "#000",
+                    "secondary": "#fff",
+                    "text": "#333"
+                },
+                "fonts": {
+                    "primary": "sans-serif"
+                }
+            }
+        }
+    }
+}

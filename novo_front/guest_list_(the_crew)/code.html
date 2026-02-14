@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Guest List - Rolê</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#CCFF00", // Acid Lime
+                        "secondary": "#FF00FF", // Electric Magenta
+                        "alert": "#FF4800", // International Orange
+                        "background-light": "#F2F0E9", // Off-white Newsprint
+                        "background-dark": "#222210", // Kept from original config as backup, but design system specifies #F2F0E9
+                        "surface": "#FFFFFF",
+                        "dark": "#000000",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["Space Mono", "monospace"],
+                        "marker": ["Permanent Marker", "cursive"],
+                    },
+                    boxShadow: {
+                        "hard": "4px 4px 0px 0px #000000",
+                        "hard-sm": "2px 2px 0px 0px #000000",
+                    },
+                    borderWidth: {
+                        "3": "3px",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Utilities for the Brutalist Look */
+        .border-3 {
+            border-width: 3px;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+            animation: marquee 15s linear infinite;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light text-dark font-display min-h-screen overflow-x-hidden selection:bg-secondary selection:text-white">
+<!-- App Header -->
+<header class="sticky top-0 z-50 bg-background-light border-b-3 border-dark">
+<div class="flex items-center justify-between p-4 h-[72px]">
+<button class="flex items-center justify-center w-12 h-12 border-3 border-dark bg-surface shadow-hard active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">
+<span class="material-symbols-outlined text-3xl font-bold">arrow_back</span>
+</button>
+<h1 class="text-2xl font-bold tracking-tight uppercase skew-x-[-5deg] underline decoration-wavy decoration-secondary">
+                A GALERA
+            </h1>
+<div class="w-12 h-12">
+<!-- Placeholder to balance layout -->
+</div>
+</div>
+<!-- Marquee Banner -->
+<div class="relative w-full h-10 bg-dark text-primary flex items-center overflow-hidden border-b-3 border-dark">
+<div class="whitespace-nowrap animate-marquee flex items-center gap-8 font-mono font-bold text-sm tracking-widest">
+<span>// 14 CONFIRMADOS</span>
+<span>// 3 TÃO FORA</span>
+<span>// 5 ENROLANDO</span>
+<span>// VAI TER CHURRAS</span>
+<span>// O PEDRO NÃO VEM</span>
+<span>// 14 CONFIRMADOS</span>
+<span>// 3 TÃO FORA</span>
+<span>// 5 ENROLANDO</span>
+<span>// VAI TER CHURRAS</span>
+<span>// O PEDRO NÃO VEM</span>
+</div>
+</div>
+</header>
+<main class="flex flex-col w-full pb-32">
+<!-- Filters / Tabs -->
+<div class="p-4 grid grid-cols-3 gap-2">
+<button class="h-12 border-3 border-dark bg-primary shadow-hard font-bold text-sm flex items-center justify-center gap-1 active:translate-y-1 active:shadow-none transition-all">
+                VAI <span class="font-mono text-xs">(14)</span>
+</button>
+<button class="h-12 border-3 border-dark bg-surface shadow-hard font-bold text-sm flex items-center justify-center gap-1 hover:bg-gray-100 active:translate-y-1 active:shadow-none transition-all">
+                TALVEZ <span class="font-mono text-xs">(5)</span>
+</button>
+<button class="h-12 border-3 border-dark bg-surface shadow-hard font-bold text-sm flex items-center justify-center gap-1 hover:bg-gray-100 active:translate-y-1 active:shadow-none transition-all">
+                NÃO VAI <span class="font-mono text-xs">(3)</span>
+</button>
+</div>
+<!-- Guest List Container -->
+<div class="px-4 flex flex-col gap-4 mt-2">
+<!-- Card 1: Organizer -->
+<div class="relative group">
+<!-- Sticker -->
+<div class="absolute -top-3 -right-2 z-10 rotate-12 bg-secondary text-white font-marker px-3 py-1 border-3 border-dark shadow-hard-sm text-sm">
+                    ADM
+                </div>
+<div class="flex items-center w-full bg-surface border-3 border-dark shadow-hard p-3 h-[88px]">
+<div class="relative shrink-0">
+<img alt="Portrait of a young man with glasses smiling" class="w-14 h-14 object-cover border-3 border-dark grayscale contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-jXlGl7yEfG9vfwZWNXwkbZ2riXKLdlxw7uIvMQuQq6UgXYyVZNgf8nW4Woc6oEoEXxyoIT-fH9LqM3DCsVuvzfwkS4RuSec_TMtNwflTWQdsJq_eYenzv0Q2acTPAKfb5M_CqeLSGBJuK3cRzGPjyB6A33NSA9hDfIJAZATXisLsm0QpS0R2-OfVJ2iyhntnEnb419ONOOsNG8FHasHo-j1TKiXoO6eUWTiuc1xx2nRS9vCg9X9ChRG9xkl_Az4x2_QRAEC5rtY"/>
+</div>
+<div class="ml-4 flex-1 min-w-0">
+<h3 class="font-bold text-lg leading-tight truncate">Pedro Santos</h3>
+<p class="font-mono text-xs mt-1 text-gray-600 truncate">
+<span class="bg-secondary text-white px-1">Trazendo:</span> Carvão + Gelo
+                        </p>
+</div>
+<div class="ml-2 flex items-center justify-center w-10 h-10 text-primary bg-dark border-3 border-dark">
+<span class="material-symbols-outlined text-2xl">check_circle</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Confirmed -->
+<div class="flex items-center w-full bg-surface border-3 border-dark shadow-hard p-3 h-[88px] -mt-2 relative z-0">
+<div class="relative shrink-0">
+<img alt="Portrait of a smiling woman with curly hair" class="w-14 h-14 object-cover border-3 border-dark grayscale contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGuHUvXJLfHQReDA3eq24KzLX7qDQ1okB0ONVZf7LMvE8s4zjxW0kEvWUZmq9YfmU9tefTUdtnJFf6aj0XxdQG2J5Y93KIDa683LJtXbLjrDqsteXulPgQiv-IRfi18L8MVmAQBIvJ0hFiTGqWXOjQl0zBnfDE_8C2YNvdjhAQLZimzHzYEPzsJukqwx4YO6qqp5j-biLrdaS-J82Wm0xjam2TJ1e_QQJgdB9OizoJi6Hum21ZibgSKIYPz3i7zlPRdL-rdpOIGLw"/>
+</div>
+<div class="ml-4 flex-1 min-w-0">
+<h3 class="font-bold text-lg leading-tight truncate">Ana Clara</h3>
+<p class="font-mono text-xs mt-1 text-gray-600 truncate">
+<span class="bg-primary text-dark border-b-2 border-dark px-1">Trazendo:</span> Picanha (2kg)
+                    </p>
+</div>
+<div class="ml-2 flex items-center justify-center w-10 h-10 text-dark bg-primary border-3 border-dark">
+<span class="material-symbols-outlined text-2xl">thumb_up</span>
+</div>
+</div>
+<!-- Card 3: Confirmed with Status -->
+<div class="flex items-center w-full bg-surface border-3 border-dark shadow-hard p-3 h-[88px] -mt-2 relative z-0">
+<div class="relative shrink-0">
+<img alt="Portrait of a man with a beard looking serious" class="w-14 h-14 object-cover border-3 border-dark grayscale contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAc6_stc_doGnaQRtDiXzD5sXrAzkO-btpDZQkz310dx8et_ExHCrzEZqIhr7NtYTS9Wo-TR3db6VW0-nOjZgOVAL1fgvmd4vi70KbNFaOJuMqXq7MZDa03TtnEXIcl4jmht727DQxz6m7S7-fEZkM2nD9Xzdu_XA0qPV0LMbdNxUp5O53b-y4kkahIDknSwAelws_Sa9UnxPC-JwazxK3-yYq-Fsr-lqNtffIoRAeZCJMKACar3tR9YQshWwl-boUrxCsTMxt8NT4"/>
+</div>
+<div class="ml-4 flex-1 min-w-0">
+<h3 class="font-bold text-lg leading-tight truncate">Lucas B.</h3>
+<p class="font-mono text-xs mt-1 text-gray-600 truncate">
+<span class="bg-primary text-dark border-b-2 border-dark px-1">Trazendo:</span> Nada (Mão de vaca)
+                    </p>
+</div>
+<div class="ml-2 flex items-center justify-center w-10 h-10 text-dark bg-primary border-3 border-dark">
+<span class="material-symbols-outlined text-2xl">thumb_up</span>
+</div>
+</div>
+<!-- Card 4: Confirmed -->
+<div class="flex items-center w-full bg-surface border-3 border-dark shadow-hard p-3 h-[88px] -mt-2 relative z-0">
+<div class="relative shrink-0">
+<div class="w-14 h-14 bg-secondary border-3 border-dark flex items-center justify-center">
+<span class="font-bold text-white text-xl">MV</span>
+</div>
+</div>
+<div class="ml-4 flex-1 min-w-0">
+<h3 class="font-bold text-lg leading-tight truncate">Maria V.</h3>
+<p class="font-mono text-xs mt-1 text-gray-600 truncate">
+<span class="bg-primary text-dark border-b-2 border-dark px-1">Trazendo:</span> Cerveja (3 caixas)
+                    </p>
+</div>
+<div class="ml-2 flex items-center justify-center w-10 h-10 text-dark bg-primary border-3 border-dark">
+<span class="material-symbols-outlined text-2xl">thumb_up</span>
+</div>
+</div>
+<!-- Card 5: Confirmed (Simple) -->
+<div class="flex items-center w-full bg-surface border-3 border-dark shadow-hard p-3 h-[88px] -mt-2 relative z-0">
+<div class="relative shrink-0">
+<img alt="Portrait of a man smiling outdoors" class="w-14 h-14 object-cover border-3 border-dark grayscale contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKWKHoWzMSVnLa59x4AKV_KQ0yDiDQgjblUW6zKPnEumw2A1FClCX_GLscH6tPRPfHyFjBJv8UOpf0EFDsTyQ3_x9j-s9pYKiz7704drSZOmf7fE4uJAkJYwFbbkrhbWhz2Zq0OyEeJJ1N_p6nBWUxNw-k3yTmsUbGh26XRiE6CFMQ9Lx09jHVb7lWXpw8mpprJnpI_mux5x7TlhEye42FL2fb6CN6iMnJu5r-NTce2K5wCZ19dMB0-Z-p_Wu7MRuaLyJIBudQXv8"/>
+</div>
+<div class="ml-4 flex-1 min-w-0">
+<h3 class="font-bold text-lg leading-tight truncate">João Pedro</h3>
+<p class="font-mono text-xs mt-1 text-alert font-bold truncate">
+                        PENDENTE DE ITEM
+                    </p>
+</div>
+<div class="ml-2 flex items-center justify-center w-10 h-10 text-dark bg-primary border-3 border-dark">
+<span class="material-symbols-outlined text-2xl">thumb_up</span>
+</div>
+</div>
+<!-- Divider/Section Break -->
+<div class="py-4 flex items-center justify-center opacity-50">
+<div class="h-1 bg-dark w-full mx-2"></div>
+<span class="material-symbols-outlined text-3xl mx-2">bolt</span>
+<div class="h-1 bg-dark w-full mx-2"></div>
+</div>
+<!-- Card 6: Flaked (Miolou) - Example of negative state style -->
+<div class="flex items-center w-full bg-gray-200 border-3 border-dark shadow-hard p-3 h-[88px] opacity-75 relative">
+<!-- Stamp -->
+<div class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none opacity-30">
+<span class="font-marker text-5xl text-red-600 -rotate-12 border-4 border-red-600 px-4 py-2">MIOLOU</span>
+</div>
+<div class="relative shrink-0">
+<img alt="Portrait of a man with sunglasses" class="w-14 h-14 object-cover border-3 border-dark grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwU41pqYZda7yubWug3QGRC-y7MmHRkOVldjzbmmBf18nvQBpms8Wl5Jce1x3OZKdpQBbhpIGh81RoiqEgrBUypgjtqu4Fyvgfa2I7V_6VNP2S4YecnNZhzaZpA7FS51_E16R3ItfONJHB30R-IMZVyCI9XD73L_JLo9_3kFFHE8ZLFXykExVn_vGCtbPsH7Q3JOLi99CFjpTjmuxKi316Yzg8R8ang3KOc9hRShARNbs6fIET8394DgOlcaQW5JOSZlGZfubc8co"/>
+</div>
+<div class="ml-4 flex-1 min-w-0">
+<h3 class="font-bold text-lg leading-tight truncate line-through decoration-2">Rafael T.</h3>
+<p class="font-mono text-xs mt-1 text-gray-500 truncate">
+                        Motivo: Corno
+                    </p>
+</div>
+<div class="ml-2 flex items-center justify-center w-10 h-10 text-white bg-dark border-3 border-dark">
+<span class="material-symbols-outlined text-2xl">skull</span>
+</div>
+</div>
+<!-- Skeleton Loader (for effect) -->
+<div class="w-full h-[88px] border-3 border-dark border-dashed p-3 flex items-center opacity-50">
+<div class="w-14 h-14 bg-gray-300 border-2 border-dark animate-pulse"></div>
+<div class="ml-4 flex-1 space-y-2">
+<div class="h-4 bg-gray-300 w-2/3 animate-pulse"></div>
+<div class="h-3 bg-gray-300 w-1/2 animate-pulse"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-background-light border-t-3 border-dark z-50">
+<button class="w-full h-[60px] bg-secondary border-3 border-dark shadow-hard flex items-center justify-center gap-3 active:translate-y-[4px] active:translate-x-[4px] active:shadow-none transition-all group" onclick="document.getElementById('toast').classList.remove('translate-y-full'); setTimeout(() =&gt; document.getElementById('toast').classList.add('translate-y-full'), 3000);">
+<span class="material-symbols-outlined text-white text-3xl group-hover:rotate-12 transition-transform">share</span>
+<span class="font-bold text-xl text-white uppercase tracking-tight">CHAMAR MAIS GENTE</span>
+</button>
+</div>
+<!-- Toast Notification (Hidden by default) -->
+<div class="fixed top-24 left-1/2 -translate-x-1/2 z-[60] transform translate-y-full transition-transform duration-300 ease-out pointer-events-none" id="toast">
+<div class="bg-alert border-3 border-dark shadow-hard p-4 flex items-center gap-3 min-w-[300px] -rotate-2">
+<span class="material-symbols-outlined text-white text-2xl">content_copy</span>
+<div class="flex flex-col">
+<span class="font-bold text-white uppercase text-lg leading-none">LINK COPIADO</span>
+<span class="font-mono text-xs text-white">Manda lá no grupo!</span>
+</div>
+</div>
+</div>
+</body></html>

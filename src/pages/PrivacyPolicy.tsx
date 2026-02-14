@@ -1,40 +1,61 @@
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { NBLight, nb } from "@/lib/neobrutalism";
+import { Footer } from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 
 export default function PrivacyPolicy() {
+  const navigate = useNavigate();
+  const C = NBLight;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-accent/5">
+    <div
+      className="min-h-screen transition-colors duration-300"
+      style={{ backgroundColor: C.bg, color: C.text }}
+    >
       {/* Header */}
-      <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <Link to="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao site
-            </Button>
-          </Link>
+      <header
+        className={`sticky top-0 z-50 px-4 py-3 ${nb.border} border-t-0 border-x-0`}
+        style={{ backgroundColor: C.bg }}
+      >
+        <div className="container mx-auto max-w-4xl flex items-center justify-between">
+          <div className={`px-3 py-1 rounded-lg ${nb.border} ${nb.shadow} font-black text-lg`} style={{ backgroundColor: C.orange, color: "#FFFDF7" }}>
+            ReUNE
+          </div>
+          <Button
+            onClick={() => navigate("/")}
+            variant="ghost"
+            className={`hover:bg-transparent hover:underline font-bold`}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao site
+          </Button>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12 max-w-4xl">
-        <div className="prose prose-slate dark:prose-invert max-w-none">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-amber-500 to-purple-500 bg-clip-text text-transparent">
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl md:text-5xl font-black mb-4">
             Política de Privacidade
           </h1>
-          <p className="text-muted-foreground mb-8">
+          <p className="font-medium opacity-60">
             Última atualização: {new Date().toLocaleDateString('pt-BR')}
           </p>
+        </div>
 
-          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-8 space-y-8">
-            <section>
-              <h2 className="text-2xl font-bold mb-4">1. Informações que Coletamos</h2>
+        <div
+          className={`p-8 md:p-12 rounded-2xl ${nb.border} ${nb.shadowLg}`}
+          style={{ backgroundColor: C.cardBg }}
+        >
+          <div className="prose prose-neutral max-w-none font-medium">
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>1. Informações que Coletamos</h2>
               <p className="mb-4">
                 O ReUNE coleta as seguintes informações para proporcionar a melhor experiência possível:
               </p>
 
-              <h3 className="text-xl font-semibold mb-3 mt-6">1.1 Informações Fornecidas por Você</h3>
+              <h3 className="text-xl font-bold mb-3 mt-6">1.1 Informações Fornecidas por Você</h3>
               <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li><strong>Dados de Cadastro:</strong> Nome, e-mail, telefone e foto de perfil</li>
                 <li><strong>Informações de Eventos:</strong> Título, descrição, data, local e participantes dos eventos criados</li>
@@ -42,7 +63,7 @@ export default function PrivacyPolicy() {
                 <li><strong>Lista de Contatos:</strong> Com sua permissão, para facilitar o convite de amigos</li>
               </ul>
 
-              <h3 className="text-xl font-semibold mb-3 mt-6">1.2 Informações Coletadas Automaticamente</h3>
+              <h3 className="text-xl font-bold mb-3 mt-6">1.2 Informações Coletadas Automaticamente</h3>
               <ul className="list-disc pl-6 space-y-2">
                 <li><strong>Dados de Uso:</strong> Interações com o app, eventos acessados, funcionalidades utilizadas</li>
                 <li><strong>Informações do Dispositivo:</strong> Modelo, sistema operacional, identificador único, endereço IP</li>
@@ -50,8 +71,8 @@ export default function PrivacyPolicy() {
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">2. Como Usamos Suas Informações</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>2. Como Usamos Suas Informações</h2>
               <p className="mb-4">
                 Utilizamos suas informações para:
               </p>
@@ -67,8 +88,8 @@ export default function PrivacyPolicy() {
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">3. Compartilhamento de Informações</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>3. Compartilhamento de Informações</h2>
               <p className="mb-4">
                 Nós <strong>NÃO vendemos</strong> suas informações pessoais. Compartilhamos dados apenas quando:
               </p>
@@ -80,8 +101,8 @@ export default function PrivacyPolicy() {
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">4. Seus Direitos (LGPD)</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>4. Seus Direitos (LGPD)</h2>
               <p className="mb-4">
                 De acordo com a Lei Geral de Proteção de Dados (LGPD), você tem direito a:
               </p>
@@ -99,8 +120,8 @@ export default function PrivacyPolicy() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">5. Segurança dos Dados</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>5. Segurança dos Dados</h2>
               <p>
                 Implementamos medidas de segurança técnicas e organizacionais apropriadas para proteger suas informações
                 contra acesso não autorizado, alteração, divulgação ou destruição. Isso inclui:
@@ -113,8 +134,8 @@ export default function PrivacyPolicy() {
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">6. Retenção de Dados</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>6. Retenção de Dados</h2>
               <p>
                 Mantemos suas informações pelo tempo necessário para fornecer nossos serviços,
                 cumprir obrigações legais, resolver disputas e fazer cumprir nossos acordos.
@@ -123,8 +144,8 @@ export default function PrivacyPolicy() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">7. Menores de Idade</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>7. Menores de Idade</h2>
               <p>
                 O ReUNE não é destinado a menores de 13 anos. Não coletamos intencionalmente
                 informações de crianças. Se você acredita que uma criança nos forneceu dados pessoais,
@@ -132,8 +153,8 @@ export default function PrivacyPolicy() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">8. Alterações nesta Política</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>8. Alterações nesta Política</h2>
               <p>
                 Podemos atualizar esta Política de Privacidade periodicamente. Notificaremos sobre
                 mudanças significativas por email ou aviso no aplicativo. O uso continuado após as
@@ -141,29 +162,30 @@ export default function PrivacyPolicy() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">9. Contato</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>9. Contato</h2>
               <p className="mb-4">
                 Para dúvidas, solicitações ou reclamações sobre privacidade:
               </p>
               <ul className="list-none space-y-2">
                 <li><strong>Email:</strong> contato@reuneapp.com.br</li>
-                
+
               </ul>
-              <p className="mt-4 text-sm text-muted-foreground">
-                Você também pode registrar uma reclamação junto à Autoridade Nacional de Proteção de Dados (ANPD).
-              </p>
+              <div
+                className={`mt-6 p-4 rounded-xl ${nb.border}`}
+                style={{ backgroundColor: C.sectionBg }}
+              >
+                <p className="text-sm">
+                  Você também pode registrar uma reclamação junto à Autoridade Nacional de Proteção de Dados (ANPD).
+                </p>
+              </div>
             </section>
           </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border/40 mt-16">
-        <div className="container mx-auto px-4 py-8 text-center text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} ReUNE. Todos os direitos reservados.</p>
-        </div>
-      </footer>
+      <Footer palette={C} />
     </div>
   );
 }

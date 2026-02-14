@@ -4,13 +4,13 @@
  */
 
 import { UUID, EventStatus, ChatUiPayload, ListEventsPayload, RecentEvent } from '@/types/domain';
-import { processMessage } from '@/services/groqService';
+import { processMessage, executeItemEdit } from '@/services/groqService';
 import { ContextManager } from './contextManager';
 import { getPlanSnapshot } from './eventManager';
 import { wrapWithConversationalTone, ActionType } from './conversationalResponse';
 import { EventsRepository } from '@/db/repositories/events';
-
-type CollectedData = Record<string, unknown>;
+import { validateEventDate } from '@/core/nlp/date-parser';
+import { parseItemCommand, detectEditIntentFromMessage } from './itemCommands';
 
 /**
  * Lista eventos recentes do usuário para edição
@@ -24,21 +24,6 @@ export async function listUserEvents(userId: UUID): Promise<ListEventsPayload> {
     success: true,
     events
   };
-}
-
-/**
- * Formata data de evento para 'dd/mm'
- */
-function formatDate(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    return `${day}/${month}`;
-  } catch (error) {
-    console.error('[simpleOrchestrator] Erro ao formatar data:', error);
-    return dateString;
-  }
 }
 
 /**
@@ -83,39 +68,113 @@ export async function simpleOrchestrate(
   //1. Carregar contexto e histórico
   const { context: savedContext, history } = await contextManager.loadUserContext(userId);
 
-  //2. 🔥 NOVO: Verificar timeout de sessão para detectar nova conversa
-  const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hora
+  //2. Verificar timeout de sessão para detectar nova conversa
+  const SESSION_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4 horas
   const lastChatTime = localStorage.getItem(`reune_last_chat_${userId}`);
   const isTimeout = lastChatTime ? (Date.now() - Number(lastChatTime) > SESSION_TIMEOUT_MS) : false;
 
-  // Se houve timeout, forçar reset do contexto para nova sessão
   if (isTimeout) {
-    console.log('[simpleOrchestrator] Timeout de sessão detectado, iniciando nova conversa');
-    await contextManager.clearUserContext(userId);
-    savedContext.evento_id = undefined;
+    if (!savedContext.evento_id) {
+      // Sem evento ativo: limpar tudo normalmente
+      console.log('[simpleOrchestrator] Timeout: sem evento ativo, limpando contexto');
+      await contextManager.clearUserContext(userId);
+      savedContext.evento_id = undefined;
+    } else {
+      // Há evento ativo: resetar só o histórico, preservar o evento
+      console.log('[simpleOrchestrator] Timeout: evento ativo preservado, histórico resetado');
+      history.length = 0;
+    }
   }
 
-  //3. Extração Passiva (Regex apenas para Qtd e Data)
-  const extracted = extractCollectedData(userText);
-  const mergedCollected = {
-    ...(savedContext.collected_data || {}),
-    ...extracted,
-  } as CollectedData;
+  //3. Contexto de dados coletados (apenas do histórico, sem regex)
+  const collectedData = (savedContext.collected_data || {}) as Record<string, unknown>;
 
-  //4. Processar mensagem com Groq (A IA decide o tipo do evento)
-  // 🔥 CORREÇÃO CRÍTICA: Se o eventoId foi explicitamente passado como undefined (novo evento), NUNCA usa o salvo
-  // Isso previne a race condition onde o banco ainda não processou o clearUserContext
+  //3.5. Identificar ID do evento (declarado ANTES do parseItemCommand — bug fix: temporal dead zone)
+  // CRÍTICO: Se eventoId undefined explicitamente, sempre null (nunca usar savedContext como fallback)
+  // Isso previne race condition onde o banco ainda não processou o clearUserContext
   const currentEventId: string | null = eventoId !== undefined
     ? (eventoId || null)
-    : null; // 🔥 Se eventoId undefined explicitamente, sempre null (nunca usar fallback)
+    : null;
+
+  // Verificar se é comando de edição de itens (Track 012)
+  // Pré-triagem com detectEditIntentFromMessage antes de chamar o LLM
+  const editIntent = detectEditIntentFromMessage(userText);
+
+  if (editIntent.isEditCommand && currentEventId) {
+    if (editIntent.confidence === 'high') {
+      // Alta confiança: tentar parseItemCommand diretamente, sem chamar LLM
+      const itemCommand = parseItemCommand(userText);
+      if (itemCommand) {
+        console.log('[simpleOrchestrator] Edição de alta confiança:', itemCommand.operation);
+        try {
+          const editResult = await executeItemEdit(itemCommand, currentEventId, userId);
+          await contextManager.saveMessage(userId, 'user', userText, Number(currentEventId));
+          await contextManager.saveMessage(userId, 'assistant', editResult.message, Number(currentEventId));
+          const snapshot = await getPlanSnapshot(currentEventId);
+          return {
+            estado: 'created' as EventStatus,
+            evento_id: currentEventId,
+            mensagem: editResult.message,
+            snapshot: snapshot || undefined,
+            showItems: true,
+            suggestedReplies: ['Editar mais itens', 'Confirmar lista', 'Adicionar participantes'],
+          };
+        } catch (error) {
+          console.error('[simpleOrchestrator] Erro ao editar item:', error);
+          return {
+            estado: 'created' as EventStatus,
+            evento_id: currentEventId,
+            mensagem: 'Ops! Não consegui fazer essa alteração. Pode tentar de outro jeito?',
+            showItems: false,
+            suggestedReplies: ['Ver lista completa', 'Cancelar'],
+          };
+        }
+      }
+      // Se parseItemCommand retornou null apesar de alta confiança, cai no LLM
+    }
+    // Confiança média/baixa: o LLM vai decidir (contexto de event ID já está disponível)
+    console.log('[simpleOrchestrator] Possível edição (confiança:', editIntent.confidence, ') — delegando ao LLM');
+  }
+
+  //4. Processar mensagem com Groq (A IA decide o tipo do evento)
 
   const result = await processMessage(userText, history, userId, {
-    collectedData: mergedCollected,
+    collectedData,
     evento: currentEventId ? {
       id: currentEventId,
-      status: savedContext.state
-    } : undefined
+      status: savedContext.state,
+      tipo_evento: savedContext.collected_data?.tipo_evento as string | undefined,
+      qtd_pessoas: savedContext.collected_data?.qtd_pessoas as number | undefined,
+      data_evento: savedContext.collected_data?.data_evento as string | undefined,
+    } : undefined,
+    hasItems: !!(savedContext.collected_data?.has_items),
   });
+
+  //4.5. Validação de Data (Track 007)
+  // Se a IA extraiu uma data, validar antes de prosseguir
+  const extractedData = result.actionExecuted?.extractedData;
+  if (extractedData?.data_evento) {
+    const validation = validateEventDate(String(extractedData.data_evento));
+    
+    if (!validation.valid) {
+      // Data no passado - retornar erro com sugestão de correção
+      return {
+        estado: savedContext.state || 'draft',
+        evento_id: currentEventId || null,
+        mensagem: validation.message,
+        showItems: false,
+        suggestedReplies: validation.suggestedDate 
+          ? [`Sim, ${validation.suggestedDate.split('-').reverse().join('/')}`, 'Digitar outra data']
+          : ['Digitar outra data'],
+      };
+    }
+    
+    if (validation.warning === 'too_close') {
+      // Data muito próxima - alertar mas permitir continuar
+      // Vamos adicionar um aviso na mensagem, mas salvar a data
+      console.log('[simpleOrchestrator] Data próxima detectada:', validation.message);
+    }
+  }
 
   //5. Identificar o ID do evento (novo ou existente)
   // 🔥 CORREÇÃO DE BUG CRÍTICO: NUNCA usar savedContext.evento_id como fallback
@@ -139,7 +198,7 @@ export async function simpleOrchestrate(
     await contextManager.updateContext(
       userId,
       savedContext.state || 'collecting_core',
-      { ...mergedCollected, ...result.actionExecuted.extractedData },
+      { ...collectedData, ...result.actionExecuted.extractedData },
       [], 0.9, undefined, finalEventoId ? Number(finalEventoId) : undefined
     );
   }
@@ -177,7 +236,7 @@ export async function simpleOrchestrate(
     mensagem: result.response,
     snapshot: snapshot || undefined,
     showItems: showItems,
-    suggestedReplies: getSuggestedReplies(snapshot, result.response),
+    suggestedReplies: getSuggestedReplies(snapshot, result.response, userText),
   };
 
   //11. Finalização
@@ -214,31 +273,56 @@ export async function simpleOrchestrate(
 }
 
 /**
- * Extração passiva: Não tenta adivinhar o tipo do evento
+ * Gera sugestões de resposta baseadas no contexto atual e na resposta da IA
+ * Analisa o que a IA perguntou para oferecer sugestões relevantes
  */
-function extractCollectedData(userText: string): CollectedData {
-  const text = userText.toLowerCase();
-  const collected: CollectedData = {};
+function getSuggestedReplies(
+  snapshot: any,
+  aiResponse: string,
+  userMessage?: string
+): string[] | undefined {
+  const lower = aiResponse.toLowerCase();
 
-  // Apenas Qtd e Data via Regex (auxiliar)
-  const qtd = extractPeopleCount(text);
-  if (qtd) collected.qtd_pessoas = qtd;
+  // Detectar o que a IA perguntou — sugestões espelham a pergunta
+  if (lower.includes('quer criar') || lower.includes('posso criar') || lower.includes('pode criar')) {
+    return ['Sim, criar!', 'Mudar data', 'Mudar quantidade'];
+  }
+  if (lower.includes('montar a lista') || lower.includes('gerar a lista') || lower.includes('gerar lista') || lower.includes('monte a lista')) {
+    return ['Sim, gerar lista', 'Não, depois'];
+  }
+  if (lower.includes('quantas pessoas') || lower.includes('para quantas')) {
+    return ['10 pessoas', '15 pessoas', '20 pessoas'];
+  }
+  if (lower.includes('para quando') || lower.includes('que dia') || lower.includes('qual a data') || lower.includes('quando é')) {
+    return ['Este sábado', 'Próxima sexta', 'Daqui 2 semanas'];
+  }
+  if (lower.includes('tipo de evento') || lower.includes('que evento') || lower.includes('qual o evento')) {
+    return ['Churrasco', 'Jantar', 'Festa de aniversário'];
+  }
+  if (lower.includes('o que') && (lower.includes('servir') || lower.includes('menu') || lower.includes('cardápio'))) {
+    return ['Churrasco', 'Pizza', 'Massas'];
+  }
 
-  return collected;
-}
-
-function extractPeopleCount(text: string): number | undefined {
-  const matches = text.match(/(\d+)\s*(pessoas|convidados|gente)/);
-  if (matches) return Number(matches[1]);
-  return undefined;
-}
-
-function getSuggestedReplies(snapshot: any, aiResponse: string): string[] | undefined {
-  if (!snapshot?.evento) return ['Jantar para 10', 'Churrasco para 15', 'Festa para 20'];
+  // Fallback baseado no estado do evento
+  if (!snapshot?.evento) {
+    if (userMessage?.toLowerCase().includes('churrasco')) {
+      return ['Churrasco para 10', 'Churrasco para 15', 'Churrasco para 20'];
+    }
+    return ['Criar evento', 'Ver meus eventos'];
+  }
 
   const status = snapshot.evento.status;
-  if (status === 'created') return ['Confirmar lista', 'Editar itens'];
-  if (status === 'draft' && !snapshot.evento.data_evento) return ['Este fim de semana', 'Próxima sexta', 'A definir'];
+  const hasItems = snapshot.itens && snapshot.itens.length > 0;
 
-  return ['Entendido', 'Obrigado'];
+  if (status === 'finalized') {
+    return ['Criar novo evento', 'Ver meus eventos'];
+  }
+  if (status === 'created' || hasItems) {
+    return ['Ver lista completa', 'Editar itens', 'Confirmar evento'];
+  }
+  if (status === 'draft' || status === 'collecting_core') {
+    return ['Gerar lista de itens', 'Editar dados', 'Adicionar participantes'];
+  }
+
+  return ['Continuar', 'Ver opções', 'Cancelar'];
 }

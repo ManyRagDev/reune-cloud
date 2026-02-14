@@ -1,43 +1,64 @@
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { NBLight, nb } from "@/lib/neobrutalism";
+import { Footer } from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 
 export default function TermsOfService() {
+  const navigate = useNavigate();
+  const C = NBLight;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-accent/5">
+    <div
+      className="min-h-screen transition-colors duration-300"
+      style={{ backgroundColor: C.bg, color: C.text }}
+    >
       {/* Header */}
-      <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <Link to="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao site
-            </Button>
-          </Link>
+      <header
+        className={`sticky top-0 z-50 px-4 py-3 ${nb.border} border-t-0 border-x-0`}
+        style={{ backgroundColor: C.bg }}
+      >
+        <div className="container mx-auto max-w-4xl flex items-center justify-between">
+          <div className={`px-3 py-1 rounded-lg ${nb.border} ${nb.shadow} font-black text-lg`} style={{ backgroundColor: C.orange, color: "#FFFDF7" }}>
+            ReUNE
+          </div>
+          <Button
+            onClick={() => navigate("/")}
+            variant="ghost"
+            className={`hover:bg-transparent hover:underline font-bold`}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao site
+          </Button>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12 max-w-4xl">
-        <div className="prose prose-slate dark:prose-invert max-w-none">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-amber-500 to-purple-500 bg-clip-text text-transparent">
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl md:text-5xl font-black mb-4">
             Termos de Uso
           </h1>
-          <p className="text-muted-foreground mb-8">
+          <p className="font-medium opacity-60">
             Última atualização: {new Date().toLocaleDateString('pt-BR')}
           </p>
+        </div>
 
-          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-8 space-y-8">
-            <section>
-              <h2 className="text-2xl font-bold mb-4">1. Aceitação dos Termos</h2>
+        <div
+          className={`p-8 md:p-12 rounded-2xl ${nb.border} ${nb.shadowLg}`}
+          style={{ backgroundColor: C.cardBg }}
+        >
+          <div className="prose prose-neutral max-w-none font-medium">
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>1. Aceitação dos Termos</h2>
               <p>
                 Bem-vindo ao ReUNE! Ao acessar ou usar nosso aplicativo, você concorda em cumprir e estar vinculado
                 a estes Termos de Uso. Se você não concordar com qualquer parte destes termos, não use nossos serviços.
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">2. Descrição do Serviço</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>2. Descrição do Serviço</h2>
               <p className="mb-4">
                 O ReUNE é uma plataforma que facilita a organização de eventos, reuniões e celebrações entre amigos.
                 Nossos serviços incluem:
@@ -52,8 +73,8 @@ export default function TermsOfService() {
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">3. Elegibilidade</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>3. Elegibilidade</h2>
               <p>
                 Para usar o ReUNE, você deve:
               </p>
@@ -65,8 +86,8 @@ export default function TermsOfService() {
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">4. Conta do Usuário</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>4. Conta do Usuário</h2>
               <p className="mb-4">
                 Ao criar uma conta no ReUNE, você concorda em:
               </p>
@@ -82,8 +103,8 @@ export default function TermsOfService() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">5. Conduta do Usuário</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>5. Conduta do Usuário</h2>
               <p className="mb-4">
                 Você concorda em NÃO:
               </p>
@@ -100,8 +121,8 @@ export default function TermsOfService() {
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">6. Conteúdo do Usuário</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>6. Conteúdo do Usuário</h2>
               <p className="mb-4">
                 Você retém todos os direitos sobre o conteúdo que publica no ReUNE. Ao publicar conteúdo, você nos concede
                 uma licença mundial, não exclusiva, isenta de royalties para:
@@ -116,8 +137,8 @@ export default function TermsOfService() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">7. Propriedade Intelectual</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>7. Propriedade Intelectual</h2>
               <p>
                 O ReUNE e todo seu conteúdo (textos, gráficos, logos, ícones, imagens, código) são propriedade da
                 ReUNE ou de seus licenciadores e estão protegidos por leis de direitos autorais, marcas registradas
@@ -129,8 +150,8 @@ export default function TermsOfService() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">8. Funcionalidades Premium</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>8. Funcionalidades Premium</h2>
               <p className="mb-4">
                 O ReUNE pode oferecer funcionalidades premium mediante pagamento. Ao adquirir recursos pagos:
               </p>
@@ -143,8 +164,8 @@ export default function TermsOfService() {
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">9. Limitação de Responsabilidade</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>9. Limitação de Responsabilidade</h2>
               <p>
                 O ReUNE é fornecido "como está" e "conforme disponível". Não garantimos que o serviço será
                 ininterrupto, seguro ou livre de erros. Na máxima extensão permitida por lei:
@@ -157,8 +178,8 @@ export default function TermsOfService() {
               </ul>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">10. Rescisão</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>10. Rescisão</h2>
               <p className="mb-4">
                 Você pode encerrar sua conta a qualquer momento através das configurações do aplicativo.
                 Podemos suspender ou encerrar sua conta se:
@@ -174,8 +195,8 @@ export default function TermsOfService() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">11. Lei Aplicável e Jurisdição</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>11. Lei Aplicável e Jurisdição</h2>
               <p>
                 Estes Termos são regidos pelas leis da República Federativa do Brasil. Quaisquer disputas
                 serão resolvidas no foro da comarca de [CIDADE], com exclusão de qualquer outro, por mais
@@ -183,8 +204,8 @@ export default function TermsOfService() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">12. Alterações nos Termos</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>12. Alterações nos Termos</h2>
               <p>
                 Reservamos o direito de modificar estes termos a qualquer momento. Notificaremos sobre
                 mudanças significativas por email ou aviso no aplicativo. O uso continuado após as alterações
@@ -192,8 +213,8 @@ export default function TermsOfService() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">13. Disposições Gerais</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>13. Disposições Gerais</h2>
               <p className="mb-4">
                 <strong>Acordo Integral:</strong> Estes termos constituem o acordo integral entre você e o ReUNE.
               </p>
@@ -205,8 +226,8 @@ export default function TermsOfService() {
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4">14. Contato</h2>
+            <section className="mb-8">
+              <h2 className="text-2xl font-black mb-4" style={{ color: C.black }}>14. Contato</h2>
               <p className="mb-4">
                 Para dúvidas sobre estes Termos de Uso:
               </p>
@@ -216,10 +237,13 @@ export default function TermsOfService() {
               </ul>
             </section>
 
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6 mt-8">
-              <p className="text-sm">
-                <strong>Ao usar o ReUNE, você confirma que leu, entendeu e concordou com estes Termos de Uso
-                e nossa Política de Privacidade.</strong>
+            <div
+              className={`mt-8 p-6 rounded-xl border-l-[6px] ${nb.shadow}`}
+              style={{ backgroundColor: C.yellow, borderColor: C.black }}
+            >
+              <p className="font-bold text-sm" style={{ color: C.black }}>
+                Ao usar o ReUNE, você confirma que leu, entendeu e concordou com estes Termos de Uso
+                e nossa Política de Privacidade.
               </p>
             </div>
           </div>
@@ -227,11 +251,7 @@ export default function TermsOfService() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border/40 mt-16">
-        <div className="container mx-auto px-4 py-8 text-center text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} ReUNE. Todos os direitos reservados.</p>
-        </div>
-      </footer>
+      <Footer palette={C} />
     </div>
   );
 }

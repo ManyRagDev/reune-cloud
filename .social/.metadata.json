@@ -1,0 +1,38 @@
+{
+    "version": "1.0",
+    "lastSetup": "2026-02-07T11:05:00-03:00",
+    "identity": {
+        "hash": "7C9BCD5FDE3736AD00BAF34FDBF39EF8B1297558B583BAC3F69769727ED9364F",
+        "lastRead": "2026-02-07T11:05:00-03:00",
+        "data": {
+            "brand": "ReUNE",
+            "colors": {
+                "primary": "#FF4500",
+                "secondary": "#007A73",
+                "accent": "#00D6E6",
+                "background": "#FFFFFF",
+                "text": "#333333"
+            },
+            "fonts": {
+                "primary": "Inter",
+                "secondary": "Inter"
+            },
+            "tone": "Professional, Trustworthy, Energetic, Modern",
+            "style": "Clean, Modern, structured with high contrast colors (Orange/Teal)"
+        }
+    },
+    "dimensions": {
+        "carrossel": {
+            "width": 1080,
+            "height": 1080
+        },
+        "estático": {
+            "width": 1080,
+            "height": 1350
+        },
+        "story": {
+            "width": 1080,
+            "height": 1920
+        }
+    }
+}

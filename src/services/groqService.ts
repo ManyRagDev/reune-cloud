@@ -7,25 +7,24 @@ import { LlmMessage } from '@/types/llm';
 import { Event, Item, UUID, EventStatus } from '@/types/domain';
 import { rpc } from '@/api/rpc';
 import { upsertEvent, setEventStatus } from '@/core/orchestrator/eventManager';
-import { isValidFutureDate, parseToIsoDate } from '@/core/nlp/date-parser';
-import { PlannerEnvelope, plannerEnvelopeSchema } from '@/api/llm/plannerSchemas';
-import { systemResponses } from '@/core/orchestrator/systemResponses';
 
 
 interface ActionData {
-  action: 'create_event' | 'generate_items' | 'confirm_event' | 'update_event';
+  action: 'create_event' | 'generate_items' | 'confirm_event' | 'update_event' | 'edit_item';
   data: {
     tipo_evento?: string;
-    categoria_evento?: string;
-    subtipo_evento?: string;
-    event_name?: string;
-    event_description?: string;
     qtd_pessoas?: number;
     data_evento?: string;
     menu?: string;
     finalidade_evento?: string;
     descricao?: string;
     evento_id?: string;
+    // edit_item fields
+    operation?: 'add' | 'remove' | 'update' | 'multiply';
+    itemName?: string;
+    quantity?: number;
+    multiplier?: number;
+    category?: string;
   };
 }
 
@@ -33,8 +32,6 @@ interface EventContext {
   evento?: {
     id?: string;
     tipo_evento?: string;
-    categoria_evento?: string;
-    subtipo_evento?: string;
     qtd_pessoas?: number;
     data_evento?: string;
     menu?: string;
@@ -47,177 +44,112 @@ interface EventContext {
 
 function buildSystemPrompt(context?: EventContext): string {
   const todayIso = new Date().toISOString().slice(0, 10);
-  const basePrompt = `Voce e o UNE.AI, um assistente especializado em planejamento de eventos sociais.
-Data atual: ${todayIso}.
 
-**Sua Personalidade:**
-- Voce e acolhedor, natural e direto na comunicacao
-- Usa linguagem simples e cotidiana, sem jargoes tecnicos
-- Mantem frases curtas e objetivas, com ritmo de conversa natural
-- E empatico e atento as necessidades do usuario
-- Demonstra entusiasmo equilibrado (nem frio, nem exagerado)
+  const basePrompt = `VOCÊ É UNE.AI
+Assistente do ReUNE especializado em planejar eventos sociais.
+Data atual: ${todayIso}
 
-**Seu Tom de Voz:**
-- Casual mas respeitoso
-- Usa expressoes naturais como "otimo", "perfeito", "vamos la"
-- Evita ser formal demais ou usar linguagem robotica
-- Mantem coerencia emocional conforme o contexto da conversa
+═══════════════════════════════════════════════════════════
+PERSONALIDADE
+═══════════════════════════════════════════════════════════
+Casual, direto e eficiente. Sem formalidades excessivas.
+- Tom: Amigável mas objetivo
+- Frases: Curtas e diretas
+- Palavras: "ótimo", "perfeito", "bora", "beleza"
+- Evite: Jargões técnicos, linguagem robótica
 
-**Estrutura Hierarquica de Eventos:**
-- categoria_evento: forma social (almoco, jantar, lanche, piquenique, cafe da manha, brunch)
-- subtipo_evento: estilo culinario (churrasco, feijoada, pizza, fondue, lasanha, sushi)
-- menu: prato principal especifico (lasanha, carnes, massas, frutos do mar)
+═══════════════════════════════════════════════════════════
+FLUXO DE CRIAÇÃO DE EVENTO
+═══════════════════════════════════════════════════════════
+1. COLETAR: tipo do evento, quantidade de pessoas, data
+2. CONFIRMAR: "Churrasco para 10 no sábado. Quer criar?"
+3. EXECUTAR: Retornar JSON de criação após confirmação
+4. OFERECER: "Quer que eu monte a lista de itens?"
 
-**Intencoes Possiveis:**
-- criar_evento: Criar um novo evento do zero
-- confirmar_evento: Confirmar e finalizar um evento
-- editar_evento: Alterar informacoes de um evento existente
-- mostrar_itens: Mostrar lista de itens do evento
-- reiniciar_conversa: Limpar tudo e comecar do zero
-- encerrar_conversa: Finalizar a conversa
+Aceite datas como: dd/mm, dd/mm/yyyy, "sábado", "dia X", "próxima sexta"
 
-**Regras de Extracao:**
-1. "churrasco" e subtipo_evento; categoria_evento deve ser inferida (geralmente "almoco")
-2. "jantar" e categoria_evento, nao subtipo
-3. Se mencionar apenas prato (ex: "lasanha"), classifique como menu
-4. Datas aceitas: dd/mm/yyyy, dd/mm, "dia X de mes", ou formato ISO
-5. Quantidade de pessoas: numeros seguidos de palavras como "pessoas" ou "convidados"
+═══════════════════════════════════════════════════════════
+AÇÕES DISPONÍVEIS (retornar JSON APENAS com dados completos)
+═══════════════════════════════════════════════════════════
+Se for ação → retorne APENAS o JSON puro (sem markdown, sem texto)
+Se for conversa → responda normalmente, SEM JSON
 
-**Quando Executar Acoes:**
-Voce deve retornar JSON APENAS quando tiver informacoes suficientes para executar uma acao. Formato do JSON:
+1. Criar evento:
+{"action":"create_event","data":{"tipo_evento":"churrasco","qtd_pessoas":10,"data_evento":"2026-02-15","menu":"carnes"}}
 
-{
-  "action": "create_event" | "generate_items" | "confirm_event" | "update_event",
-  "data": {
-    "tipo_evento": "string",
-    "categoria_evento": "string (opcional)",
-    "subtipo_evento": "string (opcional)",
-    "qtd_pessoas": number,
-    "data_evento": "string (formato ISO: YYYY-MM-DD)",
-    "menu": "string (opcional)",
-    "evento_id": "string (apenas para update_event e confirm_event)"
-  }
-}
+2. Gerar lista de itens:
+{"action":"generate_items","data":{"evento_id":"uuid"}}
 
-**Acoes Disponiveis:**
-- create_event: Quando tiver tipo_evento E qtd_pessoas (Cria status 'draft')
-- generate_items: Quando evento ja existe e precisa gerar lista de itens (Muda status para 'created')
-- confirm_event: APENAS quando usuario confirmar EXPLICITAMENTE ("ok, confirmado", "finalizar"). NUNCA chame isso apos gerar itens se o usuario nao confirmou. (Muda para 'finalized')
-- update_event: Quando usuario quiser alterar dados do evento
+3. Confirmar/finalizar evento:
+{"action":"confirm_event","data":{"evento_id":"uuid"}}
 
-**IMPORTANTE:**
-- evento_id deve ser o ID numerico do evento quando existir
-- Use os dados coletados e nao pergunte novamente o que ja foi informado
-- Se retornar JSON, NAO escreva nada alem do JSON puro (sem markdown, sem explicacoes)
-- Se nao tiver informacoes suficientes, continue a conversa normalmente perguntando o que falta
-- Seja objetivo e nao divague
-- **INTELIGENCIA TEMPORAL:** Se o contexto ja tiver uma data definida (ex: vinda do banco de dados para feriados), USE essa data. Nao invente datas nem pergunte novamente se ja estiver no contexto.`;
+4. Editar dados do evento:
+{"action":"update_event","data":{"evento_id":"uuid","qtd_pessoas":15}}
+
+5. Editar item da lista:
+{"action":"edit_item","data":{"operation":"add","itemName":"cerveja","quantity":10}}
+{"action":"edit_item","data":{"operation":"remove","itemName":"refrigerante"}}
+{"action":"edit_item","data":{"operation":"update","itemName":"carne","quantity":5}}
+{"action":"edit_item","data":{"operation":"multiply","itemName":"tudo","multiplier":2}}
+
+═══════════════════════════════════════════════════════════
+DETECÇÃO DE COMANDOS DE EDIÇÃO DE ITENS
+═══════════════════════════════════════════════════════════
+ADICIONAR: "adiciona cerveja", "coloca mais 2 pães", "bota gelo"
+REMOVER: "tira refrigerante", "remove cerveja", "não precisa de gelo"
+ALTERAR: "muda cerveja pra 20", "aumenta pão pra 5"
+MULTIPLICAR: "dobra tudo", "triplica as bebidas"
+
+═══════════════════════════════════════════════════════════
+REGRAS CRÍTICAS
+═══════════════════════════════════════════════════════════
+1. SEMPRE confirme antes de criar evento ou gerar itens
+2. NÃO repita perguntas se dados já foram fornecidos
+3. Datas: "sábado" = próximo sábado, "dia 25" = dia 25 do mês atual
+4. Se contexto tiver data definida, USE-A — não pergunte de novo
+5. NÃO invente dados que o usuário não forneceu
+
+═══════════════════════════════════════════════════════════
+FALLBACK
+═══════════════════════════════════════════════════════════
+Se não entender: "Não entendi bem. Você quer criar um evento, editar um existente ou adicionar itens na lista?"
+
+═══════════════════════════════════════════════════════════
+EXEMPLOS
+═══════════════════════════════════════════════════════════
+User: "churrasco 10 pessoas sábado"
+AI:  "Beleza! Churrasco para 10 pessoas no sábado. Quer criar?"
+User: "sim"
+AI:  {"action":"create_event","data":{"tipo_evento":"churrasco","qtd_pessoas":10,"data_evento":"2026-02-15"}}
+AI:  "Pronto! Quer que eu monte a lista de itens?"
+User: "pode"
+AI:  {"action":"generate_items","data":{"evento_id":"..."}}
+
+User: "adiciona 10 cervejas"
+AI:  {"action":"edit_item","data":{"operation":"add","itemName":"cerveja","quantity":10}}`;
 
   if (context?.evento) {
     const evento = context.evento;
-    const contextInfo = `
-**Contexto Atual do Evento:**
-- ID: ${evento.id || 'N/A'}
-- Tipo: ${evento.tipo_evento || 'Nao definido'}
-- Pessoas: ${evento.qtd_pessoas || 'Nao definido'}
-- Data: ${evento.data_evento || 'Nao definida'}
-- Menu: ${evento.menu || 'Nao definido'}
-- Status: ${evento.status || 'N/A'}
-- Itens gerados: ${context.hasItems ? 'Sim' : 'Nao'}
-- Participantes: ${context.hasParticipants ? 'Sim' : 'Nao'}
+    return basePrompt + `
 
-Use essas informacoes como referencia, mas nao repita tudo que ja foi dito.`;
+═══════════════════════════════════════════════════════════
+CONTEXTO DO EVENTO ATUAL
+═══════════════════════════════════════════════════════════
+ID: ${evento.id || 'N/A'}
+Tipo: ${evento.tipo_evento || 'Não definido'}
+Pessoas: ${evento.qtd_pessoas || 'Não definido'}
+Data: ${evento.data_evento || 'Não definida'}
+Status: ${evento.status || 'N/A'}
+${context.hasItems ? '✓ Lista de itens já gerada' : '✗ Lista ainda não gerada'}
 
-    return basePrompt + contextInfo;
-  }
-
-  if (context?.collectedData && Object.keys(context.collectedData).length > 0) {
-    const collected = context.collectedData as Record<string, unknown>;
-    const parts: string[] = ['\n**Dados coletados ate agora:**'];
-    if (collected.categoria_evento) parts.push(`- Tipo de evento: ${collected.categoria_evento}`);
-    if (collected.subtipo_evento) parts.push(`- Subtipo: ${collected.subtipo_evento}`);
-    if (collected.qtd_pessoas) parts.push(`- Pessoas: ${collected.qtd_pessoas}`);
-    if (collected.menu) parts.push(`- Menu: ${collected.menu}`);
-    if (collected.data_evento) parts.push(`- Data: ${collected.data_evento}`);
-    return basePrompt + parts.join('\n');
+USE ESTAS INFORMAÇÕES. Não pergunte o que já está definido.`;
   }
 
   return basePrompt;
 }
 
-const PLANNER_SYSTEM_PROMPT = `
-Você é o Orquestrador Logístico do ReUNE.
-Sua missão é extrair dados estruturados para organizar eventos.
-
-REGRAS RÍGIDAS DE JSON (Sua resposta deve ser APENAS JSON):
-1. Use SEMPRE a chave "tipo_evento" para o nome do evento (ex: "Festa Junina", "Jantar", "Churrasco").
-2. Use SEMPRE a chave "qtd_pessoas" para o número de convidados (número puro).
-3. Use SEMPRE a chave "data_evento" para datas (YYYY-MM-DD).
-4. Use SEMPRE a chave "menu" para o prato ou comida que será servida (ex: "Massas", "Pizza", "Japonês").
-
-INTENÇÕES:
-- "create_event": APENAS para eventos NOVOS (sem ID no contexto).
-- "generate_items": APENAS se o usuário pedir EXPLICITAMENTE ("gerar lista", "ver itens"). NÃO assuma isso apenas por mudar data/pessoas.
-- "update_event": Para alterar dados de um evento JÁ EXISTENTE (mudança de data, pessoas, nome, etc).
-- "confirm_event": Quando o usuário confirmar lista, disser "ok", "tá bom" ou "pode ser".
-
-Exemplo de Resposta Válida:
-{
-  "intent": "create_event",
-  "payload": {
-    "tipo_evento": "Festa Junina",
-    "qtd_pessoas": 20,
-    "categoria_evento": "festa"
-  }
-}
-`;
-
-function buildPlannerPrompt(context?: EventContext): string {
-  const contextPayload = {
-    today: new Date().toISOString().slice(0, 10),
-    evento: context?.evento || null,
-    collected_data: context?.collectedData || {},
-  };
-
-  return `${PLANNER_SYSTEM_PROMPT}
-
-Contexto (JSON):
-${JSON.stringify(contextPayload)}
-`;
-}
-
 function cleanGroqResponse(text: string): string {
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
-}
-
-function parsePlannerEnvelope(content: string) {
-  try {
-    const cleaned = cleanGroqResponse(content);
-    const parsed = JSON.parse(cleaned);
-    const validated = plannerEnvelopeSchema.safeParse(parsed);
-    if (!validated.success) {
-      const msg = validated.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-      return { ok: false as const, error: msg };
-    }
-    return { ok: true as const, data: validated.data };
-  } catch (error) {
-    return { ok: false as const, error: error instanceof Error ? error.message : 'json invalido' };
-  }
-}
-
-function plannerToAction(plan: PlannerEnvelope): ActionData | null {
-  if (
-    plan.intent === 'create_event'
-    || plan.intent === 'generate_items'
-    || plan.intent === 'update_event'
-    || plan.intent === 'confirm_event'
-  ) {
-    return {
-      action: plan.intent,
-      data: plan.payload as ActionData['data'],
-    };
-  }
-  return null;
 }
 
 async function callGroqAPI(
@@ -316,19 +248,6 @@ function formatDateForName(isoDate?: string): string | undefined {
   return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
-function capitalizeWord(value?: string): string {
-  if (!value) return 'Evento';
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function buildEventName(tipo?: string, dataIso?: string): string {
-  const base = capitalizeWord(tipo);
-  const dateLabel = formatDateForName(dataIso);
-  if (dateLabel) {
-    return `${base} - ${dateLabel}`;
-  }
-  return base;
-}
 
 async function generateItemsWithGroqLocal(params: {
   tipo_evento: string;
@@ -451,8 +370,6 @@ async function executeAction(actionData: ActionData, userId: UUID, context?: any
       await contextManager.clearUserContext(userId);
 
       merged.finalidade_evento = data.finalidade_evento;
-      merged.categoria_evento = data.categoria_evento;
-      merged.subtipo_evento = data.subtipo_evento;
       merged.menu = data.menu;
 
       tipo = data.tipo_evento;
@@ -545,11 +462,12 @@ async function executeAction(actionData: ActionData, userId: UUID, context?: any
 
         if (action === 'generate_items' || (tipo && qtd && dataFinal)) {
           console.log('[GroqService] Gerando itens...');
+          const mergedAny = merged as Record<string, unknown>;
           const itensGerados = await generateItemsWithGroqLocal({
             tipo_evento: String(tipo),
             qtd_pessoas: Number(qtd),
             menu: merged.menu as string | undefined,
-            finalidade_evento: (merged.finalidade_evento || merged.subtipo_evento || merged.categoria_evento || merged.descricao) as string | undefined,
+            finalidade_evento: (mergedAny.finalidade_evento || mergedAny.subtipo_evento || mergedAny.categoria_evento || mergedAny.descricao) as string | undefined,
           });
 
           const itensComIds = itensGerados.map(item => ({
@@ -621,6 +539,32 @@ async function executeAction(actionData: ActionData, userId: UUID, context?: any
       };
     }
 
+    case 'edit_item': {
+      if (!eventoIdCandidate) {
+        return { message: 'Preciso saber de qual evento você quer editar os itens.' };
+      }
+      if (!data.operation) {
+        return { message: 'Não entendi qual alteração fazer na lista.' };
+      }
+
+      const isAll = data.itemName?.match(/^(tudo|todos|todas)$/i);
+      const editCommand = {
+        operation: data.operation,
+        target: isAll ? 'all' as const : data.category ? 'category' as const : 'specific' as const,
+        itemName: isAll ? undefined : data.itemName,
+        quantity: data.quantity,
+        multiplier: data.multiplier,
+        category: data.category as any,
+        rawText: '',
+      };
+
+      const editResult = await executeItemEdit(editCommand, eventoIdCandidate, userId);
+      return {
+        message: editResult.message,
+        eventoId: eventoIdCandidate,
+      };
+    }
+
     default:
       return { message: 'Ação não reconhecida.' };
   }
@@ -646,36 +590,17 @@ export async function processMessage(
     const conversationMessages = history.filter(msg => msg.role !== 'system');
     conversationMessages.push({ role: 'user', content: userMessage });
 
-    let plannerResult: ReturnType<typeof parsePlannerEnvelope> | null = null;
-    try {
-      const plannerPrompt = buildPlannerPrompt(context);
-      const plannerResponse = await callGroqAPI(
-        plannerPrompt,
-        [{ role: 'user', content: userMessage }],
-        0.1
-      );
-      plannerResult = parsePlannerEnvelope(plannerResponse);
-      if (plannerResult.ok) {
-        const plannedAction = plannerToAction(plannerResult.data);
-        if (plannedAction) {
-          const actionResult = await executeAction(plannedAction, userId, context);
-          return {
-            response: actionResult.message,
-            actionExecuted: {
-              type: plannedAction.action,
-              eventoId: actionResult.eventoId,
-              extractedData: actionResult.extractedData,
-            },
-          };
-        }
-      }
-    } catch {
-      plannerResult = { ok: false as const, error: 'planner falhou' };
+    const aiResponse = await callGroqAPI(systemPrompt, conversationMessages);
+
+    // Fallback: resposta vazia
+    if (!aiResponse || aiResponse.trim().length === 0) {
+      return { response: 'Desculpa, não entendi bem. Pode reformular?' };
     }
 
-    const aiResponse = await callGroqAPI(systemPrompt, conversationMessages);
+    // Detectar ação JSON na resposta
     const action = detectActionJSON(aiResponse);
     if (action) {
+      console.log('[GroqService] Ação detectada:', action.action);
       const actionResult = await executeAction(action, userId, context);
       return {
         response: actionResult.message,
@@ -687,12 +612,18 @@ export async function processMessage(
       };
     }
 
-    return { response: aiResponse || systemResponses.plannerInvalid };
+    // Fallback: parece JSON mas não foi parseado
+    if (aiResponse.includes('"action"') && aiResponse.includes('{')) {
+      console.warn('[GroqService] JSON parcial detectado mas inválido:', aiResponse.slice(0, 120));
+      return { response: 'Ops! Tive um problema ao processar. Pode tentar de novo?' };
+    }
+
+    return { response: aiResponse };
   } catch (error) {
     console.error('[GroqService] Erro ao processar mensagem:', error);
     if (error instanceof Error) {
       if (error.message.includes('GROQ_API_KEY')) {
-        return { response: 'Erro de configuracao: Chave da API Groq nao encontrada.' };
+        return { response: 'Erro de configuração: Chave da API Groq não encontrada.' };
       }
       return { response: `Erro ao conectar com a IA: ${error.message}` };
     }
@@ -708,7 +639,137 @@ export async function generateItemsWithGroq(params: {
   return generateItemsWithGroqLocal(params);
 }
 
+/**
+ * Executa comando de edição de itens (Track 006)
+ */
+export async function executeItemEdit(
+  command: import('@/core/orchestrator/itemCommands').EditItemCommand,
+  eventoId: string,
+  _userId: UUID  // prefixo _ = intencionalmente não usado (mantido para API compatível)
+): Promise<{ message: string; success: boolean }> {
+  try {
+    // Buscar itens atuais do evento
+    // 'itens' não está nos tipos gerados pelo Supabase, então usamos any
+    const supabase = (await import('@/integrations/supabase/client')).supabase;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const queryResult = await (supabase as any).from('itens').select('*').eq('evento_id', eventoId);
+    const error = queryResult.error;
+    const currentItems: any[] = queryResult.data || [];
+
+    if (error) throw error;
+    if (currentItems.length === 0) {
+      return { message: 'Não encontrei itens para editar neste evento.', success: false };
+    }
+
+    let updatedItems: any[] = [...currentItems];
+    let affectedItemName = '';
+    
+    const { findItemByName, generateEditFeedback } = await import('@/core/orchestrator/itemCommands');
+    
+    switch (command.operation) {
+      case 'remove': {
+        const itemToRemove = findItemByName(command.itemName || '', currentItems);
+        if (!itemToRemove) {
+          return { message: `Não encontrei "${command.itemName}" na lista.`, success: false };
+        }
+        affectedItemName = itemToRemove.nome_item;
+        updatedItems = currentItems.filter(item => item.id !== itemToRemove.id);
+        break;
+      }
+      
+      case 'add': {
+        // Verificar se já existe item similar
+        const existingItem = findItemByName(command.itemName || '', currentItems);
+        if (existingItem) {
+          // Atualizar quantidade
+          affectedItemName = existingItem.nome_item;
+          const newQty = existingItem.quantidade + (command.quantity || 1);
+          updatedItems = currentItems.map(item => 
+            item.id === existingItem.id ? { ...item, quantidade: newQty } : item
+          );
+        } else {
+          // Adicionar novo item
+          affectedItemName = command.itemName || 'Item';
+          const newItem = {
+            id: crypto.randomUUID(),
+            evento_id: eventoId,
+            nome_item: command.itemName || 'Novo item',
+            quantidade: command.quantity || 1,
+            unidade: 'un',
+            valor_estimado: 0,
+            categoria: 'geral',
+            prioridade: 'B',
+            created_at: new Date().toISOString(),
+          };
+          updatedItems = [...currentItems, newItem];
+        }
+        break;
+      }
+      
+      case 'update': {
+        const itemToUpdate = findItemByName(command.itemName || '', currentItems);
+        if (!itemToUpdate) {
+          return { message: `Não encontrei "${command.itemName}" na lista.`, success: false };
+        }
+        affectedItemName = itemToUpdate.nome_item;
+        
+        let newQty = itemToUpdate.quantidade;
+        if (command.quantity !== undefined) {
+          newQty = command.quantity;
+        } else if (command.quantityDelta !== undefined) {
+          newQty = Math.max(0, itemToUpdate.quantidade + command.quantityDelta);
+        }
+        
+        updatedItems = currentItems.map(item => 
+          item.id === itemToUpdate.id ? { ...item, quantidade: newQty } : item
+        );
+        break;
+      }
+      
+      case 'multiply': {
+        if (command.target === 'all') {
+          updatedItems = currentItems.map(item => ({
+            ...item,
+            quantidade: Math.round(item.quantidade * (command.multiplier || 2) * 100) / 100
+          }));
+          affectedItemName = 'todos os itens';
+        } else if (command.target === 'category' && command.category) {
+          updatedItems = currentItems.map(item => 
+            item.categoria === command.category 
+              ? { ...item, quantidade: Math.round(item.quantidade * (command.multiplier || 2) * 100) / 100 }
+              : item
+          );
+          affectedItemName = `itens de ${command.category}`;
+        } else {
+          const itemToMultiply = findItemByName(command.itemName || '', currentItems);
+          if (!itemToMultiply) {
+            return { message: `Não encontrei "${command.itemName}" na lista.`, success: false };
+          }
+          affectedItemName = itemToMultiply.nome_item;
+          updatedItems = currentItems.map(item => 
+            item.id === itemToMultiply.id 
+              ? { ...item, quantidade: Math.round(item.quantidade * (command.multiplier || 2) * 100) / 100 }
+              : item
+          );
+        }
+        break;
+      }
+    }
+    
+    // Salvar itens atualizados
+    await rpc.items_replace_for_event(eventoId, updatedItems);
+    
+    const feedbackMessage = generateEditFeedback(command, affectedItemName);
+    return { message: feedbackMessage, success: true };
+    
+  } catch (error) {
+    console.error('[GroqService] Erro ao executar edição de item:', error);
+    return { message: 'Ops! Tive um problema ao fazer essa alteração.', success: false };
+  }
+}
+
 export const GroqService = {
   processMessage,
   generateItemsWithGroq,
+  executeItemEdit,
 };

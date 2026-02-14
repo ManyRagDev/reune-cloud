@@ -9,7 +9,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus, Trash2, Edit2, Save, Gift, DollarSign, Pencil } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Plus, Package, Check, X, UserPlus, UserMinus, Trash2, Edit2, Save, Gift, DollarSign, Pencil, Moon, Sun, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,6 +23,7 @@ import { motion } from "framer-motion";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
+import { NBLight, NBDark, NBPalette, nb } from "@/lib/neobrutalism";
 
 interface Attendee {
   id: number;
@@ -66,6 +67,17 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const { user, session } = useAuth();
   const { event, organizers, loading, error, isOrganizer, addOrganizer, removeOrganizer } = useEvent(eventId);
   const navigate = useNavigate();
+
+  /* ── Dark mode ──────────────────────── */
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("reune-v3-theme");
+      if (saved) return saved === "dark";
+    }
+    return false;
+  });
+  useEffect(() => { localStorage.setItem("reune-v3-theme", isDark ? "dark" : "light"); }, [isDark]);
+  const C: NBPalette = isDark ? NBDark : NBLight;
 
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
@@ -1053,10 +1065,17 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: C.bg }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Carregando evento...</p>
+          <motion.div
+            animate={{ rotate: [0, 360] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            className={`w-20 h-20 rounded-xl ${nb.border} mx-auto mb-6 flex items-center justify-center`}
+            style={{ backgroundColor: C.orange }}
+          >
+            <Sparkles className="w-10 h-10" style={{ color: "#FFFDF7" }} />
+          </motion.div>
+          <p className="font-black text-xl" style={{ color: C.text }}>Carregando evento...</p>
         </div>
       </div>
     );
@@ -1065,99 +1084,72 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   // Error state
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: C.bg }}>
         <div className="text-center">
-          <p className="text-destructive mb-4">{error || "Evento não encontrado"}</p>
-          <Button onClick={onBack}>Voltar</Button>
+          <div className={`w-20 h-20 rounded-xl ${nb.border} ${nb.shadow} flex items-center justify-center mx-auto mb-6`} style={{ backgroundColor: C.pink }}>
+            <X className="w-10 h-10" style={{ color: C.black }} />
+          </div>
+          <p className="font-black text-lg mb-4" style={{ color: C.text }}>{error || "Evento não encontrado"}</p>
+          <button onClick={onBack} className={`px-6 py-3 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black`} style={{ backgroundColor: C.orange, color: "#FFFDF7" }}>Voltar</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Animated Background Orbs */}
-      <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
-        }}
-        transition={{ duration: 8, repeat: Infinity }}
-        className="fixed top-0 left-0 w-[600px] h-[600px] bg-purple-500/20 rounded-full blur-3xl pointer-events-none"
-      />
-      <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
-        }}
-        transition={{ duration: 8, repeat: Infinity, delay: 1 }}
-        className="fixed bottom-0 right-0 w-[600px] h-[600px] bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"
-      />
-
-      {/* Floating Header */}
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="fixed top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-4xl px-4"
+    <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: C.bg, color: C.text }}>
+      {/* ═══ NAVBAR — Solid Neubrutalist top bar ═══ */}
+      <nav
+        className={`sticky top-0 z-50 px-4 md:px-8 py-3 ${nb.border} border-t-0 border-x-0 flex items-center justify-between transition-colors duration-300`}
+        style={{ backgroundColor: C.bg }}
       >
-        <div className="rounded-3xl bg-card/80 backdrop-blur-xl border border-border/50 shadow-2xl px-6 py-4">
-          <div className="flex items-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="mr-4 hover:bg-background/80"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-                {event.title}
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                {isOrganizer && (
-                  <Badge className="bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400">
-                    👑 Organizador
-                  </Badge>
-                )}
-                {canEdit ? (
-                  <div className="inline-block" onClick={(e) => e.stopPropagation()}>
-                    <Select
-                      defaultValue={event.status || 'draft'}
-                      onValueChange={handleStatusChange}
-                    >
-                      <SelectTrigger className="h-7 w-[130px] text-xs bg-background/50 backdrop-blur-sm border-border/50">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="draft">📝 Rascunho</SelectItem>
-                        <SelectItem value="created">✨ Criado</SelectItem>
-                        <SelectItem value="finalized">✅ Finalizado</SelectItem>
-                        <SelectItem value="cancelled">🚫 Cancelado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <Badge variant="outline" className="text-xs uppercase">
-                    {event.status === 'finalized' ? 'Finalizado' : event.status === 'cancelled' ? 'Cancelado' : event.status}
-                  </Badge>
-                )}
-              </div>
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover}`} style={{ backgroundColor: C.sectionBg, color: C.text }}>
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-black truncate" style={{ color: C.orange }}>{event.title}</h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {isOrganizer && (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-xs font-black`} style={{ backgroundColor: C.yellow, color: C.black }}>👑 Organizador</span>
+              )}
+              {canEdit ? (
+                <div className="inline-block" onClick={(e) => e.stopPropagation()}>
+                  <Select defaultValue={event.status || 'draft'} onValueChange={handleStatusChange}>
+                    <SelectTrigger className={`h-7 w-[130px] text-xs font-bold rounded-lg ${nb.border}`} style={{ backgroundColor: C.inputBg, color: C.text }}>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">📝 Rascunho</SelectItem>
+                      <SelectItem value="created">✨ Criado</SelectItem>
+                      <SelectItem value="finalized">✅ Finalizado</SelectItem>
+                      <SelectItem value="cancelled">🚫 Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-xs font-black`} style={{ backgroundColor: C.sectionBg, color: C.text }}>
+                  {event.status === 'finalized' ? 'Finalizado' : event.status === 'cancelled' ? 'Cancelado' : event.status}
+                </span>
+              )}
             </div>
           </div>
         </div>
-      </motion.header>
+        <button onClick={() => setIsDark(!isDark)} className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover}`} style={{ backgroundColor: isDark ? C.yellow : C.lavender, color: C.black }}>
+          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+      </nav>
 
-      <main className="relative z-10 max-w-4xl mx-auto px-4 pt-32 pb-20 space-y-6">
-        {/* Event Info */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+      <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {/* ═══ Event Info Card ═══ */}
+        <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300`} style={{ backgroundColor: C.cardBg }}>
+          <div className="h-3 w-full" style={{ backgroundColor: C.sky }} />
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <CardTitle>Informações do Evento</CardTitle>
-                {!canEdit && <CardDescription>Confirme ou sugira alternativas para cada item</CardDescription>}
-                {canEdit && !isEditingEventInfo && <CardDescription>Clique em editar para modificar as informações</CardDescription>}
-                {canEdit && isEditingEventInfo && <CardDescription className="text-primary">Modo de edição ativo</CardDescription>}
+                <h2 className="text-xl font-black flex items-center gap-2" style={{ color: C.text }}>📋 Informações do Evento</h2>
+                {!canEdit && <p className="text-sm font-medium mt-1" style={{ color: C.textMuted, opacity: 0.6 }}>Confirme ou sugira alternativas</p>}
+                {canEdit && isEditingEventInfo && <p className="text-sm font-bold mt-1" style={{ color: C.orange }}>Modo de edição ativo ✏️</p>}
               </div>
               {canEdit && !isEditingEventInfo && (
                 <Button
@@ -1191,18 +1183,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 </div>
               )}
             </div>
-          </CardHeader>
-          <CardContent>
+
             {/* Modo de Edição para Organizadores */}
             {isEditingEventInfo && canEdit ? (
-              <div className="space-y-4">
+              <div className="space-y-4 mt-4">
                 <div>
-                  <Label htmlFor="editTitle" className="text-sm font-semibold">Nome do Evento</Label>
+                  <Label htmlFor="editTitle" className="text-sm font-black" style={{ color: C.text }}>Nome do Evento</Label>
                   <Input
                     id="editTitle"
                     value={editEventTitle}
                     onChange={(e) => setEditEventTitle(e.target.value)}
-                    className="mt-1"
+                    className={`mt-1 h-12 rounded-xl ${nb.input} font-bold`}
+                    style={{ backgroundColor: C.inputBg, color: C.text, borderColor: C.border }}
                     placeholder="Digite o título do evento"
                   />
                 </div>
@@ -1451,18 +1443,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Organizers - apenas organizadores podem ver e editar */}
+        {/* ═══ Organizers ═══ */}
         {isOrganizer && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center">
-                  <UserPlus className="w-5 h-5 mr-2" />
-                  Organizadores ({1 + organizers.length})
-                </CardTitle>
+          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300`} style={{ backgroundColor: C.cardBg }}>
+            <div className="h-3 w-full" style={{ backgroundColor: C.lavender }} />
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-black flex items-center gap-2" style={{ color: C.text }}>
+                  👥 Organizadores ({1 + organizers.length})
+                </h2>
                 <OrganizerInviteDialog
                   onInvite={handleInvite}
                   excludeUserIds={[event.user_id, ...organizers.map((o) => o.user_id)]}
@@ -1476,31 +1468,23 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   }
                 />
               </div>
-            </CardHeader>
-            <CardContent>
               <div className="space-y-3">
                 {/* Criador do evento */}
-                {/* Criador do evento */}
-                <div className="flex items-center gap-4 p-3 sm:p-4 bg-muted/30 rounded-lg border">
-                  <Avatar className="h-12 w-12 border-2 border-primary/20">
-                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
-                      {(organizerInfo.username || organizerInfo.email || '?').substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                <div className={`flex items-center gap-4 p-3 sm:p-4 rounded-xl ${nb.border}`} style={{ backgroundColor: C.yellow }}>
+                  <div className={`w-12 h-12 rounded-xl ${nb.border} flex items-center justify-center font-black text-lg`} style={{ backgroundColor: C.cardBg, color: C.black }}>
+                    {(organizerInfo.username || organizerInfo.email || '?').substring(0, 2).toUpperCase()}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-base text-foreground truncate">
+                      <p className="font-black text-base truncate" style={{ color: C.black }}>
                         {organizerInfo.username || organizerInfo.email || 'Criador do evento'}
                       </p>
                       {user?.id === event.user_id && (
-                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">
-                          Você
-                        </Badge>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-[10px] font-bold`} style={{ backgroundColor: C.cardBg, color: C.black }}>Você</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="default" className="text-[10px] h-5 px-2 font-normal">Organizador Principal</Badge>
-                      <span className="text-xs text-muted-foreground">Criador do evento</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-[10px] font-bold`} style={{ backgroundColor: C.orange, color: '#FFFDF7' }}>Organizador Principal</span>
                     </div>
                   </div>
                 </div>
@@ -1510,59 +1494,49 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   const info = coOrganizersInfo[organizer.user_id];
                   const displayName = info?.username || info?.email || 'Co-organizador';
                   const isCurrentUser = user?.id === organizer.user_id;
-
                   return (
-                    <div key={organizer.id} className="flex items-center gap-4 p-3 sm:p-4 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
-                      <Avatar className="h-10 w-10">
-                        {/* Fallback to user initials if no avatar is available. For now, assuming no avatar URL in current data structure, using fallback. 
-                             Ideally, organizers join would include avatar_url. */}
-                        <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                          {displayName?.substring(0, 2).toUpperCase() || "OR"}
-                        </AvatarFallback>
-                      </Avatar>
+                    <div key={organizer.id} className={`flex items-center gap-4 p-3 sm:p-4 rounded-xl ${nb.border} transition-colors`} style={{ backgroundColor: C.sectionBg }}>
+                      <div className={`w-10 h-10 rounded-xl ${nb.border} flex items-center justify-center font-bold`} style={{ backgroundColor: C.mint, color: C.black }}>
+                        {displayName?.substring(0, 2).toUpperCase() || "OR"}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-semibold text-foreground truncate">{displayName}</p>
+                          <p className="font-bold truncate" style={{ color: C.text }}>{displayName}</p>
                           {isCurrentUser && (
-                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">
-                              Você
-                            </Badge>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-[10px] font-bold`} style={{ backgroundColor: C.sky, color: C.black }}>Você</span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <p className="text-xs font-medium mt-0.5" style={{ color: C.textMuted, opacity: 0.6 }}>
                           Incluso em {new Date(organizer.added_at).toLocaleDateString("pt-BR")}
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8 shrink-0"
+                      <button
+                        className={`p-1.5 rounded-lg ${nb.border} hover:bg-red-100 transition-colors`}
+                        style={{ backgroundColor: C.cardBg }}
                         onClick={() => removeOrganizer(organizer.id)}
                         title="Remover co-organizador"
                       >
-                        <UserMinus className="w-4 h-4" />
-                      </Button>
+                        <UserMinus className="w-4 h-4" style={{ color: C.black }} />
+                      </button>
                     </div>
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
-        {/* Attendees - Visível para todos os usuários com acesso ao evento */}
+        {/* ═══ Attendees ═══ */}
         {event && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300`} style={{ backgroundColor: C.cardBg }}>
+            <div className="h-3 w-full" style={{ backgroundColor: C.mint }} />
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <CardTitle className="flex items-center">
-                    <Users className="w-5 h-5 mr-2" />
-                    Participantes ({attendees.length})
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    Lista de pessoas convidadas para o evento
-                  </CardDescription>
+                  <h2 className="text-xl font-black flex items-center gap-2" style={{ color: C.text }}>
+                    👥 Participantes ({attendees.length})
+                  </h2>
+                  <p className="text-sm font-medium mt-1" style={{ color: C.textMuted, opacity: 0.6 }}>Convidados para o evento</p>
                 </div>
                 {isOrganizer && (
                   <OrganizerInviteDialog
@@ -1579,33 +1553,27 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   />
                 )}
               </div>
-            </CardHeader>
-            <CardContent>
               <div className="space-y-3">
-                {/* Organizador - sempre aparece primeiro */}
+                {/* Organizador */}
                 {event && (
-                  <div className="flex items-center gap-4 p-3 sm:p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                    <Avatar className="h-10 w-10 border border-primary/20">
-                      <AvatarFallback className="bg-primary text-primary-foreground font-medium">
-                        {(organizerInfo.username || organizerInfo.email || '?').substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                  <div className={`flex items-center gap-4 p-3 sm:p-4 rounded-xl ${nb.border}`} style={{ backgroundColor: C.yellow }}>
+                    <div className={`w-10 h-10 rounded-xl ${nb.border} flex items-center justify-center font-bold`} style={{ backgroundColor: C.cardBg, color: C.black }}>
+                      {(organizerInfo.username || organizerInfo.email || '?').substring(0, 2).toUpperCase()}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold text-foreground truncate">
+                        <p className="font-bold truncate" style={{ color: C.black }}>
                           {organizerInfo.username || organizerInfo.email || 'Organizador'}
                         </p>
                         {user?.id === event.user_id && (
-                          <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-normal border-primary/30 text-primary">
-                            Você
-                          </Badge>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-[10px] font-bold`} style={{ backgroundColor: C.cardBg, color: C.black }}>Você</span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">Organizador do Evento</p>
+                      <p className="text-xs font-medium" style={{ color: C.black, opacity: 0.6 }}>Organizador do Evento</p>
                     </div>
-                    <Badge variant="default" className="shrink-0 h-6">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-lg ${nb.border} text-xs font-black shrink-0`} style={{ backgroundColor: C.orange, color: '#FFFDF7' }}>
                       Organizador
-                    </Badge>
+                    </span>
                   </div>
                 )}
 
@@ -1613,81 +1581,59 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 {attendees.map((attendee) => {
                   const isCurrentUser = user?.email === attendee.email;
                   const displayName = attendee.name || attendee.email || 'Participante';
+                  const statusColors: Record<string, string> = { confirmado: C.mint, pendente: C.yellow, recusado: C.pink };
+                  const statusBg = statusColors[attendee.status] || C.sectionBg;
 
                   return (
-                    <div key={attendee.id} className="flex items-center gap-4 p-3 sm:p-4 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-background border-2 border-muted text-muted-foreground font-medium">
-                          {displayName?.substring(0, 2).toUpperCase() || "PA"}
-                        </AvatarFallback>
-                      </Avatar>
-
+                    <div key={attendee.id} className={`flex items-center gap-4 p-3 sm:p-4 rounded-xl ${nb.border} transition-colors`} style={{ backgroundColor: C.sectionBg }}>
+                      <div className={`w-10 h-10 rounded-xl ${nb.border} flex items-center justify-center font-bold`} style={{ backgroundColor: C.sky, color: C.black }}>
+                        {displayName?.substring(0, 2).toUpperCase() || "PA"}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-semibold text-foreground truncate">
-                            {displayName}
-                          </p>
+                          <p className="font-bold truncate" style={{ color: C.text }}>{displayName}</p>
                           {isCurrentUser && (
-                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">
-                              Você
-                            </Badge>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-[10px] font-bold`} style={{ backgroundColor: C.sky, color: C.black }}>Você</span>
                           )}
                         </div>
                         {isOrganizer && attendee.email && (
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">{attendee.email}</p>
+                          <p className="text-xs font-medium truncate mt-0.5" style={{ color: C.textMuted, opacity: 0.6 }}>{attendee.email}</p>
                         )}
                       </div>
-
-                      <Badge
-                        variant={
-                          attendee.status === "confirmado"
-                            ? "default"
-                            : attendee.status === "pendente"
-                              ? "outline"
-                              : "destructive"
-                        }
-                        className={`shrink-0 h-6 ${attendee.status === "pendente" ? "bg-background border-dashed" : ""}`}
-                      >
-                        {attendee.status === "confirmado"
-                          ? "Confirmado"
-                          : attendee.status === "pendente"
-                            ? "Pendente"
-                            : "Recusado"}
-                      </Badge>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-lg ${nb.border} text-xs font-black shrink-0`} style={{ backgroundColor: statusBg, color: C.black }}>
+                        {attendee.status === "confirmado" ? "✅ Confirmado" : attendee.status === "pendente" ? "⏳ Pendente" : "❌ Recusado"}
+                      </span>
                     </div>
                   );
                 })}
                 {attendees.length === 0 && (
-                  <p className="text-center text-muted-foreground py-6 mt-3">
+                  <p className="text-center font-bold py-6 mt-3" style={{ color: C.textMuted, opacity: 0.5 }}>
                     Nenhum participante convidado ainda
                   </p>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
-        {/* Supplies List - Visível para todos os usuários com acesso ao evento */}
+        {/* ═══ Supplies List ═══ */}
         {event && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300`} style={{ backgroundColor: C.cardBg }}>
+            <div className="h-3 w-full" style={{ backgroundColor: C.orange }} />
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <CardTitle className="flex items-center">
-                    <Package className="w-5 h-5 mr-2" />
-                    Lista de Insumos ({supplies.length})
-                  </CardTitle>
-                  <CardDescription className="mt-1">
+                  <h2 className="text-xl font-black flex items-center gap-2" style={{ color: C.text }}>
+                    📦 Lista de Insumos ({supplies.length})
+                  </h2>
+                  <p className="text-sm font-medium mt-1" style={{ color: C.textMuted, opacity: 0.6 }}>
                     {isConfirmedGuest && !isOrganizer && !isEventCreator
                       ? "Escolha os itens que você pode levar"
                       : "Gerencie os itens necessários para o evento"}
-                  </CardDescription>
+                  </p>
                 </div>
-                {/* Botão destacado para adicionar itens */}
                 {canEdit && (
-                  <Button
-                    variant="default"
-                    size="sm"
+                  <button
                     onClick={() => {
                       const input = document.querySelector('[placeholder="Adicionar item..."]') as HTMLInputElement;
                       if (input) {
@@ -1695,30 +1641,30 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                         input.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }
                     }}
-                    className="gap-2"
+                    className={`px-4 py-2 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm flex items-center gap-2`}
+                    style={{ backgroundColor: C.mint, color: C.black }}
                   >
                     <Plus className="w-4 h-4" />
                     Adicionar Item
-                  </Button>
+                  </button>
                 )}
               </div>
-            </CardHeader>
-            <CardContent>
+
               {/* Cost Summary */}
               {hasAnyPrice && (
-                <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <div className={`mb-6 p-4 rounded-xl ${nb.border} ${nb.shadow}`} style={{ backgroundColor: C.yellow }}>
                   <div className="flex flex-col sm:flex-row justify-between gap-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">Custo Total Estimado</p>
-                      <p className="text-2xl font-bold text-primary">
+                      <p className="text-sm font-bold" style={{ color: C.black, opacity: 0.6 }}>Custo Total Estimado</p>
+                      <p className="text-2xl font-black" style={{ color: C.black }}>
                         {totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
                     </div>
                     <div className="sm:text-right">
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm font-bold" style={{ color: C.black, opacity: 0.6 }}>
                         Custo por Pessoa ({totalPeople} confirmados)
                       </p>
-                      <p className="text-xl font-semibold text-primary">
+                      <p className="text-xl font-black" style={{ color: C.black }}>
                         {costPerPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
                     </div>
@@ -1965,76 +1911,58 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
-        {/* Dinâmicas do Evento - Visível para organizadores e convidados confirmados */}
+        {/* ═══ Dinâmicas do Evento ═══ */}
         {canViewFullDetails && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300`} style={{ backgroundColor: C.cardBg }}>
+            <div className="h-3 w-full" style={{ backgroundColor: C.pink }} />
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <CardTitle className="flex items-center">
-                    <Gift className="w-5 h-5 mr-2" />
-                    Dinâmicas do Evento
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    Atividades especiais para tornar o evento mais divertido
-                  </CardDescription>
+                  <h2 className="text-xl font-black flex items-center gap-2" style={{ color: C.text }}>🎁 Dinâmicas do Evento</h2>
+                  <p className="text-sm font-medium mt-1" style={{ color: C.textMuted, opacity: 0.6 }}>Atividades especiais</p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
               <div className="space-y-3">
                 {hasSecretSanta ? (
-                  <div className="p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
+                  <div className={`p-4 rounded-xl ${nb.border} ${nb.shadow}`} style={{ backgroundColor: C.pink }}>
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <Gift className="w-5 h-5 text-primary" />
+                        <div className={`p-2 rounded-xl ${nb.border}`} style={{ backgroundColor: C.cardBg }}>
+                          <Gift className="w-5 h-5" style={{ color: C.black }} />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold mb-1">Amigo Secreto</h3>
+                          <h3 className="font-black mb-1" style={{ color: C.black }}>Amigo Secreto</h3>
                           {secretSantaData && (
-                            <div className="space-y-1 text-sm text-muted-foreground">
+                            <div className="space-y-1 text-sm font-bold" style={{ color: C.black, opacity: 0.7 }}>
                               {secretSantaData.min_value && secretSantaData.max_value && (
-                                <p>
-                                  Valor: R$ {secretSantaData.min_value} - R$ {secretSantaData.max_value}
-                                </p>
+                                <p>Valor: R$ {secretSantaData.min_value} - R$ {secretSantaData.max_value}</p>
                               )}
                               {secretSantaData.draw_date && (
-                                <p>
-                                  Data do sorteio: {format(new Date(secretSantaData.draw_date), "dd/MM/yyyy", { locale: ptBR })}
-                                </p>
+                                <p>Sorteio: {format(new Date(secretSantaData.draw_date), "dd/MM/yyyy", { locale: ptBR })}</p>
                               )}
                               {secretSantaData.has_drawn && (
-                                <Badge variant="default" className="mt-2">Sorteio realizado</Badge>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-xs font-black mt-2`} style={{ backgroundColor: C.mint, color: C.black }}>✅ Sorteio realizado</span>
                               )}
                               {!secretSantaData.has_drawn && (
-                                <Badge variant="secondary" className="mt-2">Aguardando sorteio</Badge>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-xs font-black mt-2`} style={{ backgroundColor: C.yellow, color: C.black }}>⏳ Aguardando sorteio</span>
                               )}
                             </div>
                           )}
                         </div>
                       </div>
                       {isOrganizer && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/event/${eventId}/secret-santa/admin`)}
-                        >
+                        <button className={`px-3 py-1.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm`} style={{ backgroundColor: C.cardBg, color: C.text }} onClick={() => navigate(`/event/${eventId}/secret-santa/admin`)}>
                           Gerenciar
-                        </Button>
+                        </button>
                       )}
                       {!isOrganizer && secretSantaData.has_drawn && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => navigate(`/event/${eventId}/secret-santa/my-result`)}
-                        >
-                          Ver Meu Resultado
-                        </Button>
+                        <button className={`px-3 py-1.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm`} style={{ backgroundColor: C.orange, color: '#FFFDF7' }} onClick={() => navigate(`/event/${eventId}/secret-santa/my-result`)}>
+                          Ver Resultado
+                        </button>
                       )}
                     </div>
                   </div>
@@ -2042,65 +1970,59 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   <>
                     {isOrganizer ? (
                       <div className="text-center py-8">
-                        <Gift className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-                        <p className="text-muted-foreground mb-4">
-                          Nenhuma dinâmica adicionada ainda
-                        </p>
-                        <Button
+                        <div className={`w-16 h-16 rounded-xl ${nb.border} ${nb.shadow} flex items-center justify-center mx-auto mb-4`} style={{ backgroundColor: C.pink }}>
+                          <Gift className="w-8 h-8" style={{ color: C.black }} />
+                        </div>
+                        <p className="font-bold mb-4" style={{ color: C.textMuted, opacity: 0.5 }}>Nenhuma dinâmica adicionada</p>
+                        <button
                           onClick={() => navigate(`/event/${eventId}/secret-santa/setup`)}
-                          className="gap-2"
+                          className={`px-6 py-3 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black flex items-center gap-2 mx-auto`}
+                          style={{ backgroundColor: C.pink, color: C.black }}
                         >
                           <Plus className="w-4 h-4" />
                           Adicionar Amigo Secreto
-                        </Button>
+                        </button>
                       </div>
                     ) : (
-                      <p className="text-center text-muted-foreground py-6">
-                        Nenhuma dinâmica configurada para este evento
+                      <p className="text-center font-bold py-6" style={{ color: C.textMuted, opacity: 0.5 }}>
+                        Nenhuma dinâmica configurada
                       </p>
                     )}
                   </>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
-        {/* Botão de Salvar (organizador) */}
+        {/* ═══ Save Buttons ═══ */}
         {isOrganizer && (
-          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-            <CardContent className="pt-6">
-              <Button className="w-full" size="lg" disabled={saving} onClick={handleSaveLists}>
+          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden`} style={{ backgroundColor: C.orange }}>
+            <div className="p-6">
+              <button className={`w-full py-4 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-lg`} style={{ backgroundColor: '#FFFDF7', color: C.black }} disabled={saving} onClick={handleSaveLists}>
                 {saving ? "Salvando..." : "💾 Salvar Alterações"}
-              </Button>
-              <p className="text-xs text-muted-foreground text-center mt-3">
+              </button>
+              <p className="text-xs font-bold text-center mt-3" style={{ color: '#FFFDF7', opacity: 0.8 }}>
                 Salva convidados e lista de insumos do evento
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
-        {/* Botão de Salvar - apenas para convidados, no final da página */}
         {!isOrganizer &&
           (confirmation.date !== "pending" ||
             confirmation.time !== "pending" ||
             confirmation.location !== "pending") && (
-            <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-              <CardContent className="pt-6">
-                <Button
-                  variant="floating"
-                  className="w-full"
-                  size="lg"
-                  disabled={saving}
-                  onClick={handleSaveConfirmation}
-                >
+            <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden`} style={{ backgroundColor: C.mint }}>
+              <div className="p-6">
+                <button className={`w-full py-4 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-lg`} style={{ backgroundColor: '#FFFDF7', color: C.black }} disabled={saving} onClick={handleSaveConfirmation}>
                   {saving ? "Salvando..." : "💾 Salvar Minhas Preferências"}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center mt-3">
-                  Salve suas confirmações e sugestões de alternativas antes de sair
+                </button>
+                <p className="text-xs font-bold text-center mt-3" style={{ color: C.black, opacity: 0.6 }}>
+                  Salve suas confirmações e sugestões de alternativas
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
       </main>
     </div>

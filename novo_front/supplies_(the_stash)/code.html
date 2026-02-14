@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Supplies - Pop Brutalista</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#ccff00", // Acid Lime from PRD
+              "secondary": "#ff00ff", // Electric Magenta from PRD
+              "background-light": "#f2f0e9", // Off-white Newsprint from PRD
+              "background-dark": "#222210",
+              "alert": "#ff4800",
+            },
+            fontFamily: {
+              "display": ["Space Grotesk", "sans-serif"],
+              "mono": ["Space Mono", "monospace"],
+              "marker": ["Permanent Marker", "cursive"],
+            },
+            boxShadow: {
+              "hard": "4px 4px 0px 0px #000000",
+              "hard-sm": "2px 2px 0px 0px #000000",
+            },
+            borderWidth: {
+              "3": "3px",
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        /* Custom utilities for the brutalist look */
+        .border-3 { border-width: 3px; }
+        .rotate-neg-2 { transform: rotate(-2deg); }
+        .rotate-pos-1 { transform: rotate(1deg); }
+        .bg-pattern {
+            background-image: radial-gradient(#000000 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light min-h-screen font-display text-black selection:bg-secondary selection:text-white overflow-x-hidden">
+<!-- Sticky Header -->
+<header class="sticky top-0 z-50 bg-background-light border-b-3 border-black px-4 py-3 flex items-center justify-between shadow-hard mb-6">
+<button class="flex items-center justify-center w-10 h-10 bg-white border-3 border-black active:translate-x-1 active:translate-y-1 active:shadow-none shadow-hard-sm transition-all">
+<span class="material-symbols-outlined font-bold">arrow_back</span>
+</button>
+<h1 class="text-2xl font-bold italic tracking-tighter uppercase -skew-x-6">O Que Levar</h1>
+<div class="w-10 h-10 rounded-full border-3 border-black bg-primary overflow-hidden shadow-hard-sm">
+<img alt="User Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUSDGCSk5kovYi-1pSyVsWHsXLkgmikdDfAUaiLSUi1Sp4_Jr0boOVI9TwfYCuAgGY6goMic5NthFKeDApUZi3uZ6zYT1F64fyTK23ExM1Ifkflq7YMW6bhYEPUy3Od51j5M50difr79Uq0HscPKgzj4Vr1GJJaTrw0LX0Ck5ECQ8TRx6AXEf6dCHbWKXrJqbAJEeibKliWmMCWUrJT0PTI6BQfcKJr2TyJbgQksmfhFUQiMM1JpUWzdWb-Q84g5cNijxGNNYmjYg"/>
+</div>
+</header>
+<!-- Main Content -->
+<main class="px-4 pb-24 max-w-md mx-auto relative">
+<!-- Progress Bar (The Chaos Meter) -->
+<div class="mb-10 relative">
+<div class="flex justify-between items-end mb-2">
+<span class="font-bold font-mono text-sm uppercase">Meta de Caos</span>
+<span class="font-bold font-mono text-xs bg-black text-white px-2 py-1 transform rotate-2">65% GARANTIDO</span>
+</div>
+<div class="h-6 w-full border-3 border-black bg-white rounded-none relative">
+<div class="h-full bg-primary border-r-3 border-black absolute top-0 left-0" style="width: 65%;">
+<!-- Striped pattern overlay for progress -->
+<div class="w-full h-full" style="background-image: linear-gradient(45deg,rgba(0,0,0,.15) 25%,transparent 25%,transparent 50%,rgba(0,0,0,.15) 50%,rgba(0,0,0,.15) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+</div>
+</div>
+</div>
+<!-- Section 1: COMES (FOOD) -->
+<div class="mb-10">
+<!-- Category Header -->
+<div class="inline-block bg-black text-white px-4 py-2 border-3 border-transparent rotate-neg-2 mb-4 relative z-10 shadow-[4px_4px_0px_#ccff00]">
+<h2 class="text-xl font-bold tracking-tight uppercase">🍖 COMES (TÁ PAGO?)</h2>
+</div>
+<div class="flex flex-col gap-4 mt-2">
+<!-- Claimed Item -->
+<div class="relative group">
+<div class="bg-primary border-3 border-black p-4 flex items-center justify-between shadow-hard transform transition-transform hover:-translate-y-0.5">
+<div class="flex-1">
+<span class="block font-mono text-sm font-bold line-through decoration-2 decoration-black/50 text-black/60">PICANHA (2KG)</span>
+<span class="text-xs font-bold bg-white inline-block px-1 border border-black mt-1 transform -rotate-1">PEDRO LEVA</span>
+</div>
+<div class="flex -space-x-3 items-center">
+<div class="w-10 h-10 rounded-none border-3 border-black bg-white overflow-hidden relative z-10">
+<img alt="Avatar of Pedro" class="w-full h-full object-cover grayscale contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBImJ4iSUSv1lYGjN3_oz1-_FKgoMUCxe5HaRz18KcPs5es6KyyI50EZDxal7-RIQ3mOBU1CxyL092TlC06YD5BQrGTJ7UAu2FcF-lUz7s6SPbaI9D_CxG3ipo3P7_AWZDrD3gOx0QDC9R3SLz9t5LsR5VJ7CdFKI8_oimyIb2k4KgL5w7cwnUg6aOQlMG2MWR-66CW4-K9eMEyy6CUoEYuek7mPfJhfqz3V5w0fXy-htnpaVMnWtxb9JQ0EatvKi5j45AHuJ4g7q4"/>
+</div>
+<span class="material-symbols-outlined text-3xl absolute -right-2 -top-4 text-secondary z-20 animate-bounce" style="text-shadow: 2px 2px 0 #000;">check_circle</span>
+</div>
+</div>
+</div>
+<!-- Unclaimed Item -->
+<div class="relative group">
+<div class="bg-white border-3 border-black p-3 flex items-center justify-between shadow-hard">
+<div class="flex-1 pr-2">
+<span class="block font-mono text-lg font-bold">PÃO DE ALHO</span>
+<span class="text-xs font-mono text-gray-500">Min. 5 pacotes</span>
+</div>
+<button class="bg-secondary text-white font-bold px-3 py-2 border-3 border-black shadow-[2px_2px_0px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[#d900d9] transition-all whitespace-nowrap text-sm uppercase flex items-center gap-1">
+                            Eu Levo
+                            <span class="material-symbols-outlined text-sm">front_hand</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: BEBES (DRINKS) -->
+<div class="mb-10">
+<!-- Category Header -->
+<div class="inline-block bg-black text-white px-4 py-2 border-3 border-transparent rotate-pos-1 mb-4 relative z-10 shadow-[4px_4px_0px_#ff00ff]">
+<h2 class="text-xl font-bold tracking-tight uppercase">🍻 MAMAR (BEBIDAS)</h2>
+</div>
+<div class="flex flex-col gap-4 mt-2">
+<!-- Unclaimed Item -->
+<div class="relative group">
+<div class="bg-white border-3 border-black p-3 flex items-center justify-between shadow-hard">
+<div class="flex-1 pr-2">
+<span class="block font-mono text-lg font-bold">CERVEJA (3 CAIXAS)</span>
+<span class="text-xs font-mono text-gray-500">Heineken ou Spaten</span>
+</div>
+<button class="bg-secondary text-white font-bold px-3 py-2 border-3 border-black shadow-[2px_2px_0px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[#d900d9] transition-all whitespace-nowrap text-sm uppercase flex items-center gap-1">
+                            Eu Levo
+                            <span class="material-symbols-outlined text-sm">front_hand</span>
+</button>
+</div>
+</div>
+<!-- Claimed Item -->
+<div class="relative group">
+<div class="bg-primary border-3 border-black p-4 flex items-center justify-between shadow-hard">
+<div class="flex-1">
+<span class="block font-mono text-sm font-bold line-through decoration-2 decoration-black/50 text-black/60">VODKA (ABS)</span>
+<span class="text-xs font-bold bg-white inline-block px-1 border border-black mt-1 transform rotate-1">MARIA LEVA</span>
+</div>
+<div class="flex -space-x-3 items-center">
+<div class="w-10 h-10 rounded-none border-3 border-black bg-white overflow-hidden relative z-10">
+<img alt="Avatar of Maria" class="w-full h-full object-cover grayscale contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCU1EWcOHxPU2-g-GVwP05dDotOrkUU6CHEwenREJzEsliktLRdJWRFKEkzC8NICwfdehNqYE9anT-wUWmub733qd5DF7Uiu6rNsTfbAF8pdLFPpUPGcMKRoEfw6eE6D_ISH5adbIxEJD26-oamEmumkqz7bRVrbKMW28zdhtGHxKJozE5kaAf4Ex8DEV77Pr7ZxgODsKjQW-wr6lbp6VObWiZ3oj0WpYBcsvQFymImjesNidaSB5h6t5ER2crgxtkxmNiuswCUWKs"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Claimed Item -->
+<div class="relative group">
+<div class="bg-primary border-3 border-black p-4 flex items-center justify-between shadow-hard">
+<div class="flex-1">
+<span class="block font-mono text-sm font-bold line-through decoration-2 decoration-black/50 text-black/60">ENERGETICO (2L)</span>
+<span class="text-xs font-bold bg-white inline-block px-1 border border-black mt-1 transform rotate-1">MARIA LEVA</span>
+</div>
+<div class="flex -space-x-3 items-center">
+<div class="w-10 h-10 rounded-none border-3 border-black bg-white overflow-hidden relative z-10">
+<img alt="Avatar of Maria" class="w-full h-full object-cover grayscale contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDE5kaSihJpSutGmF5RgmegbiWOqFtE4jurSJwDa-M_t7JAJeOTx3qpwZCbX9s3Hyry_rfprwcjyuMNAm28lAH-Fu-0hM-pvw4GcbUDq9sxhpPGNzeuj3zJg6zd0g5sQcp_4eqiQNBZoDMdKxQqE84t_kUo1JQalDeHJtYvoUATj-QiaPkigCZFlu0lseEq9pWx6kDthT6Rb1jJh10mnwjrU-ohHcSATOwn17ZxQu52gS8kZtYeHFeq4fE3Ejq4Ge15O_cHYMKnIE8"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: TRALHA (OTHERS) -->
+<div class="mb-6">
+<!-- Category Header -->
+<div class="inline-block bg-black text-white px-4 py-2 border-3 border-transparent rotate-neg-2 mb-4 relative z-10 shadow-[4px_4px_0px_#ffffff]">
+<h2 class="text-xl font-bold tracking-tight uppercase">🧊 TRALHA (GELO E TALS)</h2>
+</div>
+<div class="flex flex-col gap-4 mt-2">
+<!-- Unclaimed Item -->
+<div class="relative group">
+<div class="bg-white border-3 border-black p-3 flex items-center justify-between shadow-hard">
+<div class="flex-1 pr-2">
+<span class="block font-mono text-lg font-bold">GELO (2 SACOS)</span>
+<span class="text-xs font-mono text-gray-500">De coco ou normal</span>
+</div>
+<button class="bg-secondary text-white font-bold px-3 py-2 border-3 border-black shadow-[2px_2px_0px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[#d900d9] transition-all whitespace-nowrap text-sm uppercase flex items-center gap-1">
+                           Eu Levo
+                           <span class="material-symbols-outlined text-sm">front_hand</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Sticky Input Area -->
+<div class="fixed bottom-0 left-0 w-full p-4 bg-background-light border-t-3 border-black z-50">
+<div class="max-w-md mx-auto flex gap-2">
+<input class="w-full bg-white border-3 border-black p-3 font-mono text-lg placeholder:text-gray-400 focus:outline-none focus:bg-primary transition-colors shadow-hard-sm" placeholder="ADICIONAR ITEM..." type="text"/>
+<button class="bg-black text-white border-3 border-black w-14 flex items-center justify-center shadow-hard-sm active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-gray-900">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</div>
+</div>
+</body></html>

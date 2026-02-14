@@ -1,14 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sparkles, Mail, Lock } from "lucide-react";
-import reUneLogo from "@/assets/reune-logo.png";
+import { ArrowLeft, Sparkles, Mail, Lock, ArrowRight, Sun, Moon } from "lucide-react";
 import { motion } from "framer-motion";
+import { NBLight, NBDark, NBPalette, nb } from "@/lib/neobrutalism";
 
 interface LoginProps {
   onLogin: () => void;
@@ -20,6 +18,23 @@ const Login = ({ onLogin }: LoginProps) => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  /* ── Dark mode state ──────────────────────── */
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("reune-v3-theme");
+      if (saved) return saved === "dark";
+    }
+    return false; // default: light
+  });
+
+  useEffect(() => {
+    localStorage.setItem("reune-v3-theme", isDark ? "dark" : "light");
+    // Optional: Update html class if using tailwind dark mode class strategy elsewhere
+    document.documentElement.classList.toggle("dark", isDark);
+  }, [isDark]);
+
+  const C: NBPalette = isDark ? NBDark : NBLight;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,8 +52,15 @@ const Login = ({ onLogin }: LoginProps) => {
         if (error) throw error;
 
         toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo de volta!",
+          title: "Login realizado!",
+          description: "Bem-vindo de volta ao ReUNE.",
+          style: {
+            border: "3px solid #1A1A1A",
+            boxShadow: "4px 4px 0px #1A1A1A",
+            backgroundColor: C.mint,
+            color: C.black,
+            borderRadius: "0px",
+          }
         });
 
         onLogin();
@@ -56,16 +78,30 @@ const Login = ({ onLogin }: LoginProps) => {
         if (error) throw error;
 
         toast({
-          title: "Conta criada com sucesso!",
-          description: "Verifique seu email para confirmar a conta.",
+          title: "Conta criada!",
+          description: "Checa seu email pra confirmar.",
+          style: {
+            border: "3px solid #1A1A1A",
+            boxShadow: "4px 4px 0px #1A1A1A",
+            backgroundColor: C.yellow,
+            color: C.black,
+            borderRadius: "0px",
+          }
         });
       }
     } catch (error) {
       const err = error as { message?: string };
       toast({
-        title: "Erro na autenticação",
-        description: err?.message || "Ocorreu um erro. Tente novamente.",
+        title: "Deu ruim",
+        description: err?.message || "Tente novamente.",
         variant: "destructive",
+        style: {
+          border: "3px solid #1A1A1A",
+          boxShadow: "4px 4px 0px #1A1A1A",
+          backgroundColor: C.orange,
+          color: "#FFFDF7",
+          borderRadius: "0px",
+        }
       });
     } finally {
       setLoading(false);
@@ -75,9 +111,16 @@ const Login = ({ onLogin }: LoginProps) => {
   const handlePasswordReset = async () => {
     if (!email) {
       toast({
-        title: "Informe seu email",
-        description: "Digite o email cadastrado para receber o link de redefinição.",
+        title: "Qual seu email?",
+        description: "Digita aí em cima pra gente enviar o link.",
         variant: "destructive",
+        style: {
+          border: "3px solid #1A1A1A",
+          boxShadow: "4px 4px 0px #1A1A1A",
+          backgroundColor: C.pink,
+          color: "#FFFDF7",
+          borderRadius: "0px",
+        }
       });
       return;
     }
@@ -93,15 +136,29 @@ const Login = ({ onLogin }: LoginProps) => {
       if (error) throw error;
 
       toast({
-        title: "Link enviado",
-        description: "Confira seu email para redefinir a senha.",
+        title: "Link enviado!",
+        description: "Confira seu email pra redefinir a senha.",
+        style: {
+          border: "3px solid #1A1A1A",
+          boxShadow: "4px 4px 0px #1A1A1A",
+          backgroundColor: C.mint,
+          color: C.black,
+          borderRadius: "0px",
+        }
       });
     } catch (error) {
       const err = error as { message?: string };
       toast({
-        title: "Erro ao enviar link",
-        description: err?.message || "Tente novamente em instantes.",
+        title: "Erro ao enviar",
+        description: err?.message || "Tente novamente.",
         variant: "destructive",
+        style: {
+          border: "3px solid #1A1A1A",
+          boxShadow: "4px 4px 0px #1A1A1A",
+          backgroundColor: C.orange,
+          color: "#FFFDF7",
+          borderRadius: "0px",
+        }
       });
     } finally {
       setLoading(false);
@@ -109,218 +166,139 @@ const Login = ({ onLogin }: LoginProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Animated Background Orbs */}
-      <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
-        }}
-        transition={{ duration: 8, repeat: Infinity }}
-        className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-orange-500/20 rounded-full blur-3xl"
-      />
-      <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
-        }}
-        transition={{ duration: 8, repeat: Infinity, delay: 1 }}
-        className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-cyan-500/20 rounded-full blur-3xl"
-      />
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300"
+      style={{ backgroundColor: C.bg }}
+    >
+      {/* Theme Toggle */}
+      <button
+        onClick={() => setIsDark(!isDark)}
+        className={`absolute top-4 right-4 p-3 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover} transition-colors z-50`}
+        style={{ backgroundColor: isDark ? C.yellow : C.lavender, color: C.black }}
+      >
+        {isDark ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+      </button>
 
-      {/* Login Card */}
+      {/* Background Shapes */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className={`absolute top-[-100px] left-[-100px] w-[300px] h-[300px] rounded-full ${nb.border} opacity-20`}
+          style={{ backgroundColor: C.yellow }}
+        />
+        <motion.div
+          animate={{ rotate: -360 }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className={`absolute bottom-[-50px] right-[-50px] w-[200px] h-[200px] ${nb.border} opacity-20`}
+          style={{ backgroundColor: C.pink }}
+        />
+      </div>
+
+      {/* Main Card */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative z-10"
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className={`w-full max-w-md relative z-10 p-8 rounded-xl ${nb.border} ${nb.shadowXl}`}
+        style={{ backgroundColor: C.cardBg }}
       >
         {/* Back Button */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-6"
+        <button
+          onClick={() => window.location.href = '/'}
+          className={`mb-6 flex items-center gap-2 text-sm font-bold opacity-70 hover:opacity-100 transition-opacity`}
+          style={{ color: C.text }}
         >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.location.href = '/'}
-            className="gap-2 hover:bg-background/80 backdrop-blur-sm"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar
-          </Button>
-        </motion.div>
+          <ArrowLeft className="h-4 w-4" />
+          Voltar pra home
+        </button>
 
-        {/* Card with Gradient Border */}
-        <div className="relative">
-          <div className="absolute -inset-1 bg-gradient-to-r from-orange-500/50 to-cyan-500/50 rounded-3xl blur opacity-25"></div>
-
-          <Card className="relative border-2 border-border/50 bg-card/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden">
-            {/* Top Gradient Bar */}
-            <div className="h-2 w-full bg-gradient-to-r from-orange-500 to-cyan-500" />
-
-            <CardHeader className="text-center pt-8 pb-6 px-8">
-              {/* Logo */}
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="flex justify-center mb-6"
-              >
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-cyan-500 rounded-full blur-xl opacity-30 animate-pulse"></div>
-                  <img src={reUneLogo} alt="ReUNE Logo" className="relative h-24 w-auto" />
-                </div>
-              </motion.div>
-
-              {/* Title */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-cyan-500 bg-clip-text text-transparent mb-2">
-                  {isLogin ? "Bem-vindo de volta!" : "Criar Conta"}
-                </CardTitle>
-                <CardDescription className="text-base">
-                  {isLogin ? "Faça login para continuar" : "Comece sua jornada com a gente"}
-                </CardDescription>
-              </motion.div>
-
-              {/* Badge */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="mt-4"
-              >
-                <Badge className="px-3 py-1 text-xs bg-gradient-to-r from-orange-500/10 to-cyan-500/10 border-orange-500/20 text-orange-600 dark:text-orange-400">
-                  <Sparkles className="w-3 h-3 mr-1 inline" />
-                  Plataforma Inteligente
-                </Badge>
-              </motion.div>
-            </CardHeader>
-
-            <CardContent className="space-y-6 px-8 pb-8">
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Email Input */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.5 }}
-                  className="space-y-2"
-                >
-                  <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    Email
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="h-12 rounded-xl border-2 border-border/50 bg-background/50 backdrop-blur-sm transition-all focus:bg-background focus:border-orange-500 focus:shadow-lg focus:shadow-orange-500/20 pl-4"
-                    />
-                  </div>
-                </motion.div>
-
-                {/* Password Input */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.6 }}
-                  className="space-y-2"
-                >
-                  <Label htmlFor="password" className="text-sm font-medium flex items-center gap-2">
-                    <Lock className="w-4 h-4" />
-                    Senha
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-12 rounded-xl border-2 border-border/50 bg-background/50 backdrop-blur-sm transition-all focus:bg-background focus:border-cyan-500 focus:shadow-lg focus:shadow-cyan-500/20 pl-4"
-                    />
-                  </div>
-                </motion.div>
-
-                {/* Submit Button */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.7 }}
-                  className="pt-2"
-                >
-                  <Button
-                    type="submit"
-                    className="w-full h-14 text-base font-semibold bg-gradient-to-r from-orange-500 to-cyan-500 hover:from-orange-600 hover:to-cyan-600 shadow-lg hover:shadow-xl transition-all"
-                    disabled={!email || !password || loading}
-                  >
-                    {loading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        Aguarde...
-                      </div>
-                    ) : (
-                      isLogin ? "Entrar" : "Criar Conta"
-                    )}
-                  </Button>
-                </motion.div>
-
-                {isLogin && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5, delay: 0.75 }}
-                    className="text-right"
-                  >
-                    <button
-                      type="button"
-                      onClick={handlePasswordReset}
-                      className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors hover:underline"
-                      disabled={loading}
-                    >
-                      Esqueci minha senha
-                    </button>
-                  </motion.div>
-                )}
-              </form>
-
-              {/* Toggle Login/Signup */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.8 }}
-                className="text-center pt-4 border-t border-border/50"
-              >
-                <button
-                  type="button"
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors hover:underline"
-                >
-                  {isLogin ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça login"}
-                </button>
-              </motion.div>
-            </CardContent>
-          </Card>
+        <div className="text-center mb-8">
+          <div className={`inline-flex items-center justify-center w-16 h-16 mb-4 rounded-xl ${nb.border} ${nb.shadow}`} style={{ backgroundColor: C.orange }}>
+            <Sparkles className="w-8 h-8 text-[#FFFDF7]" />
+          </div>
+          <h1 className="text-3xl font-black mb-2" style={{ color: C.text }}>
+            {isLogin ? "Bem-vindo de volta!" : "Crie sua conta"}
+          </h1>
+          <p className="font-medium opacity-70" style={{ color: C.textMuted }}>
+            {isLogin ? "Bora organizar uns eventos?" : "Comece grátis em segundos"}
+          </p>
         </div>
 
-        {/* Info Footer */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.9 }}
-          className="mt-6 text-center text-sm text-muted-foreground"
-        >
-          <p>Ao continuar, você concorda com nossos termos de uso</p>
-        </motion.div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="font-bold flex items-center gap-2" style={{ color: C.text }}>
+              <Mail className="w-4 h-4" /> Email
+            </Label>
+            <div className="relative">
+              <input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={`w-full p-3 rounded-lg ${nb.input} font-medium`}
+                style={{ backgroundColor: C.inputBg || C.bg, color: C.text, borderColor: C.black }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password" className="font-bold flex items-center gap-2" style={{ color: C.text }}>
+              <Lock className="w-4 h-4" /> Senha
+            </Label>
+            <div className="relative">
+              <input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`w-full p-3 rounded-lg ${nb.input} font-medium`}
+                style={{ backgroundColor: C.inputBg || C.bg, color: C.text, borderColor: C.black }}
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!email || !password || loading}
+            className={`w-full py-4 rounded-xl text-lg flex items-center justify-center gap-2 ${nb.button} ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:translate-x-1 hover:translate-y-1 hover:shadow-none'}`}
+            style={{ backgroundColor: C.mint, color: C.black }}
+          >
+            {loading ? (
+              "Carregando..."
+            ) : (
+              <>
+                {isLogin ? "Entrar" : "Criar Conta"} <ArrowRight className="w-5 h-5" />
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="mt-8 flex flex-col gap-4 text-center">
+          {isLogin && (
+            <button
+              type="button"
+              onClick={handlePasswordReset}
+              className="text-sm font-bold hover:underline"
+              style={{ color: C.textMuted }}
+            >
+              Esqueci minha senha
+            </button>
+          )}
+
+          <div className={`h-1 w-full ${nb.border} border-x-0 border-b-0 opacity-20`} />
+
+          <button
+            type="button"
+            onClick={() => setIsLogin(!isLogin)}
+            className="text-sm font-black hover:underline"
+            style={{ color: C.orange }}
+          >
+            {isLogin ? "Não tem conta? Crie grátis" : "Já tem conta? Faça login"}
+          </button>
+        </div>
       </motion.div>
     </div>
   );

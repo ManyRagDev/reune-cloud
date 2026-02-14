@@ -1,136 +1,80 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Home, ArrowLeft, Search, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Search, Home } from "lucide-react";
 import { motion } from "framer-motion";
+import { NBLight, nb } from "@/lib/neobrutalism";
 
 const NotFound = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
-  }, [location.pathname]);
+  const C = NBLight; // Force light or add theme logic if needed
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background relative overflow-hidden px-4">
-      {/* Animated Background Orbs */}
+    <div
+      className="flex min-h-screen items-center justify-center p-4 relative overflow-hidden"
+      style={{ backgroundColor: C.bg }}
+    >
+      {/* Background geometric shapes */}
       <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
-        }}
-        transition={{ duration: 8, repeat: Infinity }}
-        className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-purple-500/20 rounded-full blur-3xl"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className={`absolute top-[-100px] left-[-100px] w-[300px] h-[300px] rounded-full ${nb.border} opacity-20`}
+        style={{ backgroundColor: C.yellow }}
       />
       <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
-        }}
-        transition={{ duration: 8, repeat: Infinity, delay: 1 }}
-        className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-pink-500/20 rounded-full blur-3xl"
+        animate={{ rotate: -360 }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className={`absolute bottom-[-50px] right-[-50px] w-[200px] h-[200px] ${nb.border} opacity-20`}
+        style={{ backgroundColor: C.pink }}
       />
 
-      {/* 404 Content */}
-      <div className="text-center relative z-10 max-w-2xl mx-auto">
-        {/* 404 Number */}
-        <motion.div
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5, type: "spring" }}
-          className="mb-8"
-        >
-          <div className="relative inline-block">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 blur-3xl opacity-30 animate-pulse" />
-            <h1 className="relative text-[12rem] md:text-[16rem] font-black bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent leading-none">
-              404
-            </h1>
+      <div className="text-center relative z-10 max-w-2xl mx-auto space-y-8">
+        {/* 404 Visual */}
+        <div className="relative inline-block">
+          <h1
+            className="text-[10rem] md:text-[14rem] font-black leading-none select-none"
+            style={{
+              color: C.orange,
+              textShadow: `8px 8px 0px ${C.black}`,
+              WebkitTextStroke: "5px #1A1A1A"
+            }}
+          >
+            404
+          </h1>
+          <div
+            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-2 rounded-lg ${nb.border} ${nb.shadow} font-black text-xl whitespace-nowrap rotate-[-10deg]`}
+            style={{ backgroundColor: C.mint, color: C.black }}
+          >
+            Ops! Sumiu...
           </div>
-        </motion.div>
+        </div>
 
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mb-6"
-        >
-          <Badge className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400">
-            <Search className="w-4 h-4 mr-2 inline" />
-            Página Não Encontrada
-          </Badge>
-        </motion.div>
-
-        {/* Message */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="mb-8 space-y-3"
-        >
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-            Ops! Parece que você se perdeu
+        <div className="space-y-4">
+          <h2 className="text-3xl md:text-4xl font-black" style={{ color: C.text }}>
+            Não encontramos essa página
           </h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-md mx-auto">
-            A página que você está procurando não existe ou foi movida.
+          <p className="text-xl font-medium max-w-lg mx-auto" style={{ color: C.textMuted }}>
+            Parece que você clicou num link quebrado ou a página foi movida pro limbo.
           </p>
-        </motion.div>
+        </div>
 
-        {/* Path Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="mb-10"
-        >
-          <div className="inline-block px-6 py-3 rounded-xl bg-muted/50 backdrop-blur-sm border border-border/50">
-            <code className="text-sm font-mono text-muted-foreground">
-              {location.pathname}
-            </code>
-          </div>
-        </motion.div>
-
-        {/* Action Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-        >
-          <Button
-            size="lg"
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+          <button
             onClick={() => navigate(-1)}
-            variant="outline"
-            className="h-14 px-8 text-base font-semibold border-2 hover:bg-background/80 backdrop-blur-sm group"
+            className={`h-14 px-8 text-lg font-bold rounded-xl ${nb.button} bg-white hover:bg-gray-50 flex items-center gap-2`}
+            style={{ color: C.text, backgroundColor: C.cardBg }}
           >
-            <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft className="w-5 h-5" />
             Voltar
-          </Button>
+          </button>
 
-          <Button
-            size="lg"
+          <button
             onClick={() => navigate("/")}
-            className="h-14 px-8 text-base font-semibold bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg hover:shadow-xl transition-all group"
+            className={`h-14 px-8 text-lg font-bold rounded-xl ${nb.button} flex items-center gap-2`}
+            style={{ backgroundColor: C.yellow, color: C.black }}
           >
-            <Home className="w-5 h-5 mr-2" />
-            Ir para Home
-            <Sparkles className="w-4 h-4 ml-2 group-hover:rotate-12 transition-transform" />
-          </Button>
-        </motion.div>
-
-        {/* Fun Message */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="mt-12"
-        >
-          <p className="text-sm text-muted-foreground italic">
-            "Nem todos aqueles que vagam estão perdidos... mas você está!" 😅
-          </p>
-        </motion.div>
+            <Home className="w-5 h-5" />
+            Ir para o Início
+          </button>
+        </div>
       </div>
     </div>
   );

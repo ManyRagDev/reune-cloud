@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Rolê - Event Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#CCFF00", // Acid Lime
+                        "secondary": "#FF00FF", // Electric Magenta
+                        "alert": "#FF4800", // International Orange
+                        "background-light": "#F2F0E9", // Off-white Newsprint
+                        "surface": "#FFFFFF",
+                        "black": "#000000",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["Space Mono", "monospace"],
+                        "marker": ["Permanent Marker", "cursive"],
+                    },
+                    borderWidth: {
+                        "3": "3px",
+                    },
+                    boxShadow: {
+                        "hard": "4px 4px 0px 0px #000000",
+                        "hard-sm": "2px 2px 0px 0px #000000",
+                        "hard-lg": "6px 6px 0px 0px #000000",
+                    },
+                    backgroundImage: {
+                        'dotted': 'radial-gradient(#000000 1px, transparent 1px)',
+                    },
+                    spacing: {
+                        '18': '4.5rem',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .dotted-bg {
+            background-size: 20px 20px;
+        }
+        .text-stroke-sm {
+            -webkit-text-stroke: 1px black;
+        }
+        /* Hide scrollbar for clean look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light font-display text-black antialiased min-h-screen flex flex-col overflow-x-hidden selection:bg-secondary selection:text-white">
+<!-- Header -->
+<header class="sticky top-0 z-50 bg-background-light border-b-3 border-black px-4 py-3 flex items-center justify-between">
+<div class="flex items-center gap-2 cursor-pointer hover:bg-primary/20 p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-3xl font-bold">arrow_back</span>
+</div>
+<h1 class="text-3xl font-bold tracking-tighter -rotate-1 decoration-wavy underline decoration-primary decoration-2">ROLÊ</h1>
+<div class="relative w-10 h-10">
+<img alt="User Avatar" class="w-full h-full rounded-full border-3 border-black bg-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8obSgPPx2cBOQe4EuWSyr2YOcyXOet6z1-WeEAPzo5Axt84TrdtZ_w3DcgSH6d-5BS6HIAzUzTmw7FITqK6dNa4TxZ4i4z0Boe8hZsO3bedzVaaMbXlW3JdS83JfGFEQzf66Rgq_-GO3yiBlb28WXBw8o148RznunLGImK59EOCVG8SP3TC5o_PMaHuRsOL9T4lkQW3e__NBBZKDUuiQeiutl93Ps-fHIePQt2bKLtJShxMfZkr1GLxI6HrjOKzc-Vhe37OJjHys"/>
+<div class="absolute -bottom-1 -right-1 w-4 h-4 bg-primary border-2 border-black rounded-full"></div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col p-4 gap-6 max-w-md mx-auto w-full">
+<!-- Hero Section -->
+<section class="relative bg-white border-3 border-black shadow-hard p-0 overflow-hidden group">
+<!-- Messy Background Elements -->
+<div class="absolute inset-0 bg-dotted dotted-bg opacity-20 pointer-events-none"></div>
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-primary rounded-full border-3 border-black opacity-50"></div>
+<div class="absolute bottom-4 right-4 rotate-12 z-10">
+<span class="bg-secondary text-white px-3 py-1 font-bold border-3 border-black shadow-hard-sm transform rotate-3 inline-block text-sm">FALTAM 2 DIAS</span>
+</div>
+<!-- Content -->
+<div class="relative z-10 p-5 flex flex-col gap-3">
+<div class="w-16 h-16 bg-black flex items-center justify-center border-3 border-black -rotate-3 shadow-hard-sm mb-2">
+<span class="text-primary font-bold text-2xl leading-none text-center">12<br/>OUT</span>
+</div>
+<div>
+<h2 class="text-4xl font-bold leading-[0.9] tracking-tight mb-2 uppercase break-words">Churras do Pedro</h2>
+<p class="font-mono text-sm border-l-4 border-primary pl-3 py-1 bg-white/80 inline-block">
+                        Sábado, 14:00<br/>
+                        Laje do Gomes
+                    </p>
+</div>
+<div class="flex -space-x-3 mt-2 pl-1">
+<img alt="Guest 1" class="w-10 h-10 rounded-full border-3 border-black bg-gray-200 z-30" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1-m5qrGEI9krAEN_seGhHHJ1DwxkrcOpxWIIinDWxdQLfEKaFm5DStTrKiDksJmVaQmzQ_hiIjwhzG07PLwF0I7CbuGAhgF74rCRW15Do__DUnQY6bNQLoa7RHOjGlGY1yU7ciNILta6SuOFLNZ-aEoCkN8hGOuTHSzvCcrCZxHNCIL68yyr7jjCPMUaddizZxFeO2l__K6I3LZ1R9npCo2mbO4c2WnQ5PburG9hGRC0tPeAQkbLec5pJMtKZAoKPP6gZtPV1bg8"/>
+<img alt="Guest 2" class="w-10 h-10 rounded-full border-3 border-black bg-gray-200 z-20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuClHyb7OSn1TTOohYbiUF970v3g7srbVX9Hy5vgSnN7n62IDVw2OK0jOLKV2MlG6xL0amp3tKjDxQ_CIzqvwwLn5givAcvXG26cBgm8MrmZewBD-9Rk0oHECC33BdstWTb4KyWOOsjf02oZ-7h07ElMswWh86bjMRLfS5sL0kRpRNSY-hMv-LEAuDL5Hjvbzz0I882UukFBNDeJ3Wmu0rci1h8-KFxLkDu_hrPdjQCfzQ4TAiXg-3N4ufFY1ud6HZ1Bx5QFVyTIQLQ"/>
+<img alt="Guest 3" class="w-10 h-10 rounded-full border-3 border-black bg-gray-200 z-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8fQNyQoOSbk13rN4juAiudUGkLccNARJcpDru3laoCQc0sHfTZwv-Vb1HKO3ayzpXoQ-L_zSC6j81jdRTijk2fztQHQUbCWHhuhTJtSKaEBhWK2w6XiXndIiyUrFCD8MSSKHykjCPNflQRv-3VTNmw8r2e5vQJWRznQfG2rxIbSR08OQdPXwsPR_zirhSh1WTIEd87VL2LbukmitS0CDqZFTQ00z7jwyzHPmF_td1Pi3nKume8nFo16MVSvyTO1xmCNN6h2PX-Ss"/>
+<div class="w-10 h-10 rounded-full border-3 border-black bg-primary flex items-center justify-center text-xs font-bold z-0 relative">
+                        +12
+                    </div>
+</div>
+</div>
+<!-- Map strip -->
+<div class="h-16 w-full border-t-3 border-black bg-gray-100 relative overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center grayscale opacity-60" data-location="Rio de Janeiro" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDRsdnJW74lbZsSe2T8wMuKyWaOqAeM3dgaoTWIFMhI8zgrrdptwusHg5gIEE6dBYLJvvLGaPyR2nLi-H8sflaH0U4e7flW3qdjQSe2AO4Pgx-UWZxY5dxUJxhffZRli1RkQJqkBbVK2wAEK52zCB6U9BECqusNa63RtJShqEzHtgAow2Dfq0AngSoTazKyjgbXZINwZIuEKynbvzH1zl_rK4PwSVdrbuDcd52R3mBIE0eQr2afmQib_HFXFNxwqkCqBKcI-fj_0Ws');"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="bg-white px-3 py-1 border-3 border-black shadow-hard-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span>
+<span class="text-xs font-bold uppercase">Ver mapa</span>
+</div>
+</div>
+</div>
+</section>
+<!-- RSVP Toggle -->
+<section class="w-full">
+<div class="relative flex w-full border-3 border-black shadow-hard bg-white h-16 p-1 rounded-full">
+<!-- Active background slide (simulated for static design) -->
+<div class="absolute left-1 top-1 bottom-1 w-[calc(50%-4px)] bg-primary border-3 border-black rounded-full z-0"></div>
+<button class="flex-1 relative z-10 font-bold text-lg flex items-center justify-center gap-2 uppercase">
+<span class="material-symbols-outlined text-2xl">thumb_up</span>
+                    Tô Dentro
+                </button>
+<button class="flex-1 relative z-10 font-bold text-lg text-gray-400 flex items-center justify-center gap-2 uppercase hover:text-black transition-colors">
+                    Tô Fora
+                    <span class="material-symbols-outlined text-2xl">thumb_down</span>
+</button>
+</div>
+<p class="text-center font-mono text-xs mt-2 text-gray-500">Confirma logo, não seja vacilão.</p>
+</section>
+<!-- Action Grid -->
+<section class="grid grid-cols-2 gap-4">
+<!-- Button 1 -->
+<button class="bg-white border-3 border-black shadow-hard p-4 flex flex-col items-center justify-center gap-3 aspect-square hover:translate-y-1 hover:shadow-none transition-all active:bg-gray-50 group relative overflow-hidden">
+<div class="absolute top-2 right-2 bg-black text-white text-xs px-1.5 py-0.5 font-mono font-bold rounded">15</div>
+<span class="material-symbols-outlined text-5xl group-hover:scale-110 transition-transform">groups</span>
+<span class="font-bold text-lg text-center leading-tight">QUEM<br/>VAI</span>
+</button>
+<!-- Button 2 -->
+<button class="bg-white border-3 border-black shadow-hard p-4 flex flex-col items-center justify-center gap-3 aspect-square hover:translate-y-1 hover:shadow-none transition-all active:bg-gray-50 group relative">
+<!-- Alert Badge -->
+<div class="absolute -top-2 -right-2 bg-alert text-white w-8 h-8 flex items-center justify-center border-3 border-black rounded-full font-bold text-lg animate-bounce z-10">!</div>
+<span class="material-symbols-outlined text-5xl group-hover:scale-110 transition-transform text-black">shopping_basket</span>
+<span class="font-bold text-lg text-center leading-tight">O QUE<br/>LEVAR</span>
+</button>
+<!-- Button 3 -->
+<button class="bg-white border-3 border-black shadow-hard p-4 flex flex-col items-center justify-center gap-3 aspect-square hover:translate-y-1 hover:shadow-none transition-all active:bg-gray-50 group relative">
+<div class="absolute top-3 right-3 w-3 h-3 bg-secondary rounded-full border-2 border-black"></div>
+<span class="material-symbols-outlined text-5xl group-hover:scale-110 transition-transform">forum</span>
+<span class="font-bold text-lg text-center leading-tight">RESENHA</span>
+</button>
+<!-- Button 4 -->
+<button class="bg-white border-3 border-black shadow-hard p-4 flex flex-col items-center justify-center gap-3 aspect-square hover:translate-y-1 hover:shadow-none transition-all active:bg-gray-50 group">
+<span class="material-symbols-outlined text-5xl group-hover:rotate-45 transition-transform">settings</span>
+<span class="font-bold text-lg text-center leading-tight">AJUSTES</span>
+</button>
+</section>
+<!-- Feed (Latest Chaos) -->
+<section class="border-t-3 border-black pt-4 mt-2">
+<h3 class="font-marker text-xl mb-4 rotate-1 inline-block bg-black text-white px-2 py-1 transform -translate-x-2 shadow-hard-sm">Últimas do Rolê</h3>
+<div class="flex flex-col gap-3">
+<!-- Feed Item 1 -->
+<div class="bg-white border-3 border-black p-3 shadow-hard-sm flex gap-3 items-start transform hover:-rotate-1 transition-transform cursor-default">
+<img alt="Avatar" class="w-10 h-10 border-2 border-black bg-gray-200 flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhCRdOFivimRl3lWWf4S3p0MMrQduh5v-iVYGwDEJHb3oayu1LqdezuT1HGZ5a5ceoAVKE7hRsE0sy_Rk3sbzSiUOriSbbCnSDQgKgGTUr2tXudazOh54lNtX9x1EyR-EWVlLu4jcbTzpeWRxRbC2ohjxSgxzXoky03xPdkkzFzsMMdDmtcONHhuTTSzW0jEcSyjda-IlylZA_8PRJy3t1bBFAuefwaT812Nxw9Slhq3AwfUlGQchZlu-M7u79wKaVyoZMTjvfwS4"/>
+<div class="flex-1">
+<p class="font-bold text-sm leading-tight">Malu confirmou presença.</p>
+<p class="font-mono text-xs text-gray-500 mt-1">Há 10 min</p>
+</div>
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<!-- Feed Item 2 -->
+<div class="bg-white border-3 border-black p-3 shadow-hard-sm flex gap-3 items-start transform hover:rotate-1 transition-transform cursor-default">
+<img alt="Avatar" class="w-10 h-10 border-2 border-black bg-gray-200 flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDAiuv5L6hAgIghXnxp8FMYisGgdd33Gq9xQdXjkAiGAPjarF-ZQIq1THMfHe3rqtMcqh6G9wWgDzXeH4a1I9HUaHIzKWk9Z7TltYP4gcgwJVLgYFu2il9qoK_fDwmtPjvSyemosCwOUt2tqNGRbVNPNsOcUDvmMGjfgZHg4C29xdRyhJbWXs46PBGLsu85HCYUkn_PQOHYMeavd5EDzHuFHDmzu4WT1NkY8oPjE6NT82ykMX01yrJ50wzLdsiU-yurPov9RdGb98"/>
+<div class="flex-1">
+<p class="font-bold text-sm leading-tight">João pegou <span class="bg-primary px-1 border border-black text-xs mx-1">Cerveja</span></p>
+<p class="font-mono text-xs text-gray-500 mt-1">Há 32 min</p>
+</div>
+<span class="material-symbols-outlined text-black text-xl">inventory_2</span>
+</div>
+<!-- Feed Item 3 -->
+<div class="bg-white border-3 border-black p-3 shadow-hard-sm flex gap-3 items-start opacity-70">
+<div class="w-10 h-10 border-2 border-black bg-secondary flex items-center justify-center text-white font-bold flex-shrink-0">!</div>
+<div class="flex-1">
+<p class="font-bold text-sm leading-tight">Falta gelo galera!!</p>
+<p class="font-mono text-xs text-gray-500 mt-1">Há 1 hora • Sistema</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Spacer for FAB -->
+<div class="h-20"></div>
+</main>
+<!-- Floating Share Button (Sticky Bottom) -->
+<div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-full max-w-md px-4 pointer-events-none">
+<button class="pointer-events-auto w-full bg-black text-white border-3 border-white shadow-hard text-lg font-bold py-4 px-6 flex items-center justify-center gap-2 hover:bg-gray-900 active:scale-95 transition-all uppercase">
+<span class="material-symbols-outlined">ios_share</span>
+            Mandar pros chegados
+        </button>
+</div>
+</body></html>

@@ -3,9 +3,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import LandingPage from "./pages/LandingPage";
+import LandingPage from "./pages/LandingPage"; // Kept for reference or removed if strict
 import Index from "./pages/Index";
-import Index2 from "./pages/Index2";
+// import Index2 from "./pages/Index2"; 
+// import LandingV2 from "./pages/LandingV2";
+import LandingV3 from "./pages/LandingV3";
 import NotFound from "./pages/NotFound";
 import SecretSantaSetup from "./pages/SecretSantaSetup";
 import SecretSantaParticipants from "./pages/SecretSantaParticipants";
@@ -21,6 +23,7 @@ import { EnableDevMode } from "./components/EnableDevMode";
 import AdminDashboard from "./pages/AdminDashboard";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import StudioPreview from "./pages/StudioPreview";
 
 const queryClient = new QueryClient();
 
@@ -33,12 +36,15 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index2 />} />
-            <Route path="/old-landing" element={<LandingPage />} />
+            <Route path="/" element={<LandingV3 />} />
+            <Route path="/v3" element={<LandingV3 />} />
             <Route path="/app" element={<Index />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/convite/:token" element={<AcceptInvite />} />
             <Route path="/admin" element={<AdminDashboard />} />
+
+            {/* Studio Route */}
+            <Route path="/studio-preview" element={<StudioPreview />} />
 
             {/* Secret Santa Routes */}
             <Route path="/amigo-secreto" element={<SecretSantaLanding />} />
