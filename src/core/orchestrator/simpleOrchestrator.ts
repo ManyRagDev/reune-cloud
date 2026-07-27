@@ -11,6 +11,7 @@ import { wrapWithConversationalTone, ActionType } from './conversationalResponse
 import { EventsRepository } from '@/db/repositories/events';
 import { validateEventDate } from '@/core/nlp/date-parser';
 import { parseItemCommand, detectEditIntentFromMessage } from './itemCommands';
+import { parseEventoId } from '@/utils/parsers';
 
 /**
  * Lista eventos recentes do usuário para edição
@@ -59,9 +60,7 @@ export async function simpleOrchestrate(
   }
 
   // SANITIZAÇÃO: Garantir que string 'null' ou 'undefined' vira undefined
-  if (eventoId === 'null' as any || eventoId === 'undefined' as any) {
-    eventoId = undefined;
-  }
+  eventoId = parseEventoId(eventoId) || undefined;
 
   const contextManager = new ContextManager();
 
@@ -70,7 +69,10 @@ export async function simpleOrchestrate(
 
   //2. Verificar timeout de sessão para detectar nova conversa
   const SESSION_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4 horas
-  const lastChatTime = localStorage.getItem(`reune_last_chat_${userId}`);
+  let lastChatTime: string | null = null;
+  try {
+    lastChatTime = localStorage.getItem(`reune_last_chat_${userId}`);
+  } catch { /* SSR ou storage indisponível */ }
   const isTimeout = lastChatTime ? (Date.now() - Number(lastChatTime) > SESSION_TIMEOUT_MS) : false;
 
   if (isTimeout) {
@@ -142,10 +144,12 @@ export async function simpleOrchestrate(
     collectedData,
     evento: currentEventId ? {
       id: currentEventId,
-      status: savedContext.state,
+      status: (savedContext.collected_data?.event_status as string) || savedContext.state,
       tipo_evento: savedContext.collected_data?.tipo_evento as string | undefined,
       qtd_pessoas: savedContext.collected_data?.qtd_pessoas as number | undefined,
       data_evento: savedContext.collected_data?.data_evento as string | undefined,
+      menu: savedContext.collected_data?.menu as string | undefined,
+      finalidade_evento: savedContext.collected_data?.finalidade_evento as string | undefined,
     } : undefined,
     hasItems: !!(savedContext.collected_data?.has_items),
   });
@@ -184,8 +188,11 @@ export async function simpleOrchestrate(
     || (typeof currentEventId === 'string' ? Number(currentEventId) : currentEventId);
 
   // SANITIZAÇÃO DE SAÍDA:
-  if (finalEventoId === 'null' as any || finalEventoId === 'undefined' as any) {
+  const finalSanitized = parseEventoId(finalEventoId as string | null);
+  if (finalSanitized === null) {
     finalEventoId = undefined;
+  } else {
+    finalEventoId = finalSanitized;
   }
 
   //6. Salvar Mensagens
@@ -193,14 +200,41 @@ export async function simpleOrchestrate(
   await contextManager.saveMessage(userId, 'assistant', result.response, finalEventoId ? Number(finalEventoId) : undefined);
 
   //7. Persistência de Contexto Inteligente
-  // Se a IA extraiu dados (extractedData) mas o evento ainda não existir, salve-os no contextManager para a próxima mensagem.
-  if (result.actionExecuted?.extractedData) {
+  // CORREÇÃO: Sempre atualizar o contexto com os dados extraídos E o evento_id
+  // para garantir que a próxima mensagem tenha o contexto completo
+  if (result.actionExecuted?.extractedData || result.actionExecuted?.eventoId) {
+    const updatedData = {
+      ...collectedData,
+      ...result.actionExecuted.extractedData,
+      // Garantir que evento_id esteja nos dados coletados
+      evento_id: result.actionExecuted.eventoId || finalEventoId || collectedData.evento_id,
+      // Persistir status real do banco para evitar context mismatch na próxima mensagem
+      // Nota: snapshot é carregado depois deste bloco, então mantemos o status já existente em collectedData
+      // O event_status será atualizado corretamente na próxima interação via snapshot
+      event_status: collectedData.event_status,
+      // Garantir que menu e finalidade não se percam entre mensagens
+      menu: result.actionExecuted.extractedData?.menu || collectedData.menu,
+      finalidade_evento: result.actionExecuted.extractedData?.finalidade_evento || collectedData.finalidade_evento,
+    };
+    
+    // Atualizar estado baseado no progresso
+    const newState = savedContext.state || 'collecting_core';
+    
     await contextManager.updateContext(
       userId,
-      savedContext.state || 'collecting_core',
-      { ...collectedData, ...result.actionExecuted.extractedData },
-      [], 0.9, undefined, finalEventoId ? Number(finalEventoId) : undefined
+      newState,
+      updatedData,
+      [], 0.9, undefined,
+      result.actionExecuted.eventoId ? Number(result.actionExecuted.eventoId) :
+        (finalEventoId ? Number(finalEventoId) : undefined)
     );
+    
+    console.log('[simpleOrchestrator] Contexto atualizado:', {
+      eventoId: result.actionExecuted.eventoId || finalEventoId,
+      state: newState,
+      hasTipo: !!updatedData.tipo_evento,
+      hasQtd: !!updatedData.qtd_pessoas
+    });
   }
 
   //8. Carregar Snapshot para a UI
@@ -209,6 +243,16 @@ export async function simpleOrchestrate(
     try {
       snapshot = await getPlanSnapshot(String(finalEventoId));
       if (!snapshot) throw new Error('Snapshot nulo');
+      // Atualizar event_status no contexto com o status real do banco (disponível agora)
+      if (snapshot.evento?.status && snapshot.evento.status !== collectedData.event_status) {
+        await contextManager.updateContext(
+          userId,
+          savedContext.state || 'collecting_core',
+          { ...collectedData, event_status: snapshot.evento.status },
+          [], 0.9, undefined,
+          finalEventoId ? Number(finalEventoId) : undefined
+        );
+      }
     } catch (error) {
       console.warn('Erro ao carregar snapshot (provavel ID órfão), limpando contexto...');
       await contextManager.updateContext(userId, 'idle', {}, [], 0.5, undefined, undefined);
@@ -251,6 +295,11 @@ export async function simpleOrchestrate(
     showItems = false;
     response.showItems = false;
   }
+
+  //11.5. Registrar timestamp da última interação (para timeout de sessão)
+  try {
+    localStorage.setItem(`reune_last_chat_${userId}`, String(Date.now()));
+  } catch { /* SSR ou storage indisponível */ }
 
   //12. Camada Conversacional Humana
   let detectedAction: ActionType | undefined;

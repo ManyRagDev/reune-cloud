@@ -1,7 +1,10 @@
+/**
+ * Dashboard V3 - Feed de Eventos com estilo divertido e colorido
+ * Inspirado na LandingV3 - cards tortos, cores vibrantes, vibe descontraída
+ */
+
 import { useState, useEffect, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calendar, Clock, MapPin, Users, LogOut, Trash2, LayoutGrid, CheckCircle, UserCheck, Sparkles, Moon, Sun } from 'lucide-react';
+import { Plus, Calendar, Clock, MapPin, Users, LogOut, Trash2, CheckCircle, UserCheck, Sparkles, Flame, Pizza, PartyPopper, Briefcase, Cake, ArrowRight, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,7 +15,7 @@ import { ProfilePromptDialog } from '@/components/ProfilePromptDialog';
 import { BugReportButton } from '@/components/BugReportButton';
 import { motion } from 'framer-motion';
 import { FounderBadge } from '@/components/FounderBadge';
-import { NBLight, NBDark, NBPalette, nb } from '@/lib/neobrutalism';
+import { BrutalistButton } from '@/components/v2/BrutalistButton';
 
 interface Event {
   id: number;
@@ -36,6 +39,19 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
+// Cores divertidas para os cards (estilo LandingV3)
+const cardColors = [
+  { bg: '#FFD93D', accent: '#FF6B35' },      // Amarelo/Laranja
+  { bg: '#A8D8FF', accent: '#0066CC' },      // Azul claro
+  { bg: '#FF69B4', accent: '#C71585' },      // Rosa
+  { bg: '#B8F3D0', accent: '#22CC88' },      // Verde menta
+  { bg: '#D4BBFF', accent: '#8B5CF6' },      // Lavanda
+  { bg: '#FFC107', accent: '#FF8F00' },      // Âmbar
+];
+
+// Rotações leves para cada card (efeito "jogado")
+const rotations = [-2, 1.5, -1, 2, -1.5, 1];
+
 const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: DashboardProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -49,20 +65,8 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
     premium_until?: string;
     storage_multiplier?: number;
   } | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'owner' | 'confirmed' | 'pending'>('all');
   const userId = user?.id;
-
-  /* ── Dark mode ──────────────────────── */
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("reune-v3-theme");
-      if (saved) return saved === "dark";
-    }
-    return false;
-  });
-  useEffect(() => {
-    localStorage.setItem("reune-v3-theme", isDark ? "dark" : "light");
-  }, [isDark]);
-  const C: NBPalette = isDark ? NBDark : NBLight;
 
   const handleLogout = async () => {
     try {
@@ -158,33 +162,39 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
   }, [userId]);
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
+    if (!dateStr) return { day: '--', month: '---' };
     const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
     const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
+    return {
+      day: date.getDate().toString().padStart(2, '0'),
+      month: date.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase(),
+    };
   };
 
-  /* ── Loading state ──────────────────────── */
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: C.bg }}>
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: [0, 360] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            className={`w-20 h-20 rounded-xl ${nb.border} mx-auto mb-6 flex items-center justify-center`}
-            style={{ backgroundColor: C.orange }}
-          >
-            <Sparkles className="w-10 h-10" style={{ color: "#FFFDF7" }} />
-          </motion.div>
-          <p className="font-black text-xl" style={{ color: C.text }}>Carregando eventos...</p>
-        </div>
-      </div>
-    );
-  }
+  const getEventStatus = (event: Event) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDate = new Date(event.event_date);
+    eventDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return { label: 'É HOJE!', color: 'bg-red-500', textColor: 'text-white' };
+    if (diffDays === 1) return { label: 'AMANHÃ!', color: 'bg-green-500', textColor: 'text-white' };
+    if (diffDays > 1 && diffDays <= 7) return { label: `${diffDays} DIAS`, color: 'bg-blue-500', textColor: 'text-white' };
+    return { label: 'EM BREVE', color: 'bg-gray-200', textColor: 'text-gray-700' };
+  };
 
-  /* ── Tab filter helper ──────────────────────── */
-  const filterEvents = (tab: string) => {
+  const getEventIcon = (title: string) => {
+    const lower = title.toLowerCase();
+    if (lower.includes('churrasc')) return <Flame className="w-6 h-6" />;
+    if (lower.includes('pizza')) return <Pizza className="w-6 h-6" />;
+    if (lower.includes('festa')) return <PartyPopper className="w-6 h-6" />;
+    if (lower.includes('anivers')) return <Cake className="w-6 h-6" />;
+    if (lower.includes('reuni') || lower.includes('trabalho')) return <Briefcase className="w-6 h-6" />;
+    return <Sparkles className="w-6 h-6" />;
+  };
+
+  const filterEvents = (tab: typeof activeTab) => {
     switch (tab) {
       case 'owner': return events.filter(e => e.isOwner);
       case 'confirmed': return events.filter(e => !e.isOwner && e.isConfirmed);
@@ -200,293 +210,344 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
     pending: events.filter(e => !e.isOwner && !e.isConfirmed).length,
   };
 
-  const renderEventGrid = (filteredEvents: Event[], emptyIcon: React.ReactNode, emptyTitle: string, emptyDesc: string, showCta = true) => (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="grid gap-5 md:grid-cols-2 lg:grid-cols-3"
-    >
-      {filteredEvents.length === 0 ? (
-        <div className="col-span-full text-center py-16">
-          <div className="max-w-sm mx-auto">
-            <div
-              className={`w-24 h-24 rounded-2xl ${nb.border} ${nb.shadow} flex items-center justify-center mx-auto mb-6`}
-              style={{ backgroundColor: C.yellow }}
-            >
-              {emptyIcon}
+  const filteredEvents = filterEvents(activeTab);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: [0, 360] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            className="w-24 h-24 rounded-2xl border-[3px] border-black shadow-[6px_6px_0px_0px_#000000] mx-auto mb-6 flex items-center justify-center"
+            style={{ backgroundColor: '#FFD93D' }}
+          >
+            <Sparkles className="w-12 h-12 text-black" />
+          </motion.div>
+          <p className="font-black text-2xl">Carregando seus rolês...</p>
+          <p className="text-gray-500 mt-2">Só um instante! 🎉</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white font-sans">
+      {/* Header divertido */}
+      <nav className="sticky top-0 z-50 px-4 md:px-8 py-4 border-b-[3px] border-black bg-white">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          {/* Logo */}
+          <motion.div 
+            className="relative"
+            whileHover={{ rotate: -2 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="px-5 py-2.5 rounded-xl border-[3px] border-black shadow-[4px_4px_0px_0px_#000000] font-black text-2xl bg-[#FF6B35] text-white transform -rotate-1">
+              ReUNE
             </div>
-            <h3 className="text-2xl font-black mb-2" style={{ color: C.text }}>{emptyTitle}</h3>
-            <p className="font-medium mb-6" style={{ color: C.textMuted, opacity: 0.7 }}>{emptyDesc}</p>
-            {showCta && (
-              <button
-                onClick={onCreateEvent}
-                className={`px-6 py-3 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black flex items-center gap-2 mx-auto`}
-                style={{ backgroundColor: C.orange, color: "#FFFDF7" }}
-              >
-                <Plus className="w-5 h-5" /> Criar Primeiro Evento
-              </button>
+            {/* Sticker decorativo */}
+            <div className="absolute -top-2 -right-3 w-6 h-6 bg-[#FFD93D] rounded-full border-[2px] border-black" />
+          </motion.div>
+
+          {/* Ações */}
+          <div className="flex items-center gap-3">
+            <FriendsDialog />
+            <NotificationBell />
+            <button 
+              onClick={() => setAccountDialogOpen(true)}
+              className="w-11 h-11 rounded-xl border-[3px] border-black bg-[#A8D8FF] shadow-[3px_3px_0px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_0px_#000000] transition-all flex items-center justify-center font-bold text-lg"
+            >
+              {userEmail?.charAt(0).toUpperCase() || 'U'}
+            </button>
+            {founderData?.is_founder && (
+              <div className="absolute top-3 right-3 w-3 h-3 bg-[#FF69B4] rounded-full border-[2px] border-black" />
             )}
           </div>
         </div>
-      ) : (
-        filteredEvents.map((event, index) => (
-          <EventCard
-            key={event.id}
-            event={event}
-            index={index}
-            onViewEvent={onViewEvent}
-            onDeleteEvent={handleDeleteEvent}
-            formatDate={formatDate}
-            palette={C}
-          />
-        ))
-      )}
-    </motion.div>
-  );
-
-  return (
-    <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: C.bg, color: C.text }}>
-      {/* ═══ NAVBAR — Solid Neubrutalist top bar ═══ */}
-      <nav
-        className={`sticky top-0 z-50 px-4 md:px-8 py-3 ${nb.border} border-t-0 border-x-0 flex items-center justify-between transition-colors duration-300`}
-        style={{ backgroundColor: C.bg }}
-      >
-        {/* Left side — Logo + user info */}
-        <div className="flex items-center gap-3">
-          <div
-            className={`px-4 py-2 rounded-lg ${nb.border} ${nb.shadow} font-black text-xl transition-colors duration-300`}
-            style={{ backgroundColor: C.orange, color: "#FFFDF7" }}
-          >
-            ReUNE
-          </div>
-          <div className="hidden sm:block">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-bold truncate max-w-[180px]" style={{ color: C.textMuted }}>{userEmail}</p>
-              {founderData?.is_founder && (
-                <FounderBadge variant="compact" founderSince={founderData.founder_since} premiumUntil={founderData.premium_until} storageMultiplier={founderData.storage_multiplier} />
-              )}
-            </div>
-            <button onClick={() => setAccountDialogOpen(true)} className="text-xs font-bold underline" style={{ color: C.orange }}>
-              Minha Conta →
-            </button>
-          </div>
-        </div>
-
-        {/* Right side — Actions */}
-        <div className="flex items-center gap-2">
-          <NotificationBell />
-          <button
-            onClick={() => setIsDark(!isDark)}
-            className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover} transition-colors duration-300`}
-            style={{ backgroundColor: isDark ? C.yellow : C.lavender, color: C.black }}
-            aria-label="Alternar tema"
-          >
-            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
-          <button
-            onClick={handleLogout}
-            className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover} transition-colors duration-300`}
-            style={{ backgroundColor: C.sectionBg, color: C.text }}
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
-        </div>
       </nav>
 
-      {/* ═══ MAIN CONTENT ═══ */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {/* Title section */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-end mb-8">
-            <div>
-              <div
-                className={`inline-flex items-center px-4 py-2 rounded-lg ${nb.border} ${nb.shadow} text-sm font-bold mb-4`}
-                style={{ backgroundColor: C.yellow, color: C.black }}
-              >
-                <Sparkles className="w-4 h-4 mr-2" /> Seus Eventos
-              </div>
-              <h2 className="text-4xl md:text-5xl font-black leading-tight">
-                O que tá{" "}
-                <span style={{ color: C.orange }}>rolando?</span>
-              </h2>
-              <p className="font-medium mt-2" style={{ color: C.textMuted, opacity: 0.7 }}>
-                Seus eventos organizados num só lugar. Simples assim.
-              </p>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <FriendsDialog />
-              <button
-                onClick={onCreateEvent}
-                className={`px-6 py-3 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black flex items-center gap-2`}
-                style={{ backgroundColor: C.orange, color: "#FFFDF7" }}
-              >
-                <Plus className="w-5 h-5" /> Novo Evento
-              </button>
-            </div>
+      {/* Hero Section */}
+      <section className="px-4 md:px-8 py-8 md:py-12 max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border-[3px] border-black bg-[#FFD93D] shadow-[3px_3px_0px_0px_#000000] font-bold text-sm mb-4"
+            >
+              <Zap className="w-4 h-4" />
+              {events.length === 0 ? 'Bora começar?' : `${events.length} rolê${events.length !== 1 ? 's' : ''} pra curtir`}
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-4xl md:text-6xl font-black leading-tight"
+            >
+              O que tá{' '}
+              <span className="text-[#FF6B35]">rolando?</span>
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-gray-600 mt-2 font-medium"
+            >
+              Seus eventos organizados num só lugar. Simples assim.
+            </motion.p>
           </div>
 
-          {/* ═══ TABS — Sticker-style ═══ */}
-          <Tabs defaultValue="all" className="w-full">
-            <TabsList className={`inline-flex gap-2 p-2 rounded-xl ${nb.border} ${nb.shadow} mb-8 h-auto flex-wrap`} style={{ backgroundColor: C.sectionBg }}>
-              {[
-                { value: 'all', label: 'Todos', icon: LayoutGrid, count: tabCounts.all, bg: C.yellow },
-                { value: 'owner', label: 'Criados', icon: Users, count: tabCounts.owner, bg: C.sky },
-                { value: 'confirmed', label: 'Confirmados', icon: CheckCircle, count: tabCounts.confirmed, bg: C.mint },
-                { value: 'pending', label: 'Pendentes', icon: UserCheck, count: tabCounts.pending, bg: C.pink },
-              ].map(tab => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className={`rounded-lg px-4 py-2 font-black text-sm data-[state=active]:shadow-[3px_3px_0px_#1A1A1A] data-[state=active]:border-[2px] data-[state=active]:border-[#1A1A1A] transition-all`}
-                  style={{ color: C.black }}
-                >
-                  <tab.icon className="w-4 h-4 mr-2" />
-                  {tab.label} ({tab.count})
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          {/* Sticker card */}
+          <motion.div
+            initial={{ opacity: 0, rotate: 6, scale: 0.9 }}
+            animate={{ opacity: 1, rotate: 2, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="hidden md:block relative"
+          >
+            <div className="px-6 py-4 rounded-2xl border-[3px] border-black bg-[#B8F3D0] shadow-[5px_5px_0px_0px_#000000] transform rotate-2">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl border-[3px] border-black bg-white flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-[#FF6B35]" />
+                </div>
+                <div>
+                  <p className="font-black text-lg">Crie em segundos</p>
+                  <p className="text-sm text-gray-600">Sem complicação! 🎉</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
 
-            <TabsContent value="all" className="mt-0">
-              {renderEventGrid(filterEvents('all'), <Calendar className="w-12 h-12" style={{ color: C.black }} />, "Nenhum evento ainda", "Bora criar o primeiro? É rapidinho! ⚡")}
-            </TabsContent>
-            <TabsContent value="owner" className="mt-0">
-              {renderEventGrid(filterEvents('owner'), <Users className="w-12 h-12" style={{ color: C.black }} />, "Nenhum evento criado", "Crie eventos e chame a galera! 🎉")}
-            </TabsContent>
-            <TabsContent value="confirmed" className="mt-0">
-              {renderEventGrid(filterEvents('confirmed'), <CheckCircle className="w-12 h-12" style={{ color: C.black }} />, "Nenhum evento confirmado", "Confirme presença nos eventos pendentes!", false)}
-            </TabsContent>
-            <TabsContent value="pending" className="mt-0">
-              {renderEventGrid(filterEvents('pending'), <UserCheck className="w-12 h-12" style={{ color: C.black }} />, "Nenhum evento pendente", "Você tá em dia! Tudo confirmado 👏", false)}
-            </TabsContent>
-          </Tabs>
+        {/* Tabs coloridos */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="flex gap-3 mt-8 overflow-x-auto pb-2 scrollbar-hide"
+        >
+          {[
+            { key: 'all', label: 'TODOS', count: tabCounts.all, color: '#FFD93D' },
+            { key: 'owner', label: 'MEUS', count: tabCounts.owner, color: '#A8D8FF' },
+            { key: 'confirmed', label: 'VOU!', count: tabCounts.confirmed, color: '#B8F3D0' },
+            { key: 'pending', label: 'PENDENTES', count: tabCounts.pending, color: '#FF69B4' },
+          ].map((tab, index) => (
+            <motion.button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as typeof activeTab)}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className={`
+                px-5 py-3 rounded-xl border-[3px] border-black font-black text-sm whitespace-nowrap
+                shadow-[4px_4px_0px_0px_#000000] transition-all duration-150
+                ${activeTab === tab.key 
+                  ? 'translate-x-[3px] translate-y-[3px] shadow-[1px_1px_0px_0px_#000000]' 
+                  : 'hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000000]'
+                }
+              `}
+              style={{ 
+                backgroundColor: activeTab === tab.key ? tab.color : 'white',
+                transform: `rotate(${index % 2 === 0 ? -1 : 1}deg)`
+              }}
+            >
+              {tab.label}
+              <span className="ml-2 px-2 py-0.5 rounded-full bg-black/10 text-xs">
+                {tab.count}
+              </span>
+            </motion.button>
+          ))}
         </motion.div>
-      </main>
+      </section>
+
+      {/* Events Grid - Cards tortos e coloridos */}
+      <section className="px-4 md:px-8 pb-32 max-w-6xl mx-auto">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+        >
+          {filteredEvents.length === 0 ? (
+            <div className="col-span-full py-16">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="max-w-md mx-auto text-center"
+              >
+                <div className="relative inline-block mb-6">
+                  <div className="w-32 h-32 rounded-3xl border-[3px] border-black bg-[#FFD93D] shadow-[6px_6px_0px_0px_#000000] flex items-center justify-center transform -rotate-3">
+                    <Calendar className="w-16 h-16 text-black" />
+                  </div>
+                  <div className="absolute -top-2 -right-2 w-10 h-10 rounded-full bg-[#FF69B4] border-[3px] border-black" />
+                </div>
+                <h3 className="text-3xl font-black mb-3">NADA AQUI AINDA</h3>
+                <p className="text-gray-600 mb-6 font-medium">
+                  {activeTab === 'all' 
+                    ? 'Bora criar o primeiro rolê? É rapidinho!' 
+                    : 'Nenhum evento nessa categoria ainda.'}
+                </p>
+                {activeTab === 'all' && (
+                  <BrutalistButton 
+                    onClick={onCreateEvent} 
+                    leftIcon={<Plus className="w-5 h-5" />}
+                    className="transform rotate-1"
+                  >
+                    CRIAR ROLÊ
+                  </BrutalistButton>
+                )}
+              </motion.div>
+            </div>
+          ) : (
+            filteredEvents.map((event, index) => {
+              const date = formatDate(event.event_date);
+              const status = getEventStatus(event);
+              const colors = cardColors[index % cardColors.length];
+              const rotation = rotations[index % rotations.length];
+              
+              return (
+                <motion.article
+                  key={event.id}
+                  initial={{ opacity: 0, y: 30, rotate: rotation * 2 }}
+                  animate={{ opacity: 1, y: 0, rotate: rotation }}
+                  transition={{ delay: index * 0.08, duration: 0.4 }}
+                  whileHover={{ rotate: 0, y: -8, scale: 1.02 }}
+                  className="group cursor-pointer"
+                  onClick={() => onViewEvent(event.id.toString())}
+                >
+                  {/* Card Container */}
+                  <div 
+                    className="relative rounded-2xl border-[3px] border-black p-5 shadow-[6px_6px_0px_0px_#000000] transition-all duration-200"
+                    style={{ backgroundColor: colors.bg }}
+                  >
+                    {/* Status Badge */}
+                    <div className="absolute -top-3 -right-3">
+                      <div className={`px-3 py-1.5 rounded-full border-[3px] border-black font-black text-xs shadow-[2px_2px_0px_0px_#000000] ${status.textColor} ${status.color}`}>
+                        {status.label}
+                      </div>
+                    </div>
+
+                    {/* Header: Date & Icon */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-14 rounded-xl border-[3px] border-black bg-white shadow-[3px_3px_0px_0px_#000000] flex flex-col items-center justify-center">
+                          <span className="font-black text-lg leading-none">{date.day}</span>
+                          <span className="font-bold text-xs uppercase">{date.month}</span>
+                        </div>
+                        <div 
+                          className="w-12 h-12 rounded-xl border-[3px] border-black bg-white shadow-[3px_3px_0px_0px_#000000] flex items-center justify-center"
+                          style={{ color: colors.accent }}
+                        >
+                          {getEventIcon(event.title)}
+                        </div>
+                      </div>
+                      
+                      {event.isOwner && (
+                        <button
+                          onClick={(e) => handleDeleteEvent(event.id, e)}
+                          className="p-2 rounded-lg border-[2px] border-black bg-white/80 hover:bg-red-100 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-xl font-black mb-3 leading-tight text-black">
+                      {event.title}
+                    </h3>
+
+                    {/* Info */}
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Clock className="w-4 h-4 opacity-60" />
+                        <span className="font-medium">{event.event_time || 'Horário a definir'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <MapPin className="w-4 h-4 opacity-60" />
+                        <span className="font-medium truncate">{event.location || 'Local a definir'}</span>
+                      </div>
+                    </div>
+
+                    {/* Footer: Role badge */}
+                    <div className="flex items-center justify-between pt-3 border-t-2 border-black/10">
+                      <div className="flex items-center gap-2">
+                        {event.isOwner ? (
+                          <span className="px-3 py-1 rounded-lg border-[2px] border-black bg-[#FF69B4] text-white font-bold text-xs shadow-[2px_2px_0px_0px_#000000]">
+                            👑 ADM
+                          </span>
+                        ) : event.isConfirmed ? (
+                          <span className="px-3 py-1 rounded-lg border-[2px] border-black bg-[#B8F3D0] text-black font-bold text-xs shadow-[2px_2px_0px_0px_#000000]">
+                            ✅ VOU!
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 rounded-lg border-[2px] border-black bg-gray-200 text-black font-bold text-xs shadow-[2px_2px_0px_0px_#000000]">
+                            ⏳ PENDENTE
+                          </span>
+                        )}
+                      </div>
+                      
+                      <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1" />
+                    </div>
+                  </div>
+                </motion.article>
+              );
+            })
+          )}
+        </motion.div>
+
+        {/* Fim da lista - Elemento decorativo */}
+        {filteredEvents.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="py-12 flex flex-col items-center justify-center"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-[3px] bg-black/20" />
+              <div className="w-12 h-12 rounded-full border-[3px] border-black bg-[#FFD93D] flex items-center justify-center transform rotate-12">
+                <span className="text-xl">🎉</span>
+              </div>
+              <div className="w-16 h-[3px] bg-black/20" />
+            </div>
+            <p className="font-bold text-gray-400 mt-3">FIM DA BAGUNÇA</p>
+          </motion.div>
+        )}
+      </section>
+
+      {/* FAB - Sticker style */}
+      <motion.div 
+        className="fixed bottom-6 right-6 z-50"
+        initial={{ scale: 0, rotate: -20 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ delay: 0.5, type: "spring" }}
+      >
+        <motion.button 
+          onClick={onCreateEvent}
+          whileHover={{ scale: 1.1, rotate: 5 }}
+          whileTap={{ scale: 0.95 }}
+          className="relative w-16 h-16 rounded-2xl border-[3px] border-black bg-[#FF6B35] shadow-[5px_5px_0px_0px_#000000] flex items-center justify-center group"
+        >
+          <Plus className="w-8 h-8 text-white group-hover:rotate-90 transition-transform duration-300" />
+          
+          {/* Sticker decorativo */}
+          <div className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-[#FFD93D] border-[2px] border-black" />
+        </motion.button>
+        
+        {/* Tooltip */}
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.8 }}
+          className="absolute right-20 top-4 px-4 py-2 rounded-xl border-[3px] border-black bg-white shadow-[3px_3px_0px_0px_#000000] whitespace-nowrap font-bold text-sm transform -rotate-2"
+        >
+          Novo Rolê! 🎉
+        </motion.div>
+      </motion.div>
 
       {/* Dialogs */}
       <AccountDialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen} userEmail={userEmail} />
       <ProfilePromptDialog open={profilePromptOpen} onOpenChange={setProfilePromptOpen} onNavigateToProfile={() => setAccountDialogOpen(true)} />
       <BugReportButton />
     </div>
-  );
-};
-
-/* ═══════════════════════════════════════════
-   EVENT CARD — Post-it style with Neubrutalism
-   ═══════════════════════════════════════════ */
-interface EventCardProps {
-  event: Event;
-  index: number;
-  onViewEvent: (eventId: string) => void;
-  onDeleteEvent: (eventId: number, e: React.MouseEvent) => Promise<void>;
-  formatDate: (dateStr: string) => string;
-  palette: NBPalette;
-}
-
-const EventCard = ({ event, index, onViewEvent, onDeleteEvent, formatDate, palette: C }: EventCardProps) => {
-  // Rotating colors for each card
-  const cardColors = [C.yellow, C.sky, C.pink, C.mint, C.lavender, C.orange];
-  const cardBg = cardColors[index % cardColors.length];
-
-  // Micro-rotations for post-it feel
-  const rotations = [-1.5, 1, -0.8, 1.2, -0.5, 0.8];
-  const rotation = rotations[index % rotations.length];
-
-  // Emoji stickers for event type
-  const statusEmoji = event.isOwner ? '👑' : event.isConfirmed ? '✅' : '⏳';
-  const statusLabel = event.isOwner ? 'Organizador' : event.isConfirmed ? 'Confirmado' : 'Pendente';
-
-  // Background decorative emoji
-  const bgEmojis = ['🎉', '🍖', '🎂', '🍕', '🎪', '🥂'];
-  const bgEmoji = bgEmojis[index % bgEmojis.length];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30, rotate: rotation * 2 }}
-      animate={{ opacity: 1, y: 0, rotate: rotation }}
-      transition={{ duration: 0.4, delay: index * 0.06 }}
-      whileHover={{ rotate: 0, y: -6, scale: 1.03 }}
-      className="group cursor-pointer"
-      onClick={() => onViewEvent(event.id.toString())}
-    >
-      <div
-        className={`relative p-5 rounded-2xl ${nb.border} ${nb.shadowLg} ${nb.hover} overflow-hidden transition-colors duration-300`}
-        style={{ backgroundColor: cardBg }}
-      >
-        {/* Background decorative emoji */}
-        <div className="absolute -bottom-3 -right-2 text-7xl opacity-10 select-none pointer-events-none rotate-12">
-          {bgEmoji}
-        </div>
-
-        {/* Status sticker */}
-        <div className="flex items-center justify-between mb-3">
-          <div
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg ${nb.border} text-xs font-black`}
-            style={{ backgroundColor: C.cardBg, color: C.black }}
-          >
-            <span>{statusEmoji}</span>
-            {statusLabel}
-          </div>
-
-          {event.isOwner && (
-            <button
-              onClick={(e) => onDeleteEvent(event.id, e)}
-              className={`p-1.5 rounded-lg ${nb.border} hover:bg-red-100 transition-colors`}
-              style={{ backgroundColor: C.cardBg }}
-            >
-              <Trash2 className="w-3.5 h-3.5" style={{ color: C.black }} />
-            </button>
-          )}
-        </div>
-
-        {/* Title */}
-        <h3 className="text-xl font-black mb-3 leading-tight relative z-10" style={{ color: C.black }}>
-          {event.title}
-        </h3>
-
-        {/* Info rows */}
-        <div className="space-y-2 relative z-10">
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-7 h-7 rounded-lg ${nb.border} flex items-center justify-center flex-shrink-0`}
-              style={{ backgroundColor: C.cardBg }}
-            >
-              <Calendar className="w-3.5 h-3.5" style={{ color: C.black }} />
-            </div>
-            <div>
-              <span className="text-sm font-bold" style={{ color: C.black }}>{formatDate(event.event_date)}</span>
-              {event.event_time && (
-                <span className="text-xs font-medium ml-2" style={{ color: C.black, opacity: 0.6 }}>
-                  às {event.event_time}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-7 h-7 rounded-lg ${nb.border} flex items-center justify-center flex-shrink-0`}
-              style={{ backgroundColor: C.cardBg }}
-            >
-              <MapPin className="w-3.5 h-3.5" style={{ color: C.black }} />
-            </div>
-            <span className="text-sm font-bold truncate" style={{ color: C.black, opacity: 0.8 }}>
-              {event.location || 'Local a definir'}
-            </span>
-          </div>
-        </div>
-
-        {/* Bottom hover indicator */}
-        <div className="mt-4 flex justify-end">
-          <div
-            className={`px-3 py-1 rounded-lg ${nb.border} text-xs font-black opacity-0 group-hover:opacity-100 transition-opacity`}
-            style={{ backgroundColor: C.cardBg, color: C.black }}
-          >
-            Ver detalhes →
-          </div>
-        </div>
-      </div>
-    </motion.div>
   );
 };
 

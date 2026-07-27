@@ -92,7 +92,7 @@ const defaultTools = [
         type: 'object',
         properties: {
           evento_id: { type: 'string', description: 'ID do evento' },
-          tipo_evento: { type: 'string', enum: ['churrasco', 'piquenique', 'jantar'] },
+          tipo_evento: { type: 'string', description: 'Tipo do evento (churrasco, jantar, aniversário, festa junina, etc.)' },
           qtd_pessoas: { type: 'number' },
         },
         required: ['evento_id', 'tipo_evento', 'qtd_pessoas'],
@@ -190,7 +190,7 @@ function estimateQuantityPerPersonSimple(itemName: string): number {
 const uuidStr = z.string().min(1);
 const generateItemListSchema = z.object({
   evento_id: uuidStr,
-  tipo_evento: z.enum(['churrasco', 'piquenique', 'jantar']),
+  tipo_evento: z.string().min(1).max(100),
   qtd_pessoas: z.number().int().min(1),
 });
 const itemSchema = z.object({

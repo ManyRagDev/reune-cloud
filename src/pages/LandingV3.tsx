@@ -295,7 +295,7 @@ export default function LandingV3() {
                                 className={`h-14 px-8 text-lg font-bold rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} flex items-center justify-center gap-2 transition-colors duration-300`}
                                 style={{ backgroundColor: C.cardBg, color: C.text }}
                             >
-                                Ver demo ↓
+                                Da uma olhada ↓
                             </button>
                         </div>
                     </motion.div>
