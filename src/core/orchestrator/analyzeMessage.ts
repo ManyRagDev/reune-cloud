@@ -3,6 +3,7 @@ import { getLlmSuggestions } from "@/api/llm/chat";
 import { LlmMessage } from "@/types/llm";
 import { z } from "zod";
 import { parseToIsoDate } from "@/core/nlp/date-parser";
+import { handleChatError, detectErrorType } from "@/utils/errorHandler";
 
 export interface MessageAnalysis {
   intencao:
@@ -164,7 +165,8 @@ Se algum dado não for encontrado, use null.
       }
     }
   } catch (error) {
-    // console.warn("[analyzeMessage] LLM falhou, usando fallback heurístico:", error);
+    const handled = handleChatError(error, { action: 'analyzeMessage', userMessage: userText }, detectErrorType(error));
+    console[handled.logLevel]('[analyzeMessage] LLM falhou, usando fallback heurístico:', handled.logMessage);
   }
 
   // 🔹 Fallback heurístico robusto

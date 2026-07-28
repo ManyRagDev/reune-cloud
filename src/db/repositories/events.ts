@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { UUID } from '@/types/domain';
 import { Tables } from '@/integrations/supabase/types';
+import { handleChatError, detectErrorType } from '@/utils/errorHandler';
 
 export interface EventData {
   id: number;
@@ -121,7 +122,8 @@ export class EventsRepository {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       return `${day}/${month}`;
     } catch (error) {
-      console.error('[EventsRepository] Erro ao formatar data:', error);
+      const handled = handleChatError(error, { action: 'formatDate' }, detectErrorType(error));
+      console[handled.logLevel](handled.logMessage);
       return dateString;
     }
   }

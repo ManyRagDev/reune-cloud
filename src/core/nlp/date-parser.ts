@@ -1,6 +1,7 @@
 /**
  * Converte diferentes formatos de data para ISO (YYYY-MM-DD)
  */
+import { handleChatError, detectErrorType } from "@/utils/errorHandler";
 export function parseToIsoDate(dateStr: string): string | null {
   if (!dateStr) return null;
 
@@ -58,6 +59,8 @@ export function isValidFutureDate(isoDate: string): boolean {
     today.setHours(0, 0, 0, 0); // Comparação puramente de calendário
     return date >= today;
   } catch {
+    const handled = handleChatError(new Error(`Data inválida: ${isoDate}`), { action: 'isValidFutureDate' }, detectErrorType(new Error('validation')));
+    console[handled.logLevel](handled.logMessage);
     return false;
   }
 }
@@ -179,6 +182,8 @@ export function validateEventDate(dateStr: string): ValidationResult {
     };
 
   } catch {
+    const handled = handleChatError(new Error(`Erro ao validar data: ${dateStr}`), { action: 'validateEventDate' }, detectErrorType(new Error('validation')));
+    console[handled.logLevel](handled.logMessage);
     return {
       valid: false,
       date: null,

@@ -4,6 +4,7 @@ import { rpc } from "@/api/rpc";
 import { supabase } from "@/integrations/supabase/client";
 import { parseLlmItemsResponse } from "./itemAdapter";
 import { parseToIsoDate } from "@/core/nlp/date-parser";
+import { handleChatError, detectErrorType } from "@/utils/errorHandler";
 
 /**
  * Busca snapshot completo do evento (evento + itens + participantes)
@@ -14,7 +15,8 @@ export async function getPlanSnapshot(eventoId: UUID): Promise<EventSnapshot | n
     const snapshot = await rpc.get_event_plan(eventoId);
     return snapshot as EventSnapshot;
   } catch (error) {
-    console.error('[Manager] Erro ao buscar snapshot:', error);
+    const handled = handleChatError(error, { action: 'getPlanSnapshot', eventoId }, detectErrorType(error));
+    console[handled.logLevel](handled.logMessage);
     return null;
   }
 }
@@ -58,7 +60,8 @@ export async function findDraftEventByUser(userId: UUID): Promise<EventSnapshot 
 
     return snapshot;
   } catch (error) {
-    console.error('[Manager] Erro ao buscar draft:', error);
+    const handled = handleChatError(error, { userId, action: 'findDraftEventByUser' }, detectErrorType(error));
+    console[handled.logLevel](handled.logMessage);
     return null;
   }
 }
@@ -120,7 +123,8 @@ export async function upsertEvent(event: Partial<Event> & { usuario_id: UUID; cr
       status: data.status as EventStatus,
     };
   } catch (error) {
-    console.error('[Manager] Erro no upsertEvent:', error);
+    const handled = handleChatError(error, { userId: event.usuario_id, action: 'upsertEvent' }, detectErrorType(error));
+    console[handled.logLevel](handled.logMessage);
     throw error;
   }
 }
@@ -143,7 +147,8 @@ export async function setEventStatus(eventoId: UUID, status: EventStatus): Promi
       throw error;
     }
   } catch (error) {
-    console.error('[Manager] Erro ao atualizar status do evento:', error);
+    const handled = handleChatError(error, { eventoId, action: 'setEventStatus' }, detectErrorType(error));
+    console[handled.logLevel](handled.logMessage);
     throw error;
   }
 }
@@ -214,7 +219,8 @@ FORMATO JSON:
       return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
     }
   } catch (error) {
-    console.error('[Manager] Erro na LLM:', error);
+    const handled = handleChatError(error, { action: 'generateItemList' }, detectErrorType(error));
+    console[handled.logLevel](handled.logMessage);
     return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
   }
 }
@@ -253,7 +259,8 @@ export async function finalizeEvent(eventoId: UUID): Promise<EventSnapshot | nul
     await setEventStatus(eventoId, 'finalized');
     return await getFinalSnapshot(eventoId);
   } catch (error) {
-    console.error('[Manager] Erro ao finalizar evento:', error);
+    const handled = handleChatError(error, { eventoId, action: 'finalizeEvent' }, detectErrorType(error));
+    console[handled.logLevel](handled.logMessage);
     throw error;
   }
 }
@@ -309,7 +316,8 @@ export async function getFinalSnapshot(eventoId: UUID): Promise<EventSnapshot | 
       distribuicao: [],
     };
   } catch (error) {
-    console.error('[Manager] Erro ao buscar snapshot final:', error);
+    const handled = handleChatError(error, { eventoId, action: 'getFinalSnapshot' }, detectErrorType(error));
+    console[handled.logLevel](handled.logMessage);
     return null;
   }
 }

@@ -1,6 +1,6 @@
 # MESTRE - ReUNE Chatbot
 
-**Última atualização**: 2025-01-27  
+**Última atualização**: 2026-07-27  
 **Status**: 🟡 EM REFATORAÇÃO  
 **Versão**: 2.0 (pós-mudança para LangGraph)
 
@@ -49,10 +49,10 @@ ChatWidget.tsx (UI)
 | ID | Bug | Impacto | Status |
 |----|-----|---------|--------|
 | BUG-001 | Type safety da tabela `itens` perdido | Alto | ❌ Aberto |
-| BUG-002 | Prompt injection vulnerability | Alto | ❌ Aberto |
+| BUG-002 | Prompt injection vulnerability | Alto | ✅ Corrigido (T2.1) |
 | BUG-003 | Race condition em `currentEventId` | Médio | ⚠️ Parcialmente corrigido |
-| BUG-004 | Tratamento de erro inconsistente | Médio | ❌ Aberto |
-| BUG-005 | Persistência de sessão falha | Alto | ❌ Aberto |
+| BUG-004 | Tratamento de erro inconsistente | Médio | ✅ Corrigido (T1.6) |
+| BUG-005 | Persistência de sessão falha | Alto | 🟡 PoC LangGraph disponível (Fase 3) |
 
 ### Problemas de qualidade 🟡
 
@@ -131,9 +131,9 @@ ChatWidget.tsx (UI)
 
 | ID | Vulnerabilidade | Localização | Risco | Status |
 |----|-----------------|--------------|-------|--------|
-| VULN-001 | Prompt injection | groqService.ts:buildSystemPrompt() | 🔴 Alto | ❌ Aberto |
+| VULN-001 | Prompt injection | groqService.ts:buildSystemPrompt() | 🔴 Alto | ✅ Corrigido (T2.1) |
 | VULN-002 | SQL injection (via Supabase) | groqService.ts:711 | 🟡 Médio | ⚠️ Mitigado |
-| VULN-003 | Exposure de dados sensíveis | ChatWidget.tsx:263-270 | 🟡 Médio | ❌ Aberto |
+| VULN-003 | Exposure de dados sensíveis | ChatWidget.tsx:263-270 | 🟡 Médio | ✅ Analisado (T2.6) |
 
 ### Regras de segurança atuais
 
@@ -147,6 +147,152 @@ ChatWidget.tsx (UI)
 ---
 
 ## 📈 HISTÓRICO DE MUDANÇAS
+
+### 2026-07-28 - Fase 4: Migração Completa LangGraph ✅
+
+**Motivo**: Substituir simpleOrchestrator por workflow LangGraph completo
+
+**O que foi feito**:
+- ✅ T4.1: StateGraph com 7 nós (loadContext → router → agentes → saveContext → loadSnapshot → buildPayload)
+- ✅ T4.2: 4 agentes especializados (Router, Agenda, Itens, Conversational)
+- ✅ T4.3: LangSmith já integrado (T3.7)
+- ✅ T4.4: 18 testes unitários adaptados para novo workflow
+- ✅ T4.5: ChatWidget migrado para langGraphOrchestrate + listEventsOrchestrate
+
+**Novos arquivos**:
+- `src/langgraph/agents/agendaAgent.ts` (processMessage wrapper)
+- `src/langgraph/agents/itensAgent.ts` (executeItemEdit wrapper)
+
+**Arquivos modificados**:
+- `src/langgraph/state.ts` (expandido com 16 campos)
+- `src/langgraph/workflow.ts` (grafo completo + langGraphOrchestrate)
+- `src/langgraph/agents/routerAgent.ts` (rotas: agenda, itens, conversational)
+
+**Testes**: 183 testes passando em 11 suites
+
+**DEC-006 atualizada**: Fase 4 executada. langGraphOrchestrate() disponível como substituto. Troca no ChatWidget requer deploy com teste.
+
+**Status**: ✅ COMPLETADO (T4.5 pendente de deploy)
+
+---
+
+### 2026-07-27 - Fase 3: PoC LangGraph (Completa)
+
+**Motivo**: Validar LangGraph como alternativa para persistência de sessão
+
+**O que foi feito**:
+- ✅ T3.1: LangGraph instalado (@langchain/langgraph, @langchain/core)
+- ✅ T3.2: Workflow com 2 agentes (RouterAgent + ConversationalAgent) via StateGraph
+- ✅ T3.3: MemorySaver checkpointer com threadId por usuário + resumeWorkflow()
+- ✅ T3.4: Guardrails integrados (input + output) no fluxo LangGraph
+- ⏭️ T3.5: Pulado (requer deploy com usuários reais)
+- ✅ T3.6: Análise — LangGraph viável, mas migração completa não urgente
+- ✅ T3.7: LangSmith integrado — tracer com spans por nó, métricas (latência, tokens, guardrail_hits), fallback console
+
+**Novos arquivos**:
+- `src/langgraph/state.ts` (definição do estado com Annotation)
+- `src/langgraph/workflow.ts` (StateGraph + runWorkflow + resumeWorkflow + clearThread)
+- `src/langgraph/agents/routerAgent.ts` (classificação heurística de intenção)
+- `src/langgraph/agents/conversationalAgent.ts` (Groq via Edge Function + guardrails)
+- `src/langgraph/tracer.ts` (LangSmith tracing com spans, métricas, fallback console)
+- `tests/unit/langgraph.test.ts` (18 testes)
+- `tests/unit/tracer.test.ts` (6 testes)
+
+**Testes**: 183 testes passando em 11 suites
+
+**Decisão registrada (DEC-006)**: LangGraph é tecnicamente viável. O sistema atual com guardrails (Fase 2) atende bem. A migração completa (Fase 4) adiciona complexidade desnecessária no momento — manter como opção para quando houver necessidade real de múltiplos agentes especializados.
+
+**Status**: ✅ COMPLETADO
+
+---
+
+### 2026-07-27 - Fase 2: Guardrails & Prompts (Completa)
+
+**Motivo**: Implementar segurança contra prompt injection e modularizar prompts
+
+**O que foi feito**:
+- ✅ T2.1: Input guardrail (23 testes) — bloqueia injection, role hijack, spam
+- ✅ T2.2: Output guardrail (19 testes) — detecta PII, vazamento de system prompt, JSON inválido
+- ✅ T2.3: System prompt externalizado para `prompts/system/chat-base.txt` + loader
+- ✅ T2.4: Sanitização segura de variáveis de template (14 testes)
+- ✅ T2.5: Validators Zod para dados de evento e itens (20 testes)
+- ✅ T2.6: Utilitário de máscara (decisão: valores não são PII real, máscara disponível como utility)
+
+**Novos arquivos**:
+- `src/guardrails/inputGuard.ts` (117 linhas)
+- `src/guardrails/outputGuard.ts` (118 linhas)
+- `src/validators/inputValidators.ts`
+- `src/utils/promptLoader.ts` (87 linhas)
+- `src/utils/maskSensitive.ts`
+- `tests/unit/inputGuard.test.ts` (23 testes)
+- `tests/unit/outputGuard.test.ts` (19 testes)
+- `tests/unit/promptLoader.test.ts` (14 testes)
+- `tests/unit/inputValidators.test.ts` (20 testes)
+
+**Testes**: 159 testes passando em 9 suites
+
+**VULN-001 corrigido**: Prompt injection mitigado por guardrail de input
+**VULN-002 corrigido**: Injeção de template mitigada por sanitização
+
+**Status**: ✅ COMPLETADO
+
+**Arquivos modificados**:
+- `src/services/groqService.ts` (removido buildSystemPrompt hardcoded, integrados input/output guardrails)
+- `prompts/system/chat-base.txt` (template existente já estava correto)
+- `docs/PLANO.md` (Fase 2 ✅)
+- `docs/MESTRE.md` (este registro)
+
+---
+
+### 2025-01-27 - Fase 1: Fundação Crítica (Parcial)
+
+**Motivo**: Corrigir type safety e remover usos de `any` do código
+
+**O que foi feito**:
+- ✅ Corrigido type safety da tabela `itens` (substituído por DatabaseItem)
+- ✅ Removidos todos os `any` do groqService.ts (0 usos restantes)
+- ✅ Criadas interfaces TypeScript: EventContext, CollectedData, ActionContext
+- ✅ Criada função parseEventoId() em utils/parsers.ts
+- ✅ Substituída sanitização manual por parseEventoId()
+- ✅ Criados 23 testes unitários adicionais (parsers.test.ts)
+- ✅ Total: 63 testes passando
+- ✅ T1.6 concluído: handleChatError padronizado em 7 arquivos (groqService, eventManager, analyzeMessage, chat, toolsRouter, date-parser, events)
+
+**Decisões tomadas**:
+- ✅ Criar interfaces manuais (Docker não disponível)
+- ✅ Criar src/types/groq.ts para tipos específicos
+- ✅ Mover parseEventoId para utils/parsers.ts (reutilizável)
+
+**Status**: ✅ COMPLETADO (Fase 1 concluída)
+
+**Arquivos criados**:
+- `src/types/database.ts` (interfaces Item, Event, etc)
+- `src/types/groq.ts` (EventContext, CollectedData, etc)
+- `src/utils/parsers.ts` (parseEventoId, isValidId)
+- `tests/unit/parsers.test.ts` (23 testes)
+
+**Arquivos modificados**:
+- `src/services/groqService.ts` (type safety, remoção de any, handleChatError)
+- `src/core/orchestrator/simpleOrchestrator.ts` (parseEventoId, handleChatError)
+- `src/core/orchestrator/eventManager.ts` (handleChatError em 7 catch blocks)
+- `src/core/orchestrator/analyzeMessage.ts` (handleChatError)
+- `src/api/llm/chat.ts` (handleChatError)
+- `src/api/llm/toolsRouter.ts` (handleChatError)
+- `src/core/nlp/date-parser.ts` (handleChatError em 2 catch blocks)
+- `src/db/repositories/events.ts` (handleChatError)
+
+**O que ficou pendente**:
+- Nenhum — Fase 1 concluída
+
+**Cicatrices desta mudança**:
+- **Aprendido**: Type safety é crítico - evita muitos bugs em runtime
+- **Aprendido**: Testes precisam refletir comportamento real, não desejado
+- **Regra aplicável**: SEMPRE criar interfaces para tipos usados frequentemente
+- **Regra aplicável**: SEMPRE testar edge cases ("NULL", "undefined", etc)
+
+---
+
+### 2025-01-27 - Fase 0: Preparação do Ambiente
 
 ### 2025-01-27 - Fase 0: Preparação do Ambiente
 

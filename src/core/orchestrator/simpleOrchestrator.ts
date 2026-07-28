@@ -12,6 +12,7 @@ import { EventsRepository } from '@/db/repositories/events';
 import { validateEventDate } from '@/core/nlp/date-parser';
 import { parseItemCommand, detectEditIntentFromMessage } from './itemCommands';
 import { parseEventoId } from '@/utils/parsers';
+import { handleChatError, detectErrorType, type ChatErrorContext } from '@/utils/errorHandler';
 
 /**
  * Lista eventos recentes do usuário para edição
@@ -122,11 +123,22 @@ export async function simpleOrchestrate(
             suggestedReplies: ['Editar mais itens', 'Confirmar lista', 'Adicionar participantes'],
           };
         } catch (error) {
-          console.error('[simpleOrchestrator] Erro ao editar item:', error);
+          const errorContext: ChatErrorContext = {
+            userId,
+            eventoId: currentEventId,
+            action: 'editItem',
+            userText,
+          };
+
+          const detectedType = detectErrorType(error);
+          const handled = handleChatError(error, errorContext, detectedType);
+
+          console[handled.logLevel](handled.logMessage);
+
           return {
             estado: 'created' as EventStatus,
             evento_id: currentEventId,
-            mensagem: 'Ops! Não consegui fazer essa alteração. Pode tentar de outro jeito?',
+            mensagem: handled.userMessage,
             showItems: false,
             suggestedReplies: ['Ver lista completa', 'Cancelar'],
           };
@@ -254,12 +266,22 @@ export async function simpleOrchestrate(
         );
       }
     } catch (error) {
-      console.warn('Erro ao carregar snapshot (provavel ID órfão), limpando contexto...');
+      const errorContext: ChatErrorContext = {
+        userId,
+        eventoId: finalEventoId as string,
+        action: 'loadSnapshot',
+      };
+
+      const detectedType = detectErrorType(error);
+      const handled = handleChatError(error, errorContext, detectedType);
+
+      console[handled.logLevel](handled.logMessage);
+
       await contextManager.updateContext(userId, 'idle', {}, [], 0.5, undefined, undefined);
-      // Forçar refresh para o usuário
+
       return {
         estado: 'draft',
-        mensagem: 'Ocorreu um erro de sincronia. Por favor, tente novamente.',
+        mensagem: handled.userMessage,
         evento_id: null,
         showItems: false
       };

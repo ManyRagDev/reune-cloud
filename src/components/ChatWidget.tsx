@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import aiChatIcon from '@/assets/ai-chat-icon.png';
 import { ContextManager } from '@/core/orchestrator/contextManager';
-import { simpleOrchestrate } from '@/core/orchestrator/simpleOrchestrator';
+import { langGraphOrchestrate, listEventsOrchestrate } from '@/langgraph/workflow';
 import { UUID } from '@/types/domain';
 import { useToast } from '@/components/ui/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -126,7 +126,7 @@ export default function ChatWidget() {
   const handleListEvents = async () => {
     console.log('[ChatWidget] Listar eventos clicado');
     try {
-      const result = await simpleOrchestrate('', user.id as UUID, undefined, 'list_events');
+      const result = await listEventsOrchestrate(user.id as UUID);
       if (result.success && result.events && result.events.length > 0) {
         const eventMessages: ChatMessage[] = [{
           role: 'assistant',
@@ -254,7 +254,7 @@ export default function ChatWidget() {
     }
     localStorage.setItem(`reune_last_chat_${String(user.id)}`, Date.now().toString());
     try {
-      const response = await simpleOrchestrate(text, user.id as UUID, eventoId ? String(eventoId) : undefined);
+      const response = await langGraphOrchestrate(text, user.id as UUID, eventoId ? String(eventoId) : undefined);
       if (response.evento_id) {
         setEventoId(Number(response.evento_id));
       }
