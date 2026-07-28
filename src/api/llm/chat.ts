@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { LlmMessage, LlmChatResponse } from '@/types/llm';
+import { handleChatError, detectErrorType } from '@/utils/errorHandler';
 
 /**
  * Chama a edge function de chat da LLM para obter sugestões.
@@ -36,11 +37,9 @@ export async function getLlmSuggestions(
     console.log('[LLM] Resposta recebida:', data);
     return data as LlmChatResponse;
   } catch (error) {
-    console.error('[LLM] Erro ao chamar a função de chat da LLM:', error);
-    if (error instanceof Error) {
-      console.error('[LLM] Mensagem de erro:', error.message);
-      console.error('[LLM] Stack trace:', error.stack);
-    }
+    const detectedType = detectErrorType(error);
+    const handled = handleChatError(error, { action: 'getLlmSuggestions' }, detectedType);
+    console[handled.logLevel](handled.logMessage);
     return null;
   }
 }

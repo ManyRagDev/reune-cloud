@@ -43,7 +43,11 @@ export class ContextManager {
 
     // Buscar histórico de mensagens
     const messages = await this.messagesRepo.getByUserId(userId, 50);
-    const history = this.messagesRepo.toLlmMessages(messages);
+    // Comprimir histórico longo para não sobrecarregar o contexto do LLM
+    // >12 mensagens (>6 turnos): resumir as antigas, manter as 10 mais recentes
+    const history = messages.length > 12
+      ? this.generateContextualSummary(messages, context, 10)
+      : this.messagesRepo.toLlmMessages(messages);
 
     // console.log('[ContextManager] Contexto carregado:', {
     //   state: context.state,

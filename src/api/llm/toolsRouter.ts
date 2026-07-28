@@ -5,6 +5,7 @@ import { churrascoProfile } from '@/profiles/churrasco';
 import { estimateQuantityPerPerson, computeCostSplit } from '@/core/calc';
 import { rpc } from '@/api/rpc';
 import type { Item, Participant } from '@/types/domain';
+import { handleChatError, detectErrorType } from '@/utils/errorHandler';
 
 type RunResult = { ok: boolean; data?: unknown; error?: string };
 
@@ -123,7 +124,8 @@ export async function runToolCall(userId: string, call: ToolCall): Promise<RunRe
     const duration_ms = Math.round(performance.now() - started);
     const msg = e instanceof Error ? e.message : String(e);
     const error = /403_not_authorized|forbidden/i.test(msg) ? 'forbidden' : msg;
-    console.debug('[toolsRouter] error', { tool: name, error, duration_ms });
+    const handled = handleChatError(e, { userId, action: `toolsRouter.${name}`, eventoId: (args as Record<string, unknown>)?.evento_id as string | undefined }, detectErrorType(e));
+    console[handled.logLevel](`[toolsRouter] error tool=${name} duration_ms=${duration_ms}: ${handled.logMessage}`);
     return { ok: false, error };
   }
 }

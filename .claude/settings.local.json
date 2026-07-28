@@ -16,7 +16,8 @@
       "Bash(npx supabase:*)",
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(npm run gen-og:*)"
     ],
     "deny": [],
     "ask": []

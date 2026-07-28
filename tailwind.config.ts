@@ -17,8 +17,17 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         heading: ['Poppins', 'Inter', 'system-ui', 'sans-serif'],
+        // ReUNE V2 Fonts
+        display: ['"Space Grotesk"', 'sans-serif'],
+        mono: ['"Space Mono"', 'monospace'],
+        marker: ['"Permanent Marker"', 'cursive'],
       },
       colors: {
+        // ReUNE V2 Colors
+        'acid-lime': '#CCFF00',
+        'electric-magenta': '#FF00FF',
+        'international-orange': '#FF4800',
+        'newsprint': '#F2F0E9',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

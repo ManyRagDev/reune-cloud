@@ -7,6 +7,13 @@ import { LlmMessage } from '@/types/llm';
 import { Event, Item, UUID, EventStatus } from '@/types/domain';
 import { rpc } from '@/api/rpc';
 import { upsertEvent, setEventStatus } from '@/core/orchestrator/eventManager';
+import type { Item as DatabaseItem } from '@/types/database';
+import type { EventContext, CollectedData, ActionContext, GroqCallResult } from '@/types/groq';
+import { handleChatError, detectErrorType, type ChatErrorContext } from '@/utils/errorHandler';
+import { applyInputGuardrail } from '@/guardrails/inputGuard';
+import { applyOutputGuardrail } from '@/guardrails/outputGuard';
+import { buildSystemPrompt } from '@/utils/promptLoader';
+import { validateEventData, validateItemEdit } from '@/validators/inputValidators';
 
 
 interface ActionData {
@@ -28,125 +35,6 @@ interface ActionData {
   };
 }
 
-interface EventContext {
-  evento?: {
-    id?: string;
-    tipo_evento?: string;
-    qtd_pessoas?: number;
-    data_evento?: string;
-    menu?: string;
-    status?: string;
-  };
-  hasItems?: boolean;
-  hasParticipants?: boolean;
-  collectedData?: Record<string, unknown>;
-}
-
-function buildSystemPrompt(context?: EventContext): string {
-  const todayIso = new Date().toISOString().slice(0, 10);
-
-  const basePrompt = `VOCÊ É UNE.AI
-Assistente do ReUNE especializado em planejar eventos sociais.
-Data atual: ${todayIso}
-
-═══════════════════════════════════════════════════════════
-PERSONALIDADE
-═══════════════════════════════════════════════════════════
-Casual, direto e eficiente. Sem formalidades excessivas.
-- Tom: Amigável mas objetivo
-- Frases: Curtas e diretas
-- Palavras: "ótimo", "perfeito", "bora", "beleza"
-- Evite: Jargões técnicos, linguagem robótica
-
-═══════════════════════════════════════════════════════════
-FLUXO DE CRIAÇÃO DE EVENTO
-═══════════════════════════════════════════════════════════
-1. COLETAR: tipo do evento, quantidade de pessoas, data
-2. CONFIRMAR: "Churrasco para 10 no sábado. Quer criar?"
-3. EXECUTAR: Retornar JSON de criação após confirmação
-4. OFERECER: "Quer que eu monte a lista de itens?"
-
-Aceite datas como: dd/mm, dd/mm/yyyy, "sábado", "dia X", "próxima sexta"
-
-═══════════════════════════════════════════════════════════
-AÇÕES DISPONÍVEIS (retornar JSON APENAS com dados completos)
-═══════════════════════════════════════════════════════════
-Se for ação → retorne APENAS o JSON puro (sem markdown, sem texto)
-Se for conversa → responda normalmente, SEM JSON
-
-1. Criar evento:
-{"action":"create_event","data":{"tipo_evento":"churrasco","qtd_pessoas":10,"data_evento":"2026-02-15","menu":"carnes"}}
-
-2. Gerar lista de itens:
-{"action":"generate_items","data":{"evento_id":"uuid"}}
-
-3. Confirmar/finalizar evento:
-{"action":"confirm_event","data":{"evento_id":"uuid"}}
-
-4. Editar dados do evento:
-{"action":"update_event","data":{"evento_id":"uuid","qtd_pessoas":15}}
-
-5. Editar item da lista:
-{"action":"edit_item","data":{"operation":"add","itemName":"cerveja","quantity":10}}
-{"action":"edit_item","data":{"operation":"remove","itemName":"refrigerante"}}
-{"action":"edit_item","data":{"operation":"update","itemName":"carne","quantity":5}}
-{"action":"edit_item","data":{"operation":"multiply","itemName":"tudo","multiplier":2}}
-
-═══════════════════════════════════════════════════════════
-DETECÇÃO DE COMANDOS DE EDIÇÃO DE ITENS
-═══════════════════════════════════════════════════════════
-ADICIONAR: "adiciona cerveja", "coloca mais 2 pães", "bota gelo"
-REMOVER: "tira refrigerante", "remove cerveja", "não precisa de gelo"
-ALTERAR: "muda cerveja pra 20", "aumenta pão pra 5"
-MULTIPLICAR: "dobra tudo", "triplica as bebidas"
-
-═══════════════════════════════════════════════════════════
-REGRAS CRÍTICAS
-═══════════════════════════════════════════════════════════
-1. SEMPRE confirme antes de criar evento ou gerar itens
-2. NÃO repita perguntas se dados já foram fornecidos
-3. Datas: "sábado" = próximo sábado, "dia 25" = dia 25 do mês atual
-4. Se contexto tiver data definida, USE-A — não pergunte de novo
-5. NÃO invente dados que o usuário não forneceu
-
-═══════════════════════════════════════════════════════════
-FALLBACK
-═══════════════════════════════════════════════════════════
-Se não entender: "Não entendi bem. Você quer criar um evento, editar um existente ou adicionar itens na lista?"
-
-═══════════════════════════════════════════════════════════
-EXEMPLOS
-═══════════════════════════════════════════════════════════
-User: "churrasco 10 pessoas sábado"
-AI:  "Beleza! Churrasco para 10 pessoas no sábado. Quer criar?"
-User: "sim"
-AI:  {"action":"create_event","data":{"tipo_evento":"churrasco","qtd_pessoas":10,"data_evento":"2026-02-15"}}
-AI:  "Pronto! Quer que eu monte a lista de itens?"
-User: "pode"
-AI:  {"action":"generate_items","data":{"evento_id":"..."}}
-
-User: "adiciona 10 cervejas"
-AI:  {"action":"edit_item","data":{"operation":"add","itemName":"cerveja","quantity":10}}`;
-
-  if (context?.evento) {
-    const evento = context.evento;
-    return basePrompt + `
-
-═══════════════════════════════════════════════════════════
-CONTEXTO DO EVENTO ATUAL
-═══════════════════════════════════════════════════════════
-ID: ${evento.id || 'N/A'}
-Tipo: ${evento.tipo_evento || 'Não definido'}
-Pessoas: ${evento.qtd_pessoas || 'Não definido'}
-Data: ${evento.data_evento || 'Não definida'}
-Status: ${evento.status || 'N/A'}
-${context.hasItems ? '✓ Lista de itens já gerada' : '✗ Lista ainda não gerada'}
-
-USE ESTAS INFORMAÇÕES. Não pergunte o que já está definido.`;
-  }
-
-  return basePrompt;
-}
 
 function cleanGroqResponse(text: string): string {
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -177,7 +65,7 @@ async function callGroqAPI(
     throw new Error(error.message || 'Erro ao chamar llm-chat');
   }
 
-  const content = (data as any)?.content;
+  const content = (data as GroqCallResult)?.content;
   if (!content) {
     throw new Error('Resposta vazia da llm-chat');
   }
@@ -190,21 +78,22 @@ async function callGroqAPI(
 }
 
 function detectActionJSON(content: string): ActionData | null {
-  try {
-    const cleaned = cleanGroqResponse(content);
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
+  const cleaned = cleanGroqResponse(content);
+  // Regex não-greedy entre objetos raiz: suporta múltiplos JSONs na mesma string
+  // Captura objetos com até 2 níveis de aninhamento (suficiente para ActionData)
+  const jsonMatches = cleaned.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+  if (!jsonMatches) return null;
 
-    const jsonStr = jsonMatch[0];
-    const parsed = JSON.parse(jsonStr);
-
-    if (parsed.action && parsed.data) {
-      return parsed as ActionData;
+  for (const jsonStr of jsonMatches) {
+    try {
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.action && parsed.data) {
+        return parsed as ActionData;
+      }
+    } catch {
+      continue;
     }
-  } catch {
-    return null;
   }
-
   return null;
 }
 
@@ -342,12 +231,14 @@ Siga as diretrizes culturais. Se for um evento temático, respeite as tradiçõe
       return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
     }
   } catch (error) {
-    console.error('[GroqService] Erro ao gerar itens com Groq:', error);
+    const detectedType = detectErrorType(error);
+    const handled = handleChatError(error, { action: 'generateItemsWithGroqLocal' }, detectedType);
+    console[handled.logLevel](handled.logMessage);
     return generateFallbackItems(params.tipo_evento, params.qtd_pessoas);
   }
 }
 
-async function executeAction(actionData: ActionData, userId: UUID, context?: any): Promise<any> {
+async function executeAction(actionData: ActionData, userId: UUID, context?: ActionContext): Promise<{ message: string; eventoId?: string; extractedData?: CollectedData }> {
   const { action, data } = actionData;
 
   const merged = { ...(context?.collectedData || {}), ...data };
@@ -382,24 +273,40 @@ async function executeAction(actionData: ActionData, userId: UUID, context?: any
   switch (action) {
     case 'create_event':
     case 'generate_items': {
-      if ((!tipo || !qtd) && action === 'generate_items') {
-        console.log('[GroqService] Falta dados para gerar itens. Pedindo mais detalhes...');
-      }
-
-      if (!merged.menu) {
-        const dataAny = data as any;
-        const menuCandidate = dataAny.sugestao_prato || dataAny.prato || dataAny.comida || dataAny.cardapio;
-        if (menuCandidate) {
-          merged.menu = menuCandidate;
-          console.log('[GroqService] Recuperado menu de chave alternativa:', menuCandidate);
-        }
-      }
-
+      // CORREÇÃO: Validação de dados obrigatórios
       if (!tipo || !qtd) {
         return {
           message: buildMissingEventDataMessage(tipo, qtd ? Number(qtd) : undefined),
           extractedData: merged
         };
+      }
+
+      const validation = validateEventData({
+        tipo_evento: tipo,
+        qtd_pessoas: Number(qtd),
+        data_evento: merged.data_evento,
+        menu: merged.menu,
+      });
+      if (!validation.valid) {
+        return {
+          message: `Ops! ${validation.error}. Pode corrigir?`,
+          extractedData: merged,
+        };
+      }
+
+      // CORREÇÃO: Se action é generate_items mas não temos evento_id,
+      // precisamos criar o evento primeiro
+      if (action === 'generate_items' && !eventoIdCandidate) {
+        console.log('[GroqService] generate_items sem evento_id - criando evento primeiro...');
+      }
+
+      if (!merged.menu) {
+        const dataRecord = data as Record<string, unknown>;
+        const menuCandidate = dataRecord.sugestao_prato || dataRecord.prato || dataRecord.comida || dataRecord.cardapio;
+        if (typeof menuCandidate === 'string') {
+          merged.menu = menuCandidate;
+          console.log('[GroqService] Recuperado menu de chave alternativa:', menuCandidate);
+        }
       }
 
       const holidayData = await rpc.get_holiday_date_by_name(tipo);
@@ -453,10 +360,18 @@ async function executeAction(actionData: ActionData, userId: UUID, context?: any
         });
 
         if (missingFieldMessage) {
+          // CORREÇÃO: Sempre retornar o eventoId mesmo quando faltam dados
+          // para manter o contexto na próxima mensagem
           return {
             message: missingFieldMessage,
             eventoId: newEvent.id,
-            extractedData: merged
+            extractedData: {
+              ...merged,
+              evento_id: newEvent.id,
+              tipo_evento: tipo,
+              qtd_pessoas: qtd,
+              data_evento: dataFinal,
+            }
           };
         }
 
@@ -501,9 +416,15 @@ async function executeAction(actionData: ActionData, userId: UUID, context?: any
         };
 
       } catch (error) {
-        console.error('[GroqService] Erro ao salvar evento:', error);
+        const detectedType = detectErrorType(error);
+        const handled = handleChatError(error, {
+          userId,
+          action: 'executeAction_saveEvent',
+          eventoId: eventoIdCandidate,
+        }, detectedType);
+        console[handled.logLevel](handled.logMessage);
         return {
-          message: "Tive um pequeno problema técnico ao salvar. Podemos tentar de novo?",
+          message: handled.userMessage,
           extractedData: { ...merged, evento_id: undefined }
         };
       }
@@ -526,7 +447,7 @@ async function executeAction(actionData: ActionData, userId: UUID, context?: any
       if (merged.qtd_pessoas) updateData.qtd_pessoas = Number(merged.qtd_pessoas);
       if (merged.data_evento) updateData.data_evento = merged.data_evento;
 
-      await upsertEvent({ ...updateData, id: eventoIdCandidate } as any);
+      await upsertEvent({ ...updateData, id: eventoIdCandidate } as Event);
 
       // Feedback mais natural
       const parts = [];
@@ -554,7 +475,7 @@ async function executeAction(actionData: ActionData, userId: UUID, context?: any
         itemName: isAll ? undefined : data.itemName,
         quantity: data.quantity,
         multiplier: data.multiplier,
-        category: data.category as any,
+        category: data.category as DatabaseItem['categoria'],
         rawText: '',
       };
 
@@ -575,7 +496,7 @@ export interface ProcessMessageResult {
   actionExecuted?: {
     type: ActionData['action'];
     eventoId?: string;
-    extractedData?: Record<string, any>;
+    extractedData?: CollectedData;
   };
 }
 
@@ -586,11 +507,26 @@ export async function processMessage(
   context?: EventContext
 ): Promise<ProcessMessageResult> {
   try {
+    const guardResult = applyInputGuardrail(userMessage);
+    if (!guardResult.safe) {
+      console.warn('[GroqService] Input bloqueado pelo guardrail:', guardResult.blockedReason);
+      return {
+        response: guardResult.blockedReason === 'empty_input'
+          ? 'Pode digitar sua mensagem?'
+          : 'Desculpe, não posso processar essa mensagem. Pode reformular?',
+      };
+    }
+    const safeUserMessage = guardResult.sanitized;
+
     const systemPrompt = buildSystemPrompt(context);
     const conversationMessages = history.filter(msg => msg.role !== 'system');
-    conversationMessages.push({ role: 'user', content: userMessage });
+    conversationMessages.push({ role: 'user', content: safeUserMessage });
 
-    const aiResponse = await callGroqAPI(systemPrompt, conversationMessages);
+    // Temperatura adaptativa: 0.3 para confirmações de ação (JSON preciso), 0.7 para conversa livre
+    const isConfirmationLike = /^(sim|pode|beleza|ótimo|otimo|cria|gera|quero|bora|vai|ok|okay|confirma|confirmar)/i.test(userMessage.trim());
+    const hasActiveEvent = !!context?.evento?.id;
+    const temperature = (hasActiveEvent && isConfirmationLike) ? 0.3 : 0.7;
+    const aiResponse = await callGroqAPI(systemPrompt, conversationMessages, temperature);
 
     // Fallback: resposta vazia
     if (!aiResponse || aiResponse.trim().length === 0) {
@@ -602,8 +538,9 @@ export async function processMessage(
     if (action) {
       console.log('[GroqService] Ação detectada:', action.action);
       const actionResult = await executeAction(action, userId, context);
+      const outputCheck = applyOutputGuardrail(actionResult.message);
       return {
-        response: actionResult.message,
+        response: outputCheck.safe ? outputCheck.content : 'Pronto! Processei sua solicitação, mas não posso mostrar todos os detalhes.',
         actionExecuted: {
           type: action.action,
           eventoId: actionResult.eventoId,
@@ -618,16 +555,22 @@ export async function processMessage(
       return { response: 'Ops! Tive um problema ao processar. Pode tentar de novo?' };
     }
 
-    return { response: aiResponse };
+    const outputCheck = applyOutputGuardrail(aiResponse);
+    return { response: outputCheck.safe ? outputCheck.content : 'Desculpe, não posso mostrar essa resposta. Pode reformular?' };
   } catch (error) {
-    console.error('[GroqService] Erro ao processar mensagem:', error);
-    if (error instanceof Error) {
-      if (error.message.includes('GROQ_API_KEY')) {
-        return { response: 'Erro de configuração: Chave da API Groq não encontrada.' };
-      }
-      return { response: `Erro ao conectar com a IA: ${error.message}` };
-    }
-    return { response: 'Erro ao conectar com a IA.' };
+    const errorContext: ChatErrorContext = {
+      userId,
+      action: 'processMessage',
+      userMessage,
+    };
+
+    const detectedType = detectErrorType(error);
+    const handled = handleChatError(error, errorContext, detectedType);
+
+    // Log adicional com nível apropriado
+    console[handled.logLevel](handled.logMessage);
+
+    return { response: handled.userMessage };
   }
 }
 
@@ -649,19 +592,22 @@ export async function executeItemEdit(
 ): Promise<{ message: string; success: boolean }> {
   try {
     // Buscar itens atuais do evento
-    // 'itens' não está nos tipos gerados pelo Supabase, então usamos any
     const supabase = (await import('@/integrations/supabase/client')).supabase;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const queryResult = await (supabase as any).from('itens').select('*').eq('evento_id', eventoId);
+    const queryResult = await supabase
+      .from('itens')
+      .select('*')
+      .eq('evento_id', eventoId)
+      .returns<DatabaseItem[]>();
+
     const error = queryResult.error;
-    const currentItems: any[] = queryResult.data || [];
+    const currentItems: DatabaseItem[] = queryResult.data || [];
 
     if (error) throw error;
     if (currentItems.length === 0) {
       return { message: 'Não encontrei itens para editar neste evento.', success: false };
     }
 
-    let updatedItems: any[] = [...currentItems];
+    let updatedItems: DatabaseItem[] = [...currentItems];
     let affectedItemName = '';
     
     const { findItemByName, generateEditFeedback } = await import('@/core/orchestrator/itemCommands');
@@ -761,10 +707,21 @@ export async function executeItemEdit(
     
     const feedbackMessage = generateEditFeedback(command, affectedItemName);
     return { message: feedbackMessage, success: true };
-    
+
   } catch (error) {
-    console.error('[GroqService] Erro ao executar edição de item:', error);
-    return { message: 'Ops! Tive um problema ao fazer essa alteração.', success: false };
+    const errorContext: ChatErrorContext = {
+      userId: _userId,
+      eventoId,
+      action: 'executeItemEdit',
+      userMessage: command.rawText,
+    };
+
+    const detectedType = detectErrorType(error);
+    const handled = handleChatError(error, errorContext, detectedType);
+
+    console[handled.logLevel](handled.logMessage);
+
+    return { message: handled.userMessage, success: !handled.shouldRetry };
   }
 }
 
