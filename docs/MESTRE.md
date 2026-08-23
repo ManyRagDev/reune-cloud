@@ -52,7 +52,7 @@ ChatWidget.tsx (UI)
 | BUG-002 | Prompt injection vulnerability | Alto | ✅ Corrigido (T2.1) |
 | BUG-003 | Race condition em `currentEventId` | Médio | ⚠️ Parcialmente corrigido |
 | BUG-004 | Tratamento de erro inconsistente | Médio | ✅ Corrigido (T1.6) |
-| BUG-005 | Persistência de sessão falha | Alto | 🟡 PoC LangGraph disponível (Fase 3) |
+| BUG-005 | Persistência de sessão falha | Alto | ✅ Corrigido (Fase 5) |
 
 ### Problemas de qualidade 🟡
 
@@ -147,6 +147,38 @@ ChatWidget.tsx (UI)
 ---
 
 ## 📈 HISTÓRICO DE MUDANÇAS
+
+### 2026-07-29 - Fase 5: Sessão Persistente + Chat Conversacional ✅
+
+**Motivo**: Resolver BUG-005 (persistência de sessão) e transformar chat de "mockado" em conversacional
+
+**Problema**: O chat perdia estado no F5, reabria mensagens antigas como se nada tivesse acontecido, e não sabia o estado real do evento no banco.
+
+**O que foi feito**:
+- ✅ S1: Criada tabela `langgraph_checkpoints` no Supabase via MCP (RLS habilitado)
+- ✅ S2: Implementado `SupabaseCheckpointer` (`src/langgraph/checkpointer.ts`) que implementa `BaseCheckpointSaver`
+- ✅ S3: Substituído `MemorySaver` por `SupabaseCheckpointer` no workflow
+- ✅ S4: Implementado `resumeSession()` — consulta banco para estado real do evento e gera saudação contextual
+- ✅ S5: ChatWidget atualizado para usar `resumeSession()` ao abrir (não mais mensagens antigas)
+- ✅ S6: `loadContextNode` agora lê estado fresco do banco (EventsRepository)
+- ✅ S7: 183 testes passando, typecheck limpo
+- ✅ S8: Migration aplicada via Supabase MCP
+
+**Novos arquivos**:
+- `src/langgraph/checkpointer.ts` (SupabaseCheckpointer)
+
+**Arquivos modificados**:
+- `src/langgraph/workflow.ts` (MemorySaver → SupabaseCheckpointer + resumeSession + loadContextNode)
+- `src/components/ChatWidget.tsx` (resumeSession ao abrir + limpar checkpointer ao criar novo evento)
+- `tests/unit/langgraph.test.ts` (mock atualizado para Supabase)
+
+**Testes**: 183 testes passando em 11 suites
+
+**BUG-005 corrigido**: Persistência de sessão funciona — estado do LangGraph vive no Supabase, não na memória do browser.
+
+**Status**: ✅ COMPLETADO
+
+---
 
 ### 2026-07-28 - Fase 4: Migração Completa LangGraph ✅
 

@@ -11,7 +11,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import aiChatIcon from '@/assets/ai-chat-icon.png';
 import { ContextManager } from '@/core/orchestrator/contextManager';
-import { langGraphOrchestrate, listEventsOrchestrate } from '@/langgraph/workflow';
+import { langGraphOrchestrate, listEventsOrchestrate, resumeSession } from '@/langgraph/workflow';
+import { SupabaseCheckpointer } from '@/langgraph/checkpointer';
 import { UUID } from '@/types/domain';
 import { useToast } from '@/components/ui/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,6 +96,8 @@ export default function ChatWidget() {
   const handleCreateNewEvent = async () => {
     if (!user?.id) return;
     await contextManager.clearUserContext(user.id);
+    const checkpointer = new SupabaseCheckpointer();
+    await checkpointer.deleteThread(user.id);
     await new Promise(resolve => setTimeout(resolve, 200));
     setEventoId(undefined);
     setMessages([]);
@@ -197,29 +200,19 @@ export default function ChatWidget() {
       setIsLoading(true);
       hasLoadedHistory.current = true;
       try {
-        const { history, context } = await contextManager.loadUserContext(user.id);
-        const lastChatTime = localStorage.getItem(`reune_last_chat_${String(user.id)}`);
-        const isTimeout = lastChatTime ? (Date.now() - Number(lastChatTime) > SESSION_TIMEOUT_MS) : false;
-        const isFinishedEvent = ['finalized', 'cancelled'].includes(context.state || '');
-        const shouldReset = (context.state === 'idle' && context.historyLength === 0 && !wasMinimized) || isTimeout || isFinishedEvent;
-        if (shouldReset) {
-          await resetEverything();
-          setIsLoading(false);
-          return;
+        const session = await resumeSession(user.id as UUID);
+        
+        if (session.evento_id) {
+          setEventoId(Number(session.evento_id));
         }
-        if (context.evento_id && (context.historyLength > 0 || wasMinimized)) {
-          setEventoId(Number(context.evento_id));
-        }
-        if (history && history.length > 0) {
-          const formattedMessages = history.map(msg => ({
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content,
-          }));
-          setMessages(formattedMessages);
-          setShowOnboarding(false);
-        } else if (!hasGreeted) {
-          setShowOnboarding(true);
-        }
+
+        setMessages([{
+          role: 'assistant',
+          content: session.mensagem,
+          suggestedReplies: session.suggestedReplies,
+        }]);
+        setShowOnboarding(false);
+        setHasGreeted(true);
       } catch (err) {
         console.error('[ChatWidget] Error loading context:', err);
         setShowOnboarding(true);
@@ -228,7 +221,7 @@ export default function ChatWidget() {
       }
     }
     loadHistoryAndContext();
-  }, [open, user?.id, contextManager, hasGreeted, wasMinimized]);
+  }, [open, user?.id]);
 
   useEffect(() => {
     if (endRef.current) {

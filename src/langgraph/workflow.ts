@@ -1,4 +1,5 @@
-import { StateGraph, START, END, MemorySaver } from '@langchain/langgraph';
+import { StateGraph, START, END } from '@langchain/langgraph';
+import { SupabaseCheckpointer } from './checkpointer';
 import { WorkflowState, type WorkflowStateType } from './state';
 import { routerNode } from './agents/routerAgent';
 import { conversationalNode } from './agents/conversationalAgent';
@@ -7,7 +8,7 @@ import { itensNode } from './agents/itensAgent';
 import { startTrace, endTrace, startSpan, endSpan, type TraceRun } from './tracer';
 import { ContextManager } from '@/core/orchestrator/contextManager';
 import { getPlanSnapshot } from '@/core/orchestrator/eventManager';
-import { validateEventDate } from '@/core/nlp/date-parser';
+import { EventsRepository } from '@/db/repositories/events';
 import { parseEventoId } from '@/utils/parsers';
 import { wrapWithConversationalTone, type ActionType } from '@/core/orchestrator/conversationalResponse';
 import type { ChatUiPayload, EventStatus, EventSnapshot } from '@/types/domain';
@@ -17,34 +18,33 @@ let currentRunId: string | null = null;
 async function loadContextNode(state: WorkflowStateType): Promise<Partial<WorkflowStateType>> {
   startSpan(currentRunId!, 'loadContext', { userId: state.userId });
 
+  const eventsRepo = new EventsRepository();
   const contextManager = new ContextManager();
-  const { context: savedContext, history } = await contextManager.loadUserContext(state.userId);
 
-  const SESSION_TIMEOUT_MS = 4 * 60 * 60 * 1000;
-  let lastChatTime: string | null = null;
-  try {
-    lastChatTime = localStorage.getItem(`reune_last_chat_${state.userId}`);
-  } catch { /* SSR */ }
+  const openEvents = await eventsRepo.getAllOpenEvents(state.userId);
+  const latestEvent = openEvents.length > 0 ? openEvents[0] : null;
 
-  const isTimeout = lastChatTime ? (Date.now() - Number(lastChatTime) > SESSION_TIMEOUT_MS) : false;
+  const contextEventId = parseEventoId(state.eventId || null) || undefined;
+  const dbEventId = latestEvent ? String(latestEvent.id) : null;
+  const activeEventId = contextEventId ? String(contextEventId) : dbEventId;
 
-  if (isTimeout && !savedContext.evento_id) {
-    await contextManager.clearUserContext(state.userId);
+  let collectedData: Record<string, unknown> = {};
+  if (activeEventId) {
+    // collected_data (menu, finalidade, tipo_evento, etc.) vive em conversation_contexts,
+    // não em table_reune. Eventos ativos precisam desse contexto para o workflow.
+    // EventsRepository fornece o ID; ContextManager fornece os metadados da conversa.
+    const { context: savedContext } = await contextManager.loadUserContext(state.userId);
+    collectedData = (savedContext.collected_data || {}) as Record<string, unknown>;
   }
 
-  const eventId = parseEventoId(state.eventId) || savedContext.evento_id || undefined;
-  const collectedData = (savedContext.collected_data || {}) as Record<string, unknown>;
-
   endSpan(currentRunId!, 'loadContext', {
-    hasHistory: history.length > 0,
-    hasEvent: !!eventId,
-    isTimeout,
+    hasActiveEvent: !!activeEventId,
+    eventId: activeEventId,
   });
 
   return {
-    messages: history,
     collectedData,
-    eventId: eventId ? String(eventId) : null,
+    eventId: activeEventId || null,
     historyLoaded: true,
   };
 }
@@ -157,7 +157,7 @@ function routeAfterRouter(state: WorkflowStateType): 'agenda' | 'itens' | 'conve
   return state.route === 'itens' ? 'itens' : state.route === 'agenda' ? 'agenda' : 'conversational';
 }
 
-const checkpointer = new MemorySaver();
+const checkpointer = new SupabaseCheckpointer();
 
 export const workflow = new StateGraph(WorkflowState)
   .addNode('loadContext', loadContextNode)
@@ -279,6 +279,81 @@ export async function langGraphOrchestrate(
   } finally {
     currentRunId = null;
   }
+}
+
+export async function resumeSession(userId: string): Promise<ChatUiPayload> {
+  const eventsRepo = new EventsRepository();
+  const openEvents = await eventsRepo.getAllOpenEvents(userId);
+
+  if (openEvents.length === 0) {
+    return {
+      estado: 'draft' as EventStatus,
+      evento_id: null,
+      mensagem: 'Oi! Quer planejar um evento? Me diz o que você tem em mente.',
+      showItems: false,
+      suggestedReplies: ['Churrasco', 'Jantar', 'Festa de aniversário'],
+    };
+  }
+
+  const latestEvent = openEvents[0];
+  const eventId = String(latestEvent.id);
+
+  // Verificar se o evento é recente (< 24h). Se for antigo, tratar como nova sessão.
+  const { supabase } = await import('@/integrations/supabase/client');
+  const { data: eventRow } = await supabase
+    .from('table_reune')
+    .select('updated_at')
+    .eq('id', latestEvent.id)
+    .maybeSingle();
+
+  if (eventRow) {
+    const updatedAt = new Date((eventRow as { updated_at?: string }).updated_at || 0);
+    const hoursSinceUpdate = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60);
+    if (hoursSinceUpdate > 24) {
+      return {
+        estado: 'draft' as EventStatus,
+        evento_id: null,
+        mensagem: 'Oi! Quer planejar um evento? Me diz o que você tem em mente.',
+        showItems: false,
+        suggestedReplies: ['Churrasco', 'Jantar', 'Festa de aniversário'],
+      };
+    }
+  }
+
+  let snapshot: EventSnapshot | null = null;
+  try {
+    snapshot = await getPlanSnapshot(eventId);
+  } catch { /* ignore */ }
+
+  const status = latestEvent.status;
+  const tipo = latestEvent.tipo_evento || 'evento';
+  const qtd = latestEvent.qtd_pessoas;
+  const data = latestEvent.event_date;
+  const hasItems = !!(snapshot?.itens && snapshot.itens.length > 0);
+
+  let mensagem = '';
+  let suggestedReplies: string[] = [];
+
+  if (status === 'finalized') {
+    mensagem = `Seu ${tipo}${qtd ? ` para ${qtd} pessoas` : ''} foi confirmado! Quer criar um novo evento?`;
+    suggestedReplies = ['Criar novo evento', 'Ver meus eventos'];
+  } else if (status === 'created' && hasItems) {
+    const itemCount = snapshot!.itens!.length;
+    mensagem = `Você tem um ${tipo}${qtd ? ` para ${qtd} pessoas` : ''}${data ? ` no dia ${data}` : ''} com ${itemCount} itens na lista. O que quer fazer?`;
+    suggestedReplies = ['Ver lista completa', 'Editar itens', 'Confirmar evento'];
+  } else {
+    mensagem = `Você tem um ${tipo}${qtd ? ` para ${qtd} pessoas` : ''} em aberto. Quer continuar?`;
+    suggestedReplies = ['Continuar', 'Ver meus eventos', 'Criar novo evento'];
+  }
+
+  return {
+    estado: (status || 'draft') as EventStatus,
+    evento_id: eventId,
+    mensagem,
+    snapshot: snapshot || undefined,
+    showItems: hasItems && status !== 'finalized',
+    suggestedReplies,
+  };
 }
 
 export async function listEventsOrchestrate(
