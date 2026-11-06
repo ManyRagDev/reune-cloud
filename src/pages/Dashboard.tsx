@@ -4,7 +4,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Calendar, Clock, MapPin, Users, LogOut, Trash2, CheckCircle, UserCheck, Sparkles, Flame, Pizza, PartyPopper, Briefcase, Cake, ArrowRight, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Calendar, Clock, MapPin, Users, LogOut, Trash2, CheckCircle, UserCheck, Sparkles, Flame, Pizza, PartyPopper, Briefcase, Cake, ArrowRight, Zap, Gift, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +17,8 @@ import { BugReportButton } from '@/components/BugReportButton';
 import { motion } from 'framer-motion';
 import { FounderBadge } from '@/components/FounderBadge';
 import { BrutalistButton } from '@/components/v2/BrutalistButton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { SecretSantaWizardModal } from '@/components/events/SecretSantaWizardModal';
 
 interface Event {
   id: number;
@@ -27,14 +30,17 @@ interface Event {
   user_id: string | null;
   is_public: boolean | null;
   status: string | null;
+  categoria_evento?: string | null;
+  tipo_evento?: string | null;
   created_at: string;
   isOwner: boolean;
   isConfirmed: boolean;
+  hasSecretSanta?: boolean;
 }
 
 interface DashboardProps {
   userEmail: string;
-  onCreateEvent: () => void;
+  onCreateEvent: (options?: { isSecretSanta?: boolean }) => void;
   onViewEvent: (eventId: string) => void;
   onLogout: () => void;
 }
@@ -55,10 +61,12 @@ const rotations = [-2, 1.5, -1, 2, -1.5, 1];
 const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: DashboardProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [profilePromptOpen, setProfilePromptOpen] = useState(false);
+  const [secretSantaModalOpen, setSecretSantaModalOpen] = useState(false);
   const [founderData, setFounderData] = useState<{
     is_founder: boolean;
     founder_since?: string;
@@ -139,7 +147,30 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
       if (confirmationsError) throw confirmationsError;
 
       const confirmationsMap = new Map(confirmationsData?.map(c => [c.event_id, c.presence_confirmed]) || []);
-      const eventsWithStatus = allEvents.map(event => ({ ...event, isOwner: event.user_id === userId, isConfirmed: confirmationsMap.get(event.id) === true }));
+
+      const eventIds = allEvents.map(e => e.id);
+      const secretSantaEventIds = new Set<number>();
+      if (eventIds.length > 0) {
+        try {
+          const { data: ssData } = await supabase
+            .from('event_dynamics')
+            .select('event_id')
+            .in('event_id', eventIds)
+            .eq('type', 'secret_santa');
+          if (ssData) {
+            ssData.forEach(d => secretSantaEventIds.add(Number(d.event_id)));
+          }
+        } catch (e) {
+          console.error('Erro ao verificar dinâmicas de amigo secreto:', e);
+        }
+      }
+
+      const eventsWithStatus = allEvents.map(event => ({
+        ...event,
+        isOwner: event.user_id === userId,
+        isConfirmed: confirmationsMap.get(event.id) === true,
+        hasSecretSanta: secretSantaEventIds.has(Number(event.id)) || event.categoria_evento === 'amigo_secreto',
+      }));
       setEvents(eventsWithStatus);
     } catch (error) {
       const err = error as { message?: string };
@@ -184,8 +215,11 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
     return { label: 'EM BREVE', color: 'bg-gray-200', textColor: 'text-gray-700' };
   };
 
-  const getEventIcon = (title: string) => {
-    const lower = title.toLowerCase();
+  const getEventIcon = (event: Event) => {
+    if (event.hasSecretSanta || event.categoria_evento === 'amigo_secreto' || event.title.toLowerCase().includes('amigo secreto')) {
+      return <Gift className="w-6 h-6 text-[#FF6B35]" />;
+    }
+    const lower = event.title.toLowerCase();
     if (lower.includes('churrasc')) return <Flame className="w-6 h-6" />;
     if (lower.includes('pizza')) return <Pizza className="w-6 h-6" />;
     if (lower.includes('festa')) return <PartyPopper className="w-6 h-6" />;
@@ -251,6 +285,14 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
           {/* Ações */}
           <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setSecretSantaModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl border-[3px] border-black bg-[#FF69B4] text-white shadow-[3px_3px_0px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_0px_#000000] transition-all font-black text-xs md:text-sm flex items-center gap-1.5"
+              title="Organizar ou vincular Amigo Secreto"
+            >
+              <Gift className="w-4 h-4" />
+              <span className="hidden sm:inline">Amigo Secreto</span>
+            </button>
             <FriendsDialog />
             <NotificationBell />
             <button 
@@ -317,6 +359,37 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
             </div>
           </motion.div>
         </div>
+
+        {/* Banner de Destaque: Amigo Secreto */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          onClick={() => setSecretSantaModalOpen(true)}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          className="mt-8 p-5 md:p-6 rounded-2xl border-[3px] border-black bg-[#FF69B4] text-black shadow-[6px_6px_0px_0px_#000000] cursor-pointer transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl border-[3px] border-black bg-[#FFD93D] flex items-center justify-center text-3xl shadow-[3px_3px_0px_0px_#000000] flex-shrink-0 transform -rotate-3">
+              🎁
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border-[2px] border-black bg-white font-black text-xs uppercase mb-1">
+                <span>NOVO</span> • <span>AMIGO SECRETO REUNE</span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-black text-black leading-tight">
+                Organize seu Amigo Secreto sem complicação!
+              </h2>
+              <p className="text-sm font-bold opacity-85 text-black">
+                Sorteio 100% justo, lista de desejos e vinculado à festa da revelação.
+              </p>
+            </div>
+          </div>
+          <div className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border-[3px] border-black bg-white hover:bg-yellow-100 text-black font-black text-sm shadow-[3px_3px_0px_0px_#000000] whitespace-nowrap self-start md:self-auto transition-colors">
+            Organizar ou Vincular <ArrowRight className="w-4 h-4" />
+          </div>
+        </motion.div>
 
         {/* Tabs coloridos */}
         <motion.div
@@ -435,7 +508,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                           className="w-12 h-12 rounded-xl border-[3px] border-black bg-white shadow-[3px_3px_0px_0px_#000000] flex items-center justify-center"
                           style={{ color: colors.accent }}
                         >
-                          {getEventIcon(event.title)}
+                          {getEventIcon(event)}
                         </div>
                       </div>
                       
@@ -450,9 +523,17 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                     </div>
 
                     {/* Title */}
-                    <h3 className="text-xl font-black mb-3 leading-tight text-black">
-                      {event.title}
-                    </h3>
+                    <div className="mb-3">
+                      <h3 className="text-xl font-black leading-tight text-black">
+                        {event.title}
+                      </h3>
+                      {event.hasSecretSanta && (
+                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border-[2px] border-black bg-[#FF69B4] text-white font-black text-xs shadow-[2px_2px_0px_0px_#000000]">
+                          <Gift className="w-3.5 h-3.5" />
+                          <span>AMIGO SECRETO</span>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Info */}
                     <div className="space-y-2 mb-4">
@@ -486,6 +567,27 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                       
                       <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1" />
                     </div>
+
+                    {/* Amigo Secreto Shortcut Button */}
+                    {event.hasSecretSanta && (
+                      <div className="mt-3 pt-2.5 border-t border-black/10 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (event.isOwner) {
+                              navigate(`/event/${event.id}/secret-santa/admin`);
+                            } else {
+                              navigate(`/event/${event.id}/secret-santa/my-result`);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-[2px] border-black bg-white hover:bg-yellow-200 text-black font-black text-xs shadow-[2px_2px_0px_0px_#000000] transition-colors"
+                        >
+                          <Gift className="w-3.5 h-3.5 text-[#FF6B35]" />
+                          {event.isOwner ? 'Gerenciar Sorteio ⚙️' : 'Ver Meu Amigo 🎁'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </motion.article>
               );
@@ -543,7 +645,14 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
         </motion.div>
       </motion.div>
 
-      {/* Dialogs */}
+      {/* Secret Santa Dedicated Wizard */}
+      <SecretSantaWizardModal
+        open={secretSantaModalOpen}
+        onOpenChange={setSecretSantaModalOpen}
+        existingEvents={events}
+        onSuccess={() => fetchEvents()}
+      />
+
       <AccountDialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen} userEmail={userEmail} />
       <ProfilePromptDialog open={profilePromptOpen} onOpenChange={setProfilePromptOpen} onNavigateToProfile={() => setAccountDialogOpen(true)} />
       <BugReportButton />

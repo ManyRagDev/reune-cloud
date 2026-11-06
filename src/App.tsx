@@ -16,6 +16,9 @@ import SecretSantaMyResult from "./pages/SecretSantaMyResult";
 import SecretSantaWishlist from "./pages/SecretSantaWishlist";
 import SecretSantaAdmin from "./pages/SecretSantaAdmin";
 import SecretSantaLanding from "./pages/SecretSantaLanding";
+import SecretSantaJoin from "./pages/SecretSantaJoin";
+import QuickSecretSanta from "./pages/QuickSecretSanta";
+import QuickSecretSantaEnvelope from "./pages/QuickSecretSantaEnvelope";
 import MarketingScreenshots from "./pages/MarketingScreenshots";
 import AcceptInvite from "./pages/AcceptInvite";
 import ResetPassword from "./pages/ResetPassword";
@@ -39,6 +42,7 @@ const App = () => {
             <Route path="/" element={<LandingV3 />} />
             <Route path="/v3" element={<LandingV3 />} />
             <Route path="/app" element={<Index />} />
+            <Route path="/login" element={<Index />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/convite/:token" element={<AcceptInvite />} />
             <Route path="/admin" element={<AdminDashboard />} />
@@ -49,6 +53,13 @@ const App = () => {
             {/* Secret Santa Routes */}
             <Route path="/amigo-secreto" element={<SecretSantaLanding />} />
             <Route path="/amigosecreto" element={<SecretSantaLanding />} />
+            <Route path="/amigo-secreto/rapido" element={<QuickSecretSanta />} />
+            <Route path="/sorteio-rapido" element={<QuickSecretSanta />} />
+            <Route path="/envelope/:token" element={<QuickSecretSantaEnvelope />} />
+            <Route path="/amigo/:id/entrar" element={<SecretSantaJoin />} />
+            <Route path="/amigo/entrar/:token" element={<SecretSantaJoin />} />
+            <Route path="/amigo-secreto/:id/entrar" element={<SecretSantaJoin />} />
+            <Route path="/amigo-secreto/entrar/:token" element={<SecretSantaJoin />} />
             <Route path="/event/:id/secret-santa/setup" element={<SecretSantaSetup />} />
             <Route path="/event/:id/secret-santa/participants" element={<SecretSantaParticipants />} />
             <Route path="/event/:id/secret-santa/results" element={<SecretSantaResults />} />

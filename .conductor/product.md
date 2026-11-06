@@ -88,9 +88,40 @@ Antes de iniciar o chat, o usuário deve selecionar o contexto na interface:
 - `groqService.ts` para integração com LLM
 
 ### 3. Secret Santa
-- Fluxo dedicado de Amigo Secreto
-- Sorteio algoritmicamente justo via `secretSantaDraw.ts`
-- Wishlist e gerenciamento de participantes
+- Landing Page dedicada e de alta conversão para tráfego pago/orgânico (`/amigo-secreto` em `SecretSantaLanding.tsx`) com Open Graph meta tags, mockup de WhatsApp, comparativo de modos, casos de uso, FAQ interativo e sticky bar mobile.
+- **Modal de Pré-Decisão Transparente (`SecretSantaChoiceModal.tsx`):**
+  - Ao clicar em "Criar meu amigo secreto", exibe caixa de seleção clara entre:
+    1. *⚡ Sorteador Relâmpago (Sem Cadastro, instantâneo, envelopes no WhatsApp)*.
+    2. *🎁 Suíte Completa ReUNE (Com Conta, cadastro rápido em apenas 1 minuto, lista de presentes, festa com mapa, anti-penetras)*.
+  - Condução estratégica e suave para cadastro ("é fácil e leva 1 min") mantendo a opção sem cadastro como alternativa instantânea e transparente.
+  - Uso padronizado da marca e ícone oficial do **WhatsApp** em todos os pontos de contato e despacho.
+- **Redirecionamentos Inteligentes de Login (`Login.tsx` e `Index.tsx`):**
+  - O botão de voltar na tela de login respeita o parâmetro `redirect`/`returnTo` (exibindo "Voltar para o Amigo Secreto" quando vindo da landing de amigo secreto).
+  - Após efetuar login ou cadastro, redireciona de volta para `/amigo-secreto?action=wizard`, abrindo automaticamente o Wizard de criação.
+- **Sorteador Relâmpago ⚡ Sem Cadastro (`/amigo-secreto/rapido` e `/sorteio-rapido` em `QuickSecretSanta.tsx`):**
+  - Resolução instantânea do sorteio em 1 minuto sem exigir criação de conta.
+  - Algoritmo de derangement garantindo que ninguém se tire.
+  - Tela de despacho individual com botões diretos para envio no WhatsApp de cada amigo.
+  - Suporte a pré-preenchimento de título via query param `?group=...`.
+  - **Envelopes Lacrados Digitais (`/envelope/:token` em `QuickSecretSantaEnvelope.tsx`):**
+    - Mecanismo anti-curiosos/anti-spoilers: o link do participante fica protegido por um lacre digital.
+    - Se aberto pelo destinatário no seu próprio aparelho: o lacre é rompido, salvo no dispositivo e revela o amigo.
+    - Se aberto previamente por outro dispositivo (ex: organizador curioso): exibe alerta ostensivo de 🚨 **LACRE VIOLADO** com data e hora exata da espionagem.
+- **Suíte Completa de Amigo Secreto (com Conta):**
+  - Fluxo dedicado e interativo via Wizard em 3 passos (`SecretSantaWizardModal.tsx`).
+  - Sorteio algoritmicamente justo via `secretSantaDraw.ts`.
+  - Conexão nativa com a festa da revelação (data, hora, local com Google Maps e rotas).
+  - Dois modos de convite via WhatsApp (`SecretSantaShareModal.tsx`):
+    - **Link Aberto do Grupo:** 1 link compartilhado no WhatsApp com entrada ágil e PIN de 4 dígitos.
+    - **Convites Anti-Penetras:** Lista de nomes pré-autorizados com tokens exclusivos por convidado.
+  - Página pública de entrada sem barreira de login (`SecretSantaJoin.tsx`), com wishlist e PIN de proteção.
+  - Revelação interativa do amigo sorteado com proteção por PIN de 4 dígitos.
+- **Experiência Mobile-First & Micro-Interações:**
+  - Viewport com suporte a `viewport-fit=cover` e padding de safe area (`pb-safe`) para iOS e Android.
+  - Modais em formato de Bottom-Sheet ergonômico no celular (`SecretSantaChoiceModal.tsx`).
+  - Inputs otimizados para teclados virtuais (`inputMode="numeric"` para PINs e `enterKeyHint="done"` com auto-adição por Enter em listas de participantes).
+  - Micro-interações táteis nos botões (`touch-press`) e celebração com confetes dinâmicos (`CelebrationConfetti.tsx`) na revelação do amigo e na confirmação de presença.
+  - Sticky CTA fixo no rodapé mobile da Landing Page respeitando a safe area.
 
 ### 4. Gamification
 - Perfis de usuário com badges

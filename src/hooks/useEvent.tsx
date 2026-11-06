@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 // Force TypeScript refresh
 
-interface Event {
+export interface Event {
   id: number;
   title: string;
   description: string | null;
@@ -15,6 +15,13 @@ interface Event {
   is_public: boolean | null;
   status: string | null;
   created_by_ai?: boolean;
+  tipo_evento?: string | null;
+  qtd_pessoas?: number | null;
+  menu?: string | null;
+  categoria_evento?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  place_id?: string | null;
 }
 
 interface EventOrganizer {
@@ -53,6 +60,23 @@ export const useEvent = (eventId: string) => {
 
       if (error) throw error;
       const result = Array.isArray(data) ? data[0] : data;
+      if (result) {
+        try {
+          const { data: geoData } = await supabase
+            .from('table_reune')
+            .select('latitude, longitude, place_id')
+            .eq('id', eventIdNumber)
+            .maybeSingle();
+
+          if (geoData) {
+            result.latitude = geoData.latitude;
+            result.longitude = geoData.longitude;
+            result.place_id = geoData.place_id;
+          }
+        } catch {
+          // Ignora silenciosamente se o usuário não tiver permissão para os campos adicionais
+        }
+      }
       setEvent(result || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar evento');

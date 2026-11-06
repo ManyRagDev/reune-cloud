@@ -11,8 +11,21 @@ const RESET_PATTERNS = [
   /\b(recome[cç]ar|resetar|reiniciar|limpar|apagar conversa|zerar tudo|novo evento)\b/i,
 ];
 
+// Padrões de dados típicos de triagem/coleta de evento (números, datas, respostas curtas)
+const EVENT_DATA_PATTERNS = [
+  /\b\d+\s*(pessoas?|amigos?|convidados?|adultos?|crian[cç]as?)\b/i,
+  /^\d+$/,
+  /\b(s[aá]bado|domingo|sexta|segunda|ter[cç]a|quarta|quinta|amanh[aã]|hoje|semana que vem|pr[oó]ximo)\b/i,
+  /\b(dia\s+\d{1,2}|\d{1,2}\/\d{1,2})\b/i,
+  /\b(sim|bora|pode ser|pode criar|claro|com certeza|isso|ok|beleza|combinado|gerar lista)\b/i,
+];
+
 function detectAgendaIntent(message: string): boolean {
   return AGENDA_INTENT_PATTERNS.some((p) => p.test(message));
+}
+
+function detectEventDataReply(message: string): boolean {
+  return EVENT_DATA_PATTERNS.some((p) => p.test(message));
 }
 
 function detectResetIntent(message: string): boolean {
@@ -20,7 +33,7 @@ function detectResetIntent(message: string): boolean {
 }
 
 export async function routerNode(state: WorkflowStateType): Promise<Partial<WorkflowStateType>> {
-  const { userMessage, eventId } = state;
+  const { userMessage, eventId, collectedData } = state;
   const lower = userMessage.toLowerCase().trim();
 
   if (detectResetIntent(lower)) {
@@ -33,6 +46,12 @@ export async function routerNode(state: WorkflowStateType): Promise<Partial<Work
   }
 
   if (detectAgendaIntent(lower)) {
+    return { route: 'agenda' };
+  }
+
+  // Se já há um evento ativo ou coleta em andamento, respostas de dados ou confirmação vão para agenda
+  const hasActiveCollection = !!(eventId || collectedData?.tipo_evento || collectedData?.qtd_pessoas);
+  if (hasActiveCollection && detectEventDataReply(lower)) {
     return { route: 'agenda' };
   }
 

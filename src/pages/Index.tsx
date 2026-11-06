@@ -10,17 +10,19 @@ import ChatWidget from '@/components/ChatWidget';
 // import { ThemeToggle } from '@/components/landing/ThemeToggle'; // Removed to avoid duplication
 import { motion } from 'framer-motion';
 
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { templates, EventTemplate } from '@/data/templates';
 
 type Screen = 'landing' | 'login' | 'dashboard' | 'createEvent' | 'eventDetails';
 
 const Index = () => {
+  const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [searchParams] = useSearchParams();
   const [initialTemplate, setInitialTemplate] = useState<EventTemplate | null>(null);
+  const [isSecretSantaMode, setIsSecretSantaMode] = useState(false);
 
   useEffect(() => {
     const templateSlug = searchParams.get('template');
@@ -33,6 +35,12 @@ const Index = () => {
   }, [searchParams]);
 
   useEffect(() => {
+    const redirectUrl = searchParams.get('redirect') || searchParams.get('returnTo');
+    if (user && redirectUrl) {
+      navigate(redirectUrl, { replace: true });
+      return;
+    }
+
     if (user) {
       // If there is a template and we just logged in (or loaded), go to create event
       if (initialTemplate) {
@@ -45,9 +53,15 @@ const Index = () => {
       // LandingV3 is already at /
       setCurrentScreen('login');
     }
-  }, [user, loading, initialTemplate]);
+  }, [user, loading, initialTemplate, searchParams, navigate]);
 
   const handleLogin = () => {
+    const redirectUrl = searchParams.get('redirect') || searchParams.get('returnTo');
+    if (redirectUrl) {
+      navigate(redirectUrl, { replace: true });
+      return;
+    }
+
     // If we have a template, go to create event after login
     if (initialTemplate) {
       setCurrentScreen('createEvent');
@@ -61,8 +75,9 @@ const Index = () => {
     setCurrentScreen('login');
   };
 
-  const handleCreateEvent = () => {
+  const handleCreateEvent = (options?: { isSecretSanta?: boolean }) => {
     setInitialTemplate(null); // Clear template if creating manually from dashboard
+    setIsSecretSantaMode(options?.isSecretSanta || false);
     setCurrentScreen('createEvent');
   };
 
@@ -73,11 +88,13 @@ const Index = () => {
 
   const handleBackToDashboard = () => {
     setInitialTemplate(null);
+    setIsSecretSantaMode(false);
     setCurrentScreen('dashboard');
   };
 
   const handleEventCreated = () => {
     setInitialTemplate(null);
+    setIsSecretSantaMode(false);
     setCurrentScreen('dashboard');
   };
 
@@ -140,6 +157,7 @@ const Index = () => {
             onBack={handleBackToDashboard}
             onCreate={handleEventCreated}
             initialData={initialTemplate}
+            defaultSecretSanta={isSecretSantaMode}
           />
         );
 

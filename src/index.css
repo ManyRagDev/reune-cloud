@@ -133,9 +133,30 @@ All colors MUST be HSL.
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  body {
+  html, body {
     @apply bg-background text-foreground;
+    touch-action: manipulation;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 16px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  /* Toque tátil responsivo para celulares */
+  .touch-press {
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .touch-press:active {
+    transform: translate(2px, 2px) scale(0.98);
   }
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,11 @@ interface LoginProps {
 }
 
 const Login = ({ onLogin }: LoginProps) => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectParam = searchParams.get("redirect") || searchParams.get("returnTo");
+  const isFromSecretSanta = redirectParam?.includes("amigo-secreto") || redirectParam?.includes("amigosecreto");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
@@ -35,6 +41,16 @@ const Login = ({ onLogin }: LoginProps) => {
   }, [isDark]);
 
   const C: NBPalette = isDark ? NBDark : NBLight;
+
+  const handleBack = () => {
+    if (redirectParam) {
+      navigate(redirectParam);
+    } else if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,11 +79,17 @@ const Login = ({ onLogin }: LoginProps) => {
           }
         });
 
-        onLogin();
+        if (redirectParam) {
+          navigate(redirectParam);
+        } else {
+          onLogin();
+        }
       } else {
-        const redirectUrl = `${window.location.origin}/`;
+        const redirectUrl = redirectParam 
+          ? `${window.location.origin}${redirectParam}`
+          : `${window.location.origin}/`;
 
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -76,6 +98,40 @@ const Login = ({ onLogin }: LoginProps) => {
         });
 
         if (error) throw error;
+
+        // Se o Supabase auto-confirmar ou não exigir confirmação, já loga na hora
+        let activeSession = data.session;
+        if (!activeSession) {
+          // Fallback: tenta login imediato com a trigger de auto-confirmação do banco
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (!signInError && signInData?.session) {
+            activeSession = signInData.session;
+          }
+        }
+
+        if (activeSession) {
+          toast({
+            title: "Conta criada com sucesso!",
+            description: "Bem-vindo ao ReUNE. Vamos começar!",
+            style: {
+              border: "3px solid #1A1A1A",
+              boxShadow: "4px 4px 0px #1A1A1A",
+              backgroundColor: C.mint,
+              color: C.black,
+              borderRadius: "0px",
+            }
+          });
+
+          if (redirectParam) {
+            navigate(redirectParam);
+          } else {
+            onLogin();
+          }
+          return;
+        }
 
         toast({
           title: "Conta criada!",
@@ -205,12 +261,12 @@ const Login = ({ onLogin }: LoginProps) => {
       >
         {/* Back Button */}
         <button
-          onClick={() => window.location.href = '/'}
+          onClick={handleBack}
           className={`mb-6 flex items-center gap-2 text-sm font-bold opacity-70 hover:opacity-100 transition-opacity`}
           style={{ color: C.text }}
         >
           <ArrowLeft className="h-4 w-4" />
-          Voltar pra home
+          {isFromSecretSanta ? "Voltar para o Amigo Secreto" : "Voltar pra home"}
         </button>
 
         <div className="text-center mb-8">

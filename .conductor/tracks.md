@@ -12,3 +12,13 @@
 - [ ] **010-landing-v3-neubrutalism** - Landing Page V3 com estilo Neubrutalism `[.conductor/tracks/010-landing-v3-neubrutalism/plan.md]`
 - [x] **012-detect-edit-intent** - Pré-triagem de intenção de edição de itens `[.conductor/tracks/012-detect-edit-intent/plan.md]`
 - [x] **013-ts-cleanup-and-verify** - Limpeza TypeScript e verificação final `[.conductor/tracks/013-ts-cleanup-and-verify/plan.md]`
+- [x] **014-core-stabilization** - Estabilização do Core (Banco, IA e Formulários) `[.conductor/tracks/014-core-stabilization/plan.md]`
+- [x] **015-google-maps-integration** - Integração com Google Maps (Autocomplete, Mapa e Rotas) `[.conductor/tracks/015-google-maps-integration/plan.md]`
+- [x] **016-secret-santa-dashboard-visibility** - Visibilidade do Amigo Secreto no Dashboard `[.conductor/tracks/016-secret-santa-dashboard-visibility/plan.md]`
+- [x] **017-secret-santa-dedicated-wizard** - Wizard Dinâmico de Criação de Amigo Secreto `[.conductor/tracks/017-secret-santa-dedicated-wizard/plan.md]`
+- [x] **018-secret-santa-high-conversion-landing** - Landing Page de Alta Conversão para Amigo Secreto `[.conductor/tracks/018-secret-santa-high-conversion-landing/plan.md]`
+- [x] **019-quick-secret-santa-sealed-envelope** - Sorteador Relâmpago de Amigo Secreto com Envelopes Lacrados `[.conductor/tracks/019-quick-secret-santa-sealed-envelope/plan.md]`
+- [x] **020-secret-santa-creation-modal-and-redirects** - Modal de Pré-Decisão de Amigo Secreto & Redirecionamentos Inteligentes de Login `[.conductor/tracks/020-secret-santa-creation-modal-and-redirects/plan.md]`
+- [x] **021-secret-santa-copy-refinements-and-whatsapp-branding** - Refinamento de Copy do Amigo Secreto & Padronização da Marca WhatsApp `[.conductor/tracks/021-secret-santa-copy-refinements-and-whatsapp-branding/plan.md]`
+- [x] **022-full-app-e2e-audit-and-qa** - Auditoria Completa de Usabilidade e Testes E2E com Navegador Real (ReUNE & Amigo Secreto) `[.conductor/tracks/022-full-app-e2e-audit-and-qa/plan.md]`
+- [x] **023-mobile-first-ui-ux-polish** - Otimização Mobile-First, Micro-Interações e Feedback Visual Fluido `[.conductor/tracks/023-mobile-first-ui-ux-polish/plan.md]`

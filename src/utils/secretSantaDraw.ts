@@ -217,3 +217,49 @@ export function testSecretSantaDraw() {
 
   console.log("🎉 Todos os testes concluídos!");
 }
+
+/**
+ * Realiza o sorteio para o Sorteador Relâmpago (sem cadastro).
+ * Garante matematicamente um ciclo hamiltoniano onde:
+ * 1. Ninguém tira a si mesmo.
+ * 2. Todos tiram exatamente 1 pessoa.
+ * 3. Todos são tirados por exatamente 1 pessoa.
+ */
+export function performQuickSecretSantaDraw(
+  rawNames: string[]
+): Array<{ name: string; target_name: string }> {
+  // Limpar nomes e remover vazios
+  const cleanNames = rawNames
+    .map((n) => n.trim())
+    .filter((n) => n.length > 0);
+
+  if (cleanNames.length < 3) {
+    throw new Error("O Amigo Secreto precisa de pelo menos 3 participantes.");
+  }
+
+  // Verificar nomes duplicados
+  const uniqueNames = new Set(cleanNames.map((n) => n.toLowerCase()));
+  if (uniqueNames.size !== cleanNames.length) {
+    throw new Error("Não pode haver nomes repetidos na lista. Diferencie com apelido ou sobrenome.");
+  }
+
+  // Fisher-Yates Shuffle
+  const shuffled = [...cleanNames];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  // Ciclo fechado garantido: shuffled[i] -> shuffled[(i + 1) % n]
+  const n = shuffled.length;
+  const pairs: Array<{ name: string; target_name: string }> = [];
+
+  for (let i = 0; i < n; i++) {
+    pairs.push({
+      name: shuffled[i],
+      target_name: shuffled[(i + 1) % n],
+    });
+  }
+
+  return pairs;
+}

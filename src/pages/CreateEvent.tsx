@@ -3,7 +3,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { type LucideIcon, ArrowLeft, AlertTriangle, MapPinned, Home, Sparkles, Calendar as CalendarIcon, Clock, Flame, UtensilsCrossed, Cake, Briefcase, Package, Plus, X, Moon, Sun } from 'lucide-react';
+import { type LucideIcon, ArrowLeft, AlertTriangle, MapPinned, Home, Sparkles, Calendar as CalendarIcon, Clock, Flame, UtensilsCrossed, Cake, Briefcase, Package, Plus, X, Moon, Sun, Users, Gift } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +18,8 @@ import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NBLight, NBDark, NBPalette, nb } from '@/lib/neobrutalism';
+import { GoogleAddressAutocomplete, SelectedPlace } from '@/components/maps/GoogleAddressAutocomplete';
+import { EventMapPreview } from '@/components/maps/EventMapPreview';
 
 interface ManualItem {
   id: string;
@@ -29,6 +32,7 @@ interface CreateEventProps {
   onBack: () => void;
   onCreate: () => void;
   initialData?: EventTemplate | null;
+  defaultSecretSanta?: boolean;
 }
 
 const templateIcons: Record<string, LucideIcon> = {
@@ -40,7 +44,7 @@ const templateIcons: Record<string, LucideIcon> = {
 
 const templateColors = ['#FFD93D', '#A8D8FF', '#FF69B4', '#B8F3D0'];
 
-const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
+const CreateEvent = ({ onBack, onCreate, initialData, defaultSecretSanta = false }: CreateEventProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedTemplate, setSelectedTemplate] = useState<EventTemplate | null>(initialData || null);
@@ -49,6 +53,13 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
   const [time, setTime] = useState<string>('');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState(initialData?.description || '');
+  const [peopleCount, setPeopleCount] = useState<number>(10);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [placeId, setPlaceId] = useState<string | null>(null);
+  const [hasSecretSanta, setHasSecretSanta] = useState<boolean>(defaultSecretSanta);
+  const [secretSantaMinValue, setSecretSantaMinValue] = useState<number>(30);
+  const [secretSantaMaxValue, setSecretSantaMaxValue] = useState<number>(100);
   const [selectedInvitees, setSelectedInvitees] = useState<Invitee[]>([]);
   const [loading, setLoading] = useState(false);
   const [showLocationWarning, setShowLocationWarning] = useState(false);
@@ -108,6 +119,15 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
     if (selectedAddressId) setSelectedAddressId(null);
   };
 
+  const handlePlaceSelect = (place: SelectedPlace) => {
+    setLocation(place.address);
+    setLatitude(place.latitude);
+    setLongitude(place.longitude);
+    setPlaceId(place.placeId);
+    setShowLocationWarning(isPublic && checkResidentialLocation(place.address));
+    if (selectedAddressId) setSelectedAddressId(null);
+  };
+
   const handleAddressSelect = (address: Address) => {
     const formattedAddress = `${address.nickname} — ${address.street}, ${address.number}${address.complement ? ', ' + address.complement : ''}, ${address.city}/${address.state}`;
     setLocation(formattedAddress);
@@ -134,12 +154,45 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
       const eventDescription = description || null;
       const formattedDate = format(date, 'yyyy-MM-dd');
       const { data: eventData, error } = await supabase.from('table_reune').insert({
-        title, event_date: formattedDate, event_time: time, location, description: eventDescription,
-        user_id: user.id, is_public: isPublic, status: 'published', created_by_ai: false,
+        title,
+        event_date: formattedDate,
+        event_time: time,
+        location,
+        address: location || null,
+        description: eventDescription,
+        user_id: user.id,
+        is_public: isPublic,
+        status: 'created',
+        created_by_ai: false,
+        qtd_pessoas: peopleCount,
+        tipo_evento: selectedTemplate?.slug || 'evento',
+        categoria_evento: hasSecretSanta ? 'amigo_secreto' : (selectedTemplate?.slug || 'geral'),
+        latitude,
+        longitude,
+        place_id: placeId,
         public_location: isPublic && checkResidentialLocation(location) ? 'Local a confirmar com organizador' : null
       }).select().single();
 
       if (error) throw error;
+
+      if (hasSecretSanta && eventData) {
+        try {
+          await supabase.from("event_dynamics").insert({
+            event_id: eventData.id,
+            type: "secret_santa",
+          });
+
+          await supabase.from("event_secret_santa").insert({
+            event_id: eventData.id,
+            min_value: secretSantaMinValue,
+            max_value: secretSantaMaxValue,
+            draw_date: `${formattedDate}T20:00:00`,
+            has_drawn: false,
+          });
+        } catch (ssErr) {
+          console.error("Erro ao registrar Amigo Secreto:", ssErr);
+        }
+      }
 
       const allItems = getAllItems();
       if (allItems.length > 0 && eventData) {
@@ -276,8 +329,8 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
                   />
                 </div>
 
-                {/* Date/Time */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Date/Time/People */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label className="text-sm font-black flex items-center gap-2" style={{ color: C.text }}>
                       <CalendarIcon className="w-4 h-4" /> Data
@@ -294,6 +347,22 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
                       <TimePicker value={time} onChange={setTime} placeholder="Escolha o horário" disabled={loading} />
                     </div>
                   </div>
+                  <div>
+                    <Label className="text-sm font-black flex items-center gap-2" style={{ color: C.text }}>
+                      <Users className="w-4 h-4" /> Qtd. Pessoas
+                    </Label>
+                    <div className="mt-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={peopleCount}
+                        onChange={(e) => setPeopleCount(Math.max(1, parseInt(e.target.value) || 1))}
+                        className={`h-12 rounded-xl ${nb.input} text-base font-bold`}
+                        style={{ backgroundColor: C.inputBg, color: C.text, borderColor: C.border }}
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Location */}
@@ -304,13 +373,35 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
                   <div className="space-y-3 mt-2">
                     {!useManualLocation && <AddressSelector onAddressSelect={handleAddressSelect} disabled={loading} />}
                     {useManualLocation ? (
-                      <div className="space-y-2">
-                        <Input
-                          id="location" type="text" placeholder="Ex: Rua das Flores, 123"
-                          value={location} onChange={(e) => handleLocationChange(e.target.value)} required
-                          className={`h-12 rounded-xl ${nb.input} text-base font-bold`}
-                          style={{ backgroundColor: C.inputBg, color: C.text, borderColor: C.border }}
+                      <div className="space-y-3">
+                        <GoogleAddressAutocomplete
+                          value={location}
+                          onChange={handleLocationChange}
+                          onPlaceSelect={handlePlaceSelect}
+                          placeholder="Busque por rua, praça, restaurante ou local..."
+                          disabled={loading}
+                          palette={C}
+                          required
                         />
+
+                        {latitude && longitude && (
+                          <div className="mt-2">
+                            <EventMapPreview
+                              latitude={latitude}
+                              longitude={longitude}
+                              title={title || "Local do Evento"}
+                              editable={true}
+                              onPositionChange={({ latitude: lat, longitude: lng }) => {
+                                setLatitude(lat);
+                                setLongitude(lng);
+                              }}
+                              height="220px"
+                              isDark={isDark}
+                              palette={C}
+                            />
+                          </div>
+                        )}
+
                         <button
                           type="button" onClick={handleToggleManualLocation}
                           className="text-xs font-bold flex items-center gap-1" style={{ color: C.orange }}
@@ -422,6 +513,73 @@ const CreateEvent = ({ onBack, onCreate, initialData }: CreateEventProps) => {
                       </button>
                     </div>
                   </div>
+                </div>
+
+                {/* ═══ AMIGO SECRETO OPT-IN ═══ */}
+                <div
+                  className={`p-5 rounded-2xl ${nb.border} ${nb.shadow} transition-all`}
+                  style={{ backgroundColor: hasSecretSanta ? C.pink : C.sectionBg }}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-xl ${nb.border} flex items-center justify-center`} style={{ backgroundColor: C.yellow }}>
+                        <Gift className="w-6 h-6 text-black" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black" style={{ color: C.text }}>
+                          Ativar Amigo Secreto nesta festa? 🎁
+                        </h3>
+                        <p className="text-xs font-bold opacity-75" style={{ color: C.text }}>
+                          Sorteio 100% justo, lista de presentes e revelação na festa!
+                        </p>
+                      </div>
+                    </div>
+                    <Checkbox
+                      id="hasSecretSanta"
+                      checked={hasSecretSanta}
+                      onCheckedChange={(checked) => setHasSecretSanta(checked === true)}
+                      className="w-6 h-6 rounded-lg border-[2px] border-black data-[state=checked]:bg-black data-[state=checked]:text-white"
+                    />
+                  </div>
+
+                  {hasSecretSanta && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mt-4 pt-4 border-t-2 border-black/15 space-y-3"
+                    >
+                      <Label className="text-xs font-black uppercase tracking-wider block" style={{ color: C.text }}>
+                        Faixa sugerida de preço do presente:
+                      </Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs font-bold" style={{ color: C.text }}>Valor Mínimo (R$)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={secretSantaMinValue}
+                            onChange={(e) => setSecretSantaMinValue(parseFloat(e.target.value) || 0)}
+                            className={`h-11 mt-1 rounded-xl ${nb.input} font-bold`}
+                            style={{ backgroundColor: C.inputBg, color: C.text, borderColor: C.border }}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs font-bold" style={{ color: C.text }}>Valor Máximo (R$)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={secretSantaMaxValue}
+                            onChange={(e) => setSecretSantaMaxValue(parseFloat(e.target.value) || 0)}
+                            className={`h-11 mt-1 rounded-xl ${nb.input} font-bold`}
+                            style={{ backgroundColor: C.inputBg, color: C.text, borderColor: C.border }}
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs font-medium opacity-80" style={{ color: C.text }}>
+                        ✨ Os convidados do rolê poderão participar do sorteio e preencher sua lista de desejos.
+                      </p>
+                    </motion.div>
+                  )}
                 </div>
 
                 {/* Invite selector */}

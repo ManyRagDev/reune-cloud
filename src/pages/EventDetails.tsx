@@ -24,6 +24,9 @@ import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { NBLight, NBDark, NBPalette, nb } from "@/lib/neobrutalism";
+import { GoogleAddressAutocomplete } from "@/components/maps/GoogleAddressAutocomplete";
+import { EventMapPreview } from "@/components/maps/EventMapPreview";
+import { DirectionsActions } from "@/components/maps/DirectionsActions";
 
 interface Attendee {
   id: number;
@@ -65,7 +68,7 @@ interface EventConfirmation {
 const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const { toast } = useToast();
   const { user, session } = useAuth();
-  const { event, organizers, loading, error, isOrganizer, addOrganizer, removeOrganizer } = useEvent(eventId);
+  const { event, organizers, loading, error, isOrganizer, addOrganizer, removeOrganizer, refetch } = useEvent(eventId);
   const navigate = useNavigate();
 
   /* ── Dark mode ──────────────────────── */
@@ -111,6 +114,10 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   const [editEventTime, setEditEventTime] = useState('');
   const [editEventLocation, setEditEventLocation] = useState('');
   const [editEventDescription, setEditEventDescription] = useState('');
+  const [editEventQtdPessoas, setEditEventQtdPessoas] = useState<number>(10);
+  const [editEventLatitude, setEditEventLatitude] = useState<number | null>(null);
+  const [editEventLongitude, setEditEventLongitude] = useState<number | null>(null);
+  const [editEventPlaceId, setEditEventPlaceId] = useState<string | null>(null);
 
   const [editingSupplyId, setEditingSupplyId] = useState<number | null>(null);
   const [editingSupplyData, setEditingSupplyData] = useState<{ name: string; quantidade: number; unidade: string; valor_estimado: number | null }>({ name: '', quantidade: 1, unidade: 'un', valor_estimado: null });
@@ -464,6 +471,10 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     setEditEventTime(event.event_time);
     setEditEventLocation(event.location || '');
     setEditEventDescription(event.description || '');
+    setEditEventQtdPessoas(event.qtd_pessoas || 10);
+    setEditEventLatitude(event.latitude || null);
+    setEditEventLongitude(event.longitude || null);
+    setEditEventPlaceId(event.place_id || null);
     setIsEditingEventInfo(true);
   };
 
@@ -483,6 +494,10 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
     setEditEventTime('');
     setEditEventLocation('');
     setEditEventDescription('');
+    setEditEventQtdPessoas(10);
+    setEditEventLatitude(null);
+    setEditEventLongitude(null);
+    setEditEventPlaceId(null);
   };
 
   const saveEventInfo = async () => {
@@ -498,6 +513,10 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           event_time: editEventTime,
           location: editEventLocation,
           description: editEventDescription || null,
+          qtd_pessoas: editEventQtdPessoas,
+          latitude: editEventLatitude,
+          longitude: editEventLongitude,
+          place_id: editEventPlaceId,
         })
         .eq('id', Number(eventId));
 
@@ -509,8 +528,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       });
 
       setIsEditingEventInfo(false);
-      // Força refetch do evento
-      window.location.reload();
+      await refetch();
     } catch (err: any) {
       console.error("Erro ao salvar evento:", err);
       toast({
@@ -539,7 +557,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         variant: newStatus === 'finalized' ? 'default' : newStatus === 'cancelled' ? 'destructive' : 'default',
       });
 
-      window.location.reload();
+      await refetch();
     } catch (err: any) {
       console.error("Erro ao atualizar status:", err);
       toast({
@@ -1141,6 +1159,63 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
       </nav>
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {/* ═══ Amigo Secreto Top Banner (se ativo) ═══ */}
+        {hasSecretSanta && (
+          <div
+            className={`p-5 rounded-2xl ${nb.border} ${nb.shadowLg} flex flex-col sm:flex-row sm:items-center justify-between gap-4`}
+            style={{ backgroundColor: C.pink, color: C.black }}
+          >
+            <div className="flex items-center gap-3.5">
+              <div
+                className={`w-12 h-12 rounded-xl ${nb.border} flex items-center justify-center text-2xl shadow-sm`}
+                style={{ backgroundColor: C.yellow }}
+              >
+                🎁
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border-[2px] border-black bg-white text-xs font-black uppercase mb-0.5">
+                  DINÂMICA ATIVA
+                </div>
+                <h3 className="text-lg font-black leading-tight">
+                  Amigo Secreto vinculado a este evento
+                </h3>
+                <p className="text-xs font-bold opacity-80">
+                  {secretSantaData?.has_drawn
+                    ? 'O sorteio já foi realizado! Veja quem você tirou.'
+                    : 'Aguardando sorteio. Convidados podem cadastrar lista de desejos.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {isOrganizer && (
+                <button
+                  onClick={() => navigate(`/event/${eventId}/secret-santa/admin`)}
+                  className={`px-4 py-2.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm transition-all`}
+                  style={{ backgroundColor: C.yellow, color: C.black }}
+                >
+                  ⚙️ Gerenciar Sorteio
+                </button>
+              )}
+              {secretSantaData?.has_drawn && (
+                <button
+                  onClick={() => navigate(`/event/${eventId}/secret-santa/my-result`)}
+                  className={`px-4 py-2.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm transition-all`}
+                  style={{ backgroundColor: C.mint, color: C.black }}
+                >
+                  🎁 Ver Meu Amigo
+                </button>
+              )}
+              <button
+                onClick={() => navigate(`/event/${eventId}/secret-santa/wishlist`)}
+                className={`px-3.5 py-2.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-xs transition-all`}
+                style={{ backgroundColor: C.cardBg, color: C.text }}
+              >
+                Minha Lista
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ═══ Event Info Card ═══ */}
         <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300`} style={{ backgroundColor: C.cardBg }}>
           <div className="h-3 w-full" style={{ backgroundColor: C.sky }} />
@@ -1199,7 +1274,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label className="text-sm font-semibold flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
@@ -1226,20 +1301,57 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                       />
                     </div>
                   </div>
+                  <div>
+                    <Label className="text-sm font-semibold flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Qtd. Pessoas
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={editEventQtdPessoas}
+                      onChange={(e) => setEditEventQtdPessoas(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="mt-1"
+                      placeholder="Qtd. de pessoas"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="editLocation" className="text-sm font-semibold flex items-center gap-2">
+                  <Label htmlFor="editLocation" className="text-sm font-semibold flex items-center gap-2 mb-1.5">
                     <MapPin className="w-4 h-4" />
                     Local
                   </Label>
-                  <Input
-                    id="editLocation"
+                  <GoogleAddressAutocomplete
                     value={editEventLocation}
-                    onChange={(e) => setEditEventLocation(e.target.value)}
-                    className="mt-1"
-                    placeholder="Digite o local do evento"
+                    onChange={setEditEventLocation}
+                    onPlaceSelect={(place) => {
+                      setEditEventLocation(place.address);
+                      setEditEventLatitude(place.latitude);
+                      setEditEventLongitude(place.longitude);
+                      setEditEventPlaceId(place.placeId);
+                    }}
+                    placeholder="Busque por rua, praça, restaurante ou local..."
+                    palette={C}
                   />
+
+                  {editEventLatitude && editEventLongitude && (
+                    <div className="mt-2">
+                      <EventMapPreview
+                        latitude={editEventLatitude}
+                        longitude={editEventLongitude}
+                        title={editEventTitle}
+                        editable={true}
+                        onPositionChange={({ latitude, longitude }) => {
+                          setEditEventLatitude(latitude);
+                          setEditEventLongitude(longitude);
+                        }}
+                        height="200px"
+                        isDark={isDark}
+                        palette={C}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1258,11 +1370,19 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
               /* Modo de Visualização */
               <div className="space-y-6">
                 {/* Título - visível para todos */}
-                <div className="flex items-center p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
                   <div>
                     <span className="font-medium text-foreground">Título:</span>
                     <p className="text-lg font-semibold">{event.title}</p>
                   </div>
+                  {event.qtd_pessoas && (
+                    <div className="flex items-center gap-2 text-muted-foreground bg-background/60 px-3 py-1.5 rounded-md border">
+                      <Users className="w-4 h-4" />
+                      <span className="text-sm font-bold text-foreground">
+                        {event.qtd_pessoas} {event.qtd_pessoas === 1 ? 'pessoa' : 'pessoas'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Data */}
@@ -1369,51 +1489,78 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   )}
                 </div>
 
-                {/* Local */}
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center text-muted-foreground">
-                    <MapPin className="w-5 h-5 mr-3" />
-                    <div>
-                      <span className="font-medium text-foreground">Local:</span>
-                      <p>{event.location}</p>
+                {/* Local com Mapa e Ações de Rotas */}
+                <div className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-muted-foreground">
+                      <MapPin className="w-5 h-5 mr-3 flex-shrink-0" />
+                      <div>
+                        <span className="font-medium text-foreground">Local:</span>
+                        <p className="font-semibold">{event.location}</p>
+                      </div>
                     </div>
-                  </div>
-                  {!canEdit && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant={confirmation.location === "confirmed" ? "default" : "outline"}
-                        size="sm"
-                        onClick={handleConfirmLocation}
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Confirmar
-                      </Button>
-                      <Popover open={showLocationPopover} onOpenChange={setShowLocationPopover}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={confirmation.location === "rejected" ? "destructive" : "outline"}
-                            size="sm"
-                            onClick={handleRejectLocation}
-                          >
-                            <X className="w-4 h-4 mr-1" />
-                            Não posso
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80 p-4">
-                          <div className="space-y-4">
-                            <h4 className="font-medium">Sugira um local alternativo:</h4>
-                            <Textarea
-                              placeholder="Digite sua sugestão de local..."
-                              value={alternativeLocation}
-                              onChange={(e) => setAlternativeLocation(e.target.value)}
-                            />
-                            <Button onClick={saveAlternativeLocation} className="w-full">
-                              Confirmar Alternativa
+                    {!canEdit && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant={confirmation.location === "confirmed" ? "default" : "outline"}
+                          size="sm"
+                          onClick={handleConfirmLocation}
+                        >
+                          <Check className="w-4 h-4 mr-1" />
+                          Confirmar
+                        </Button>
+                        <Popover open={showLocationPopover} onOpenChange={setShowLocationPopover}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={confirmation.location === "rejected" ? "destructive" : "outline"}
+                              size="sm"
+                              onClick={handleRejectLocation}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Não posso
                             </Button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-4">
+                            <div className="space-y-4">
+                              <h4 className="font-medium">Sugira um local alternativo:</h4>
+                              <Textarea
+                                placeholder="Digite sua sugestão de local..."
+                                value={alternativeLocation}
+                                onChange={(e) => setAlternativeLocation(e.target.value)}
+                              />
+                              <Button onClick={saveAlternativeLocation} className="w-full">
+                                Confirmar Alternativa
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Mapa Interativo */}
+                  {event.latitude && event.longitude && (
+                    <div className="mt-2">
+                      <EventMapPreview
+                        latitude={event.latitude}
+                        longitude={event.longitude}
+                        title={event.title}
+                        height="240px"
+                        isDark={isDark}
+                        palette={C}
+                      />
                     </div>
+                  )}
+
+                  {/* Ações de Rota (Google Maps, Waze, Uber) */}
+                  {event.location && (
+                    <DirectionsActions
+                      address={event.location}
+                      latitude={event.latitude}
+                      longitude={event.longitude}
+                      placeId={event.place_id}
+                      palette={C}
+                    />
                   )}
                 </div>
 

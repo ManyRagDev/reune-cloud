@@ -149,7 +149,7 @@ async function generateItemsWithGroqLocal(params: {
     ? `${params.tipo_evento} de ${params.finalidade_evento}`
     : params.tipo_evento;
 
-  const excluirAlcool = params.excluir_alcool !== false;
+  const excluirAlcool = params.excluir_alcool === true;
 
   const systemPrompt = `
   ROLE:
@@ -591,12 +591,12 @@ export async function executeItemEdit(
   _userId: UUID  // prefixo _ = intencionalmente não usado (mantido para API compatível)
 ): Promise<{ message: string; success: boolean }> {
   try {
-    // Buscar itens atuais do evento
+    // Buscar itens atuais do evento na tabela real event_items
     const supabase = (await import('@/integrations/supabase/client')).supabase;
     const queryResult = await supabase
-      .from('itens')
+      .from('event_items')
       .select('*')
-      .eq('evento_id', eventoId)
+      .eq('event_id', Number(eventoId))
       .returns<DatabaseItem[]>();
 
     const error = queryResult.error;

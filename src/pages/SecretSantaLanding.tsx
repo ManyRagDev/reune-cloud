@@ -1,23 +1,43 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { Gift, Users, Link2, Shuffle, TreePine, Sparkles, ArrowRight, Loader2, Zap, Sun, Moon } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Gift, 
+  Users, 
+  Link2, 
+  Shuffle, 
+  Sparkles, 
+  ArrowRight, 
+  Zap, 
+  Sun, 
+  Moon, 
+  ShieldCheck, 
+  MessageCircle, 
+  Lock, 
+  MapPin, 
+  HelpCircle, 
+  ChevronDown, 
+  CheckCircle2, 
+  Clock, 
+  Heart,
+  Smile,
+  Briefcase,
+  Home,
+  GraduationCap
+} from "lucide-react";
 import { Helmet } from "react-helmet";
-import { toast } from "sonner";
 import { Footer } from "@/components/landing/Footer";
 import { NBLight, NBDark, NBPalette, nb } from "@/lib/neobrutalism";
+import { SecretSantaWizardModal } from "@/components/events/SecretSantaWizardModal";
+import { SecretSantaChoiceModal } from "@/components/events/SecretSantaChoiceModal";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 export default function SecretSantaLanding() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const { scrollYProgress } = useScroll();
-  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
 
   /* ── Dark mode state ──────────────────────── */
   const [isDark, setIsDark] = useState(() => {
@@ -25,7 +45,7 @@ export default function SecretSantaLanding() {
       const saved = localStorage.getItem("reune-v3-theme");
       if (saved) return saved === "dark";
     }
-    return false; // default: light
+    return false;
   });
 
   useEffect(() => {
@@ -35,467 +55,792 @@ export default function SecretSantaLanding() {
 
   const C: NBPalette = isDark ? NBDark : NBLight;
 
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [showChoiceModal, setShowChoiceModal] = useState(false);
+  const [selectedCircleTitle, setSelectedCircleTitle] = useState<string | undefined>(undefined);
   const [showWizard, setShowWizard] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [wizardInitialTitle, setWizardInitialTitle] = useState<string | undefined>(undefined);
+  const [wizardInitialEmoji, setWizardInitialEmoji] = useState<string | undefined>(undefined);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
-  // Wizard state
-  const currentYear = new Date().getFullYear();
-  const [groupName, setGroupName] = useState(`Amigo Secreto ${currentYear}`);
-  const [minValue, setMinValue] = useState("50");
-  const [maxValue, setMaxValue] = useState("100");
-
-  // Countdown to Christmas
-  const christmasDate = new Date(`${currentYear}-12-25T00:00:00`).getTime();
-
+  // Se o usuário veio redirecionado do login com ?action=wizard, abre o Wizard automaticamente
   useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = christmasDate - now;
-
-      if (distance < 0) {
-        clearInterval(timer);
-        return;
+    if (user && searchParams.get('action') === 'wizard') {
+      const groupFromUrl = searchParams.get('group');
+      if (groupFromUrl) {
+        setWizardInitialTitle(groupFromUrl);
       }
-
-      setTimeLeft({
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        seconds: Math.floor((distance % (1000 * 60)) / 1000),
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [christmasDate]);
+      setShowWizard(true);
+      navigate('/amigo-secreto', { replace: true });
+    }
+  }, [user, searchParams, navigate]);
 
   const handleStartClick = () => {
-    if (!user) {
-      navigate("/app");
-      return;
-    }
-    setShowWizard(true);
+    setSelectedCircleTitle(undefined);
+    setWizardInitialTitle(undefined);
+    setWizardInitialEmoji(undefined);
+    setShowChoiceModal(true);
   };
 
-  const handleCreateSecretSanta = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+  const handleStartWithGroup = (groupTitle: string, emoji: string) => {
+    const currentYear = new Date().getFullYear();
+    const fullTitle = `${groupTitle} ${currentYear}`;
+    setSelectedCircleTitle(fullTitle);
+    setWizardInitialTitle(fullTitle);
+    setWizardInitialEmoji(emoji);
+    setShowChoiceModal(true);
+  };
 
-    const min = parseFloat(minValue);
-    const max = parseFloat(maxValue);
-
-    if (isNaN(min) || isNaN(max) || min < 0 || max < min) {
-      toast.error("Valores inválidos.", {
-        description: "O valor mínimo deve ser menor que o máximo.",
-        style: { borderRadius: "0px", border: "3px solid #000", boxShadow: "4px 4px 0px #000", background: C.red }
-      });
-      return;
-    }
-
-    setCreating(true);
-
-    try {
-      const { data: eventData, error: eventError } = await supabase
-        .from("table_reune")
-        .insert({
-          title: groupName.trim() || `Amigo Secreto ${currentYear}`,
-          description: "Evento de Amigo Secreto criado pelo ReUNE",
-          user_id: user.id,
-          event_date: `${currentYear}-12-25`,
-          event_time: "20:00",
-          tipo_evento: "confraternizacao",
-          categoria_evento: "amigo_secreto",
-          status: "draft",
-          is_public: false,
-        })
-        .select()
-        .single();
-
-      if (eventError) throw eventError;
-
-      const { error: dynamicError } = await supabase.from("event_dynamics").insert({
-        event_id: eventData.id,
-        type: "secret_santa",
-      });
-
-      if (dynamicError) throw dynamicError;
-
-      const { error: secretSantaError } = await supabase.from("event_secret_santa").insert({
-        event_id: eventData.id,
-        min_value: min,
-        max_value: max,
-        draw_date: `${currentYear}-12-20`,
-        has_drawn: false,
-      });
-
-      if (secretSantaError) throw secretSantaError;
-
-      toast.success("Amigo Secreto criado!", {
-        description: "Agora adicione os participantes.",
-        style: { borderRadius: "0px", border: "3px solid #000", boxShadow: "4px 4px 0px #000", background: C.mint, color: C.black }
-      });
-      navigate(`/event/${eventData.id}/secret-santa/participants`);
-    } catch (error) {
-      console.error("Erro ao criar Amigo Secreto:", error);
-      toast.error("Erro ao criar.", {
-        description: "Tente novamente.",
-        style: { borderRadius: "0px", border: "3px solid #000", boxShadow: "4px 4px 0px #000", background: C.red }
-      });
-    } finally {
-      setCreating(false);
+  const handleSelectQuick = () => {
+    setShowChoiceModal(false);
+    if (selectedCircleTitle) {
+      navigate(`/amigo-secreto/rapido?group=${encodeURIComponent(selectedCircleTitle)}`);
+    } else {
+      navigate('/amigo-secreto/rapido');
     }
   };
 
-  const features = [
+  const handleSelectFull = () => {
+    setShowChoiceModal(false);
+    if (user) {
+      setShowWizard(true);
+    } else {
+      const returnTarget = selectedCircleTitle
+        ? `/amigo-secreto?action=wizard&group=${encodeURIComponent(selectedCircleTitle)}`
+        : `/amigo-secreto?action=wizard`;
+      navigate(`/app?redirect=${encodeURIComponent(returnTarget)}`);
+    }
+  };
+
+  const toggleFaq = (index: number) => {
+    setOpenFaqIndex(openFaqIndex === index ? null : index);
+  };
+
+  const faqs = [
     {
-      icon: Shuffle,
-      title: "Sorteio Justo",
-      description: "Algoritmo garante que ninguém tire a si mesmo. Sem marmelada.",
-      bg: C.red
+      q: "Precisa baixar algum aplicativo no celular?",
+      a: "Não! O ReUNE funciona 100% no navegador do celular ou computador. Você manda o link no WhatsApp e os participantes entram na hora sem complicação."
     },
     {
-      icon: Gift,
-      title: "Lista de Desejos",
-      description: "Cada participante diz o que quer. Acabou o presente ruim.",
-      bg: C.green
+      q: "O organizador consegue ver quem tirou quem?",
+      a: "Não! O sorteio é 100% secreto e criptografado no banco de dados. Nem o criador do grupo tem acesso aos pares sorteados."
     },
     {
-      icon: Link2,
-      title: "Convite por Link",
-      description: "Manda no Zap e pronto. Todo mundo entra direto.",
-      bg: C.yellow
+      q: "Como funciona a segurança do PIN de 4 dígitos?",
+      a: "Ao entrar no Amigo Secreto, cada participante cria um PIN de 4 dígitos. No dia da revelação, basta digitar esse PIN para ver o amigo sorteado sem nenhum risco de spoilers na tela!"
+    },
+    {
+      q: "Qual a diferença entre o Modo Aberto e o Anti-Penetras?",
+      a: "No Modo Aberto, você manda 1 link geral no WhatsApp e qualquer amigo do grupo pode entrar. No Modo Anti-Penetras, você digita os nomes autorizados e cada um recebe um link exclusivo e intransferível."
+    },
+    {
+      q: "É realmente 100% gratuito?",
+      a: "Sim! Não cobramos nada, não há limite de participantes e não temos anúncios invasivos na tela de sorteio."
+    },
+    {
+      q: "Dá para colocar o local e horário da festa da revelação?",
+      a: "Com certeza! Você define a data, o horário e o endereço com mapa interativo e botões diretos de rotas para Uber, Waze e Google Maps."
     }
   ];
 
   return (
-    <div
-      className="min-h-screen overflow-hidden transition-colors duration-300"
+    <div 
+      className="min-h-screen transition-colors duration-300 font-sans selection:bg-[#FFD93D] selection:text-black overflow-x-hidden" 
       style={{ backgroundColor: C.bg, color: C.text }}
     >
       <Helmet>
-        <title>Amigo Secreto Online Grátis | ReUNE</title>
-        <meta
-          name="description"
-          content="Organize seu amigo secreto online em 30 segundos. Sorteio automático, lista de desejos e compartilhamento fácil. Grátis!"
-        />
-        <meta name="keywords" content="amigo secreto, sorteio online, amigo oculto, natal 2025, amigo secreto gratis" />
+        <title>Amigo Secreto Online Grátis | ReUNE — Direto no WhatsApp e Sem Penetras</title>
+        <meta name="description" content="Organize seu Amigo Secreto em 2 minutos! Sorteio 100% justo, lista de desejos de presentes e convites direto no WhatsApp com opção Anti-Penetras. Grátis e sem baixar app." />
+        <meta property="og:title" content="Amigo Secreto Online no WhatsApp 🎁 | ReUNE" />
+        <meta property="og:description" content="Sem papelzinho, sem penetras e com lista de presentes! Crie seu amigo secreto grátis em 2 minutos." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://reuneapp.com.br/amigo-secreto" />
+        <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
-      {/* Theme Toggle */}
-      <button
-        onClick={() => setIsDark(!isDark)}
-        className={`fixed top-4 right-4 z-50 p-3 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover} transition-colors`}
-        style={{ backgroundColor: isDark ? C.yellow : C.lavender, color: C.black }}
+      {/* ═══ NAVBAR NEOBRUTALISM ═══ */}
+      <nav
+        className={`sticky top-0 z-40 px-4 md:px-8 py-3.5 ${nb.border} border-t-0 border-x-0 flex items-center justify-between backdrop-blur-md transition-colors duration-300`}
+        style={{ backgroundColor: isDark ? "rgba(30, 27, 24, 0.9)" : "rgba(255, 253, 247, 0.9)" }}
       >
-        {isDark ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
-      </button>
-
-
-      {/* Floating Navigation */}
-      <motion.nav
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className={`fixed top-4 left-1/2 -translate-x-1/2 z-40 px-6 py-3 rounded-xl ${nb.border} ${nb.shadow}`}
-        style={{ backgroundColor: C.sectionBg }}
-      >
-        <div className="flex items-center gap-6">
-          <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-green-600">
-            ReUNE
-          </span>
-          <div className="hidden md:flex items-center gap-2 text-sm font-bold pl-6 border-l-2 border-black/10">
-            <TreePine className="w-4 h-4 text-green-600" />
-            <span style={{ color: C.textMuted }}>Amigo Secreto {currentYear}</span>
+        <div className="flex items-center gap-3">
+          <div 
+            onClick={() => navigate("/")} 
+            className="cursor-pointer flex items-center gap-2 group"
+          >
+            <div className={`w-10 h-10 rounded-xl ${nb.border} flex items-center justify-center font-black text-xl shadow-[3px_3px_0px_#1A1A1A] group-hover:rotate-6 transition-transform`} style={{ backgroundColor: C.yellow, color: C.black }}>
+              🎁
+            </div>
+            <div>
+              <span className="font-black text-xl tracking-tight" style={{ color: C.orange }}>
+                ReUNE
+              </span>
+              <span className={`ml-2 hidden sm:inline-block px-2 py-0.5 rounded-full border-[2px] border-black text-[10px] font-black uppercase shadow-[1px_1px_0px_#1A1A1A]`} style={{ backgroundColor: C.mint, color: C.black }}>
+                Amigo Secreto
+              </span>
+            </div>
           </div>
-          <button onClick={() => navigate("/")} className="ml-4 flex items-center gap-2 text-sm font-bold hover:underline">
-            <ArrowRight className="w-4 h-4 rotate-180" />
-            Voltar
-          </button>
         </div>
-      </motion.nav>
 
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center px-4 pt-24 pb-12 overflow-hidden">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/amigo-secreto/rapido')}
+            className={`hidden sm:inline-flex h-11 px-4 rounded-xl font-black text-xs md:text-sm ${nb.border} ${nb.shadow} ${nb.hover} transition-all`}
+            style={{ backgroundColor: C.mint, color: C.black }}
+          >
+            <Zap className="w-4 h-4 mr-1.5 fill-black" />
+            Sorteio Relâmpago (Sem Cadastro)
+          </Button>
 
-        {/* Floating Shapes */}
-        <motion.div
-          animate={{ rotate: [0, 10, 0], y: [0, -20, 0] }}
-          transition={{ duration: 6, repeat: Infinity }}
-          className={`absolute top-1/4 left-1/4 w-32 h-32 rounded-full ${nb.border} opacity-20`}
-          style={{ backgroundColor: C.red }}
-        />
-        <motion.div
-          animate={{ rotate: [0, -10, 0], y: [0, 20, 0] }}
-          transition={{ duration: 7, repeat: Infinity, delay: 1 }}
-          className={`absolute bottom-1/4 right-1/4 w-40 h-40 ${nb.border} opacity-20`}
-          style={{ backgroundColor: C.green }}
-        />
+          <button
+            onClick={() => setIsDark(!isDark)}
+            className={`p-2.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover}`}
+            style={{ backgroundColor: isDark ? C.yellow : C.lavender, color: C.black }}
+            title={isDark ? "Modo Claro" : "Modo Escuro"}
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
 
-        <motion.div
-          style={{ opacity, scale }}
-          className="relative z-10 max-w-7xl mx-auto text-center space-y-8"
-        >
-          {/* Badges */}
+          <Button
+            onClick={handleStartClick}
+            disabled={authLoading}
+            className={`h-11 px-5 rounded-xl font-black text-xs md:text-sm ${nb.border} ${nb.shadow} ${nb.hover} transition-all`}
+            style={{ backgroundColor: C.yellow, color: C.black }}
+          >
+            <Sparkles className="w-4 h-4 mr-1.5" />
+            Criar Sorteio
+          </Button>
+        </div>
+      </nav>
+
+      {/* ═══ HERO SECTION ═══ */}
+      <section className="relative px-4 py-12 md:py-20 max-w-6xl mx-auto">
+        <div className="flex flex-col items-center text-center space-y-6">
+          {/* Badge de Topo */}
           <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full ${nb.border} shadow-[3px_3px_0px_#1A1A1A] font-black text-xs md:text-sm uppercase tracking-wide`}
+            style={{ backgroundColor: C.mint, color: C.black }}
+          >
+            <WhatsAppIcon className="w-4 h-4 text-emerald-950 fill-current" />
+            <span>SEM PAPELZINHO • DIRETO NO WHATSAPP • ANTI-PENETRAS</span>
+          </motion.div>
+
+          {/* Headline Principal */}
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col items-center gap-3"
+            transition={{ delay: 0.1 }}
+            className="text-4xl md:text-6xl lg:text-7xl font-black leading-tight tracking-tight max-w-4xl"
           >
-            <div
-              className={`px-4 py-2 rounded-lg ${nb.border} ${nb.shadow} text-sm font-bold flex items-center gap-2`}
-              style={{ backgroundColor: C.pink, color: C.black }}
-            >
-              <Gift className="w-4 h-4" />
-              Sorteio Automático
-            </div>
-
-            {/* Free Access Banner */}
-            <div
-              className={`relative px-6 py-3 text-base font-black rounded-xl ${nb.border} ${nb.shadowLg} flex items-center gap-2 -rotate-2 hover:rotate-0 transition-transform`}
-              style={{ backgroundColor: C.green, color: "#fff" }}
-            >
-              <Zap className="w-5 h-5" />
-              GRÁTIS — Sem limite de participantes!
-            </div>
-          </motion.div>
-
-          {/* Main Headline */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="space-y-6"
-          >
-            <h1 className="text-5xl md:text-7xl lg:text-9xl font-black tracking-tight leading-[0.9]">
-              Amigo
-              <br />
-              <span className="relative inline-block">
-                <span className="relative z-10" style={{ color: C.red }}>Secreto</span>
-                <div
-                  className="absolute -bottom-2 md:-bottom-4 left-0 right-0 h-6 md:h-8 -z-10 -rotate-1"
-                  style={{ backgroundColor: C.yellow }}
-                />
-              </span>
-            </h1>
-
-            <p className="text-xl md:text-2xl font-bold max-w-3xl mx-auto leading-relaxed" style={{ color: C.textMuted }}>
-              Organize o sorteio da família ou da firma em segundos.
-              <span className="block mt-2 font-black" style={{ color: C.orange }}>
-                Sem complicação. Tudo Justo.
-              </span>
-            </p>
-          </motion.div>
-
-          {/* Countdown to Christmas */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="pt-8"
-          >
-            <p className="text-xs uppercase tracking-widest font-bold mb-4" style={{ color: C.textMuted }}>Contagem Regressiva</p>
-            <div className="flex flex-wrap justify-center gap-4 md:gap-6 max-w-3xl mx-auto">
-              {[
-                { label: "Dias", value: timeLeft.days },
-                { label: "Horas", value: timeLeft.hours },
-                { label: "Min", value: timeLeft.minutes },
-                { label: "Seg", value: timeLeft.seconds },
-              ].map((item, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * idx, duration: 0.4 }}
-                  className="flex flex-col items-center"
-                >
-                  <div
-                    className={`relative w-24 md:w-32 h-24 md:h-32 flex items-center justify-center rounded-2xl ${nb.border} ${nb.shadow}`}
-                    style={{ backgroundColor: idx % 2 === 0 ? C.red : C.green, color: "#fff" }}
-                  >
-                    <span className="text-4xl md:text-6xl font-black">{String(item.value).padStart(2, "0")}</span>
-                  </div>
-                  <div className="mt-2 text-xs font-black uppercase tracking-widest" style={{ color: C.textMuted }}>
-                    {item.label}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* CTA Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col items-center gap-6 pt-12"
-          >
-            {!showWizard ? (
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md">
-                <Button
-                  size="lg"
-                  onClick={handleStartClick}
-                  disabled={authLoading}
-                  className={`h-16 px-10 text-xl md:text-2xl rounded-xl ${nb.button} w-full shadow-[6px_6px_0px_#1A1A1A] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-[3px_3px_0px_#1A1A1A]`}
-                  style={{ backgroundColor: C.yellow, color: C.black }}
-                >
-                  <Gift className="w-6 h-6 mr-3" />
-                  Criar Sorteio Agora
-                  <ArrowRight className="w-6 h-6 ml-3" />
-                </Button>
-              </div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-md"
-              >
-                <div
-                  className={`relative p-8 rounded-2xl ${nb.border} ${nb.shadowXl}`}
-                  style={{ backgroundColor: C.cardBg }}
-                >
-                  <div className="flex items-center gap-2 mb-6">
-                    <div className={`p-2 rounded-lg ${nb.border}`} style={{ backgroundColor: C.mint }}>
-                      <Sparkles className="w-5 h-5 text-black" />
-                    </div>
-                    <h3 className="text-xl font-black">Configuração Rápida</h3>
-                  </div>
-
-                  <form onSubmit={handleCreateSecretSanta} className="space-y-5">
-                    <div className="space-y-2 text-left">
-                      <Label htmlFor="groupName" className="font-bold">Nome do Grupo</Label>
-                      <input
-                        id="groupName"
-                        value={groupName}
-                        onChange={(e) => setGroupName(e.target.value)}
-                        placeholder="Ex: Família Silva"
-                        className={`w-full p-3 rounded-lg ${nb.input} font-medium`}
-                        style={{ backgroundColor: C.inputBg, color: C.text }}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-left">
-                      <div className="space-y-2">
-                        <Label htmlFor="minValue" className="font-bold">Mínimo (R$)</Label>
-                        <input
-                          id="minValue"
-                          type="number"
-                          value={minValue}
-                          onChange={(e) => setMinValue(e.target.value)}
-                          placeholder="50"
-                          min="0"
-                          className={`w-full p-3 rounded-lg ${nb.input} font-medium`}
-                          style={{ backgroundColor: C.inputBg, color: C.text }}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="maxValue" className="font-bold">Máximo (R$)</Label>
-                        <input
-                          id="maxValue"
-                          type="number"
-                          value={maxValue}
-                          onChange={(e) => setMaxValue(e.target.value)}
-                          placeholder="100"
-                          min="0"
-                          className={`w-full p-3 rounded-lg ${nb.input} font-medium`}
-                          style={{ backgroundColor: C.inputBg, color: C.text }}
-                        />
-                      </div>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={creating}
-                      className={`w-full h-14 text-lg rounded-xl ${nb.button}`}
-                      style={{ backgroundColor: C.green, color: "#fff" }}
-                    >
-                      {creating ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Criando...
-                        </>
-                      ) : (
-                        <>
-                          <Shuffle className="w-5 h-5 mr-2" />
-                          Criar e Adicionar Pessoas
-                        </>
-                      )}
-                    </Button>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowWizard(false)}
-                      className="w-full text-sm font-bold hover:underline"
-                      style={{ color: C.textMuted }}
-                    >
-                      Cancelar
-                    </button>
-                  </form>
-                </div>
-              </motion.div>
-            )}
-
-            <p className="text-xs font-bold" style={{ color: C.textMuted }}>
-              100% gratuito • Sem anúncios • Seguro
-            </p>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* Features Grid */}
-      <section id="features" className="py-24 px-4 relative">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <div
-              className={`inline-flex items-center px-4 py-2 rounded-lg ${nb.border} ${nb.shadow} mb-4 font-bold`}
+            Organize seu Amigo Secreto em{" "}
+            <span 
+              className="px-3 py-1 rounded-2xl border-[3px] border-black inline-block transform -rotate-1 shadow-[5px_5px_0px_#1A1A1A]" 
               style={{ backgroundColor: C.yellow, color: C.black }}
             >
-              <TreePine className="w-4 h-4 mr-2" />
-              Como Funciona
-            </div>
-            <h2 className="text-4xl md:text-6xl font-black mb-6">
-              Simples.
-              <span className="text-transparent bg-clip-text" style={{ WebkitTextStroke: `2px ${C.text}`, color: "transparent" }}>
-                Rápido.
-              </span>
-              <span style={{ color: C.orange }}>Divertido.</span>
-            </h2>
+              2 minutos.
+            </span>
+            <br />
+            Sem confusão e direto no WhatsApp.
+          </motion.h1>
+
+          {/* Subtítulo */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-base md:text-xl font-bold max-w-2xl leading-relaxed"
+            style={{ color: C.textMuted }}
+          >
+            O ReUNE faz o sorteio 100% justo, cada amigo cadastra o que quer ganhar e você dispara os convites no WhatsApp em 1 clique. Ninguém tira a si mesmo e ninguém bisbilhota!
+          </motion.p>
+
+          {/* CTA Principal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col gap-3 justify-center items-center w-full max-w-md pt-2"
+          >
+            <Button
+              size="lg"
+              onClick={handleStartClick}
+              disabled={authLoading}
+              className={`h-16 px-8 text-lg md:text-xl rounded-2xl ${nb.button} w-full shadow-[6px_6px_0px_#1A1A1A] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[3px_3px_0px_#1A1A1A]`}
+              style={{ backgroundColor: C.orange, color: "#fff" }}
+            >
+              <Gift className="w-6 h-6 mr-3" />
+              CRIAR MEU AMIGO SECRETO
+              <ArrowRight className="w-6 h-6 ml-3" />
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/amigo-secreto/rapido')}
+              className="inline-flex items-center gap-1.5 text-xs md:text-sm font-black underline hover:text-[#FF6B35] transition-colors pt-1"
+            >
+              <Zap className="w-4 h-4 fill-current text-amber-500" />
+              Quer sortear agora em 1 minuto sem cadastro? Use o Sorteador Relâmpago ➔
+            </button>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 40, rotate: index % 2 === 0 ? 1 : -1 }}
-                whileInView={{ opacity: 1, y: 0, rotate: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ y: -8, scale: 1.02, rotate: 0 }}
-                className={`group relative p-8 rounded-2xl ${nb.border} ${nb.shadowLg} hover:shadow-xl transition-all duration-300`}
-                style={{ backgroundColor: C.cardBg }}
-              >
-                <div
-                  className={`w-16 h-16 rounded-xl ${nb.border} flex items-center justify-center mb-6`}
-                  style={{ backgroundColor: feature.bg }}
-                >
-                  <feature.icon className="w-8 h-8 text-white" />
+          {/* Micro-prova de confiança */}
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-black uppercase pt-1" style={{ color: C.textMuted }}>
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> 100% Gratuito
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Sem baixar aplicativo
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Revelação com PIN Seguro
+            </span>
+          </div>
+
+          {/* ═══ MOCKUPS VISUAIS EM DUPLA ═══ */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.6 }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl pt-8 text-left"
+          >
+            {/* Card 1: Mensagem do WhatsApp */}
+            <div 
+              className={`p-6 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] relative transform md:-rotate-1`}
+              style={{ backgroundColor: C.cardBg }}
+            >
+              <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-dashed border-gray-300">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-[#25D366] flex items-center justify-center">
+                    <WhatsAppIcon className="w-4 h-4 text-white fill-current" />
+                  </div>
+                  <span className="font-black text-xs uppercase">No Grupo do WhatsApp</span>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  1 Clique
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl border-[2px] border-black bg-[#E7F8EE] font-mono text-xs text-gray-800 space-y-2 leading-relaxed">
+                <p className="font-bold text-black">🎁 *AMIGO SECRETO DA FIRMA 2026* 🎁</p>
+                <p>💰 *Valor:* R$ 50 a R$ 100<br />🎲 *Sorteio:* 18 de Dezembro<br />🎉 *Festa:* 22 de Dezembro às 19h30</p>
+                <p className="text-emerald-700 font-bold">👉 Entre pelo link e cadastre seus desejos:</p>
+                <p className="underline text-blue-600 break-all">reuneapp.com.br/amigo/32/entrar</p>
+              </div>
+            </div>
+
+            {/* Card 2: Revelação Secreta com PIN */}
+            <div 
+              className={`p-6 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] relative transform md:rotate-1`}
+              style={{ backgroundColor: C.cardBg }}
+            >
+              <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-dashed border-gray-300">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-[#FFD93D] border-[2px] border-black flex items-center justify-center text-xs">
+                    🔒
+                  </div>
+                  <span className="font-black text-xs uppercase">Revelação com PIN Pessoal</span>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-200 text-yellow-900">
+                  Zero Spoilers
+                </span>
+              </div>
+
+              <div className="p-4 rounded-xl border-[2px] border-black bg-white space-y-2">
+                <span className="text-[10px] font-black uppercase text-gray-500">Seu Amigo Secreto é:</span>
+                <h4 className="text-2xl font-black text-[#FF6B35]">Mariana Costa 🤫</h4>
+                <div className="p-2.5 rounded-lg border-[2px] border-black bg-[#FFF8E1] text-xs">
+                  <p className="font-bold text-black">🎁 O que ela quer ganhar:</p>
+                  <p className="text-gray-700 font-medium">"Livro de ficção científica ou café especial moído"</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ═══ OS 2 MODOS DE CONVITE: O DIFERENCIAL REUNE ═══ */}
+      <section className="py-16 px-4 relative border-y-[3px] border-black" style={{ backgroundColor: C.sectionBg }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <div 
+              className={`inline-flex items-center px-4 py-1.5 rounded-full ${nb.border} shadow-[3px_3px_0px_#1A1A1A] mb-3 font-black text-xs uppercase`}
+              style={{ backgroundColor: C.pink, color: C.black }}
+            >
+              O Grande Diferencial
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black mb-4">
+              Dois modos pensados para a sua realidade.
+            </h2>
+            <p className="text-sm md:text-base font-bold" style={{ color: C.textMuted }}>
+              Quer agilidade máxima no grupo ou controle absoluto contra penetras? Você escolhe.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* MODO 1: Aberto */}
+            <div 
+              className={`p-8 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] flex flex-col justify-between`}
+              style={{ backgroundColor: C.cardBg }}
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className={`w-14 h-14 rounded-2xl ${nb.border} flex items-center justify-center text-3xl shadow-[3px_3px_0px_#1A1A1A]`} style={{ backgroundColor: C.mint }}>
+                    🚀
+                  </div>
+                  <span className="px-3 py-1 rounded-full border-[2px] border-black font-black text-xs bg-white uppercase">
+                    Mais Popular
+                  </span>
                 </div>
 
-                <h3 className="text-2xl font-black mb-4">
-                  {feature.title}
-                </h3>
-                <p className="font-medium leading-relaxed" style={{ color: C.textMuted }}>
-                  {feature.description}
+                <h3 className="text-2xl font-black">Link Aberto do Grupo</h3>
+                <p className="font-medium text-sm leading-relaxed" style={{ color: C.textMuted }}>
+                  Envie 1 link geral no WhatsApp da galera. Cada participante clica, digita seu nome, escolhe seus presentes e cria seu PIN secreto de 4 dígitos.
                 </p>
-              </motion.div>
+
+                <ul className="space-y-2.5 text-xs font-bold pt-2">
+                  <li className="flex items-center gap-2">
+                    <WhatsAppIcon className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>Compartilhamento instantâneo no grupo do WhatsApp</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>Sem complicação: o próprio amigo se cadastra</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>PIN individual para ver o resultado do sorteio</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-6">
+                <Button
+                  onClick={handleStartClick}
+                  className={`w-full h-12 rounded-xl ${nb.button} font-black text-xs`}
+                  style={{ backgroundColor: C.mint, color: C.black }}
+                >
+                  USAR MODO ABERTO ➔
+                </Button>
+              </div>
+            </div>
+
+            {/* MODO 2: Anti-Penetras */}
+            <div 
+              className={`p-8 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] flex flex-col justify-between`}
+              style={{ backgroundColor: C.cardBg }}
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className={`w-14 h-14 rounded-2xl ${nb.border} flex items-center justify-center text-3xl shadow-[3px_3px_0px_#1A1A1A]`} style={{ backgroundColor: C.sky }}>
+                    🛡️
+                  </div>
+                  <span className="px-3 py-1 rounded-full border-[2px] border-black font-black text-xs bg-white uppercase">
+                    Blindado
+                  </span>
+                </div>
+
+                <h3 className="text-2xl font-black">Convites Anti-Penetras</h3>
+                <p className="font-medium text-sm leading-relaxed" style={{ color: C.textMuted }}>
+                  Você pré-cadastra a lista de convidados autorizados. O ReUNE gera um link exclusivo para cada um. Ninguém de fora consegue se infiltrar no sorteio!
+                </p>
+
+                <ul className="space-y-2.5 text-xs font-bold pt-2">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>Link e token exclusivo por pessoa (intransferível)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <WhatsAppIcon className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>Botão direto para mandar no WhatsApp de cada amigo</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>Perfeito para firmas, equipes e orçamentos fechados</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-6">
+                <Button
+                  onClick={handleStartClick}
+                  className={`w-full h-12 rounded-xl ${nb.button} font-black text-xs`}
+                  style={{ backgroundColor: C.sky, color: C.black }}
+                >
+                  USAR MODO ANTI-PENETRAS ➔
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ COMO FUNCIONA EM 3 PASSOS ═══ */}
+      <section className="py-20 px-4 max-w-6xl mx-auto">
+        <div className="text-center max-w-2xl mx-auto mb-16">
+          <div 
+            className={`inline-flex items-center px-4 py-1.5 rounded-full ${nb.border} shadow-[3px_3px_0px_#1A1A1A] mb-3 font-black text-xs uppercase`}
+            style={{ backgroundColor: C.yellow, color: C.black }}
+          >
+            Simples Demais
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black mb-4">
+            Como funciona em 3 passos
+          </h2>
+          <p className="text-sm md:text-base font-bold" style={{ color: C.textMuted }}>
+            Você cria o evento em minutos e a plataforma cuida de todo o resto.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          {[
+            {
+              step: "01",
+              title: "Defina as Regras",
+              desc: "Escolha o nome do grupo, o valor sugerido dos presentes (R$ 30, R$ 50, R$ 100...) e a data do sorteio.",
+              emoji: "⚙️",
+              bg: C.yellow
+            },
+            {
+              step: "02",
+              title: "Mande no WhatsApp",
+              desc: "Compartilhe o convite pronto com um clique. Cada amigo entra, coloca o que quer ganhar e cria seu PIN.",
+              emoji: "📲",
+              bg: C.pink
+            },
+            {
+              step: "03",
+              title: "Sorteio & Revelação",
+              desc: "Com um clique o sorteio acontece. Cada pessoa abre o link, digita o seu PIN e descobre quem tirou sem spoilers!",
+              emoji: "🎉",
+              bg: C.mint
+            }
+          ].map((item, idx) => (
+            <div
+              key={idx}
+              className={`p-8 rounded-3xl ${nb.border} shadow-[6px_6px_0px_#1A1A1A] relative flex flex-col justify-between`}
+              style={{ backgroundColor: C.cardBg }}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className={`w-12 h-12 rounded-2xl ${nb.border} flex items-center justify-center text-2xl shadow-[2px_2px_0px_#1A1A1A]`} style={{ backgroundColor: item.bg }}>
+                    {item.emoji}
+                  </div>
+                  <span className="font-black text-4xl opacity-30">
+                    {item.step}
+                  </span>
+                </div>
+                <h3 className="text-xl font-black mb-2">{item.title}</h3>
+                <p className="text-xs md:text-sm font-medium leading-relaxed" style={{ color: C.textMuted }}>
+                  {item.desc}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══ BENEFÍCIOS QUE MATAM OBJEÇÕES ═══ */}
+      <section className="py-20 px-4 border-t-[3px] border-black" style={{ backgroundColor: C.sectionBg }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2 className="text-3xl md:text-5xl font-black mb-4">
+              Por que abandonar o papelzinho?
+            </h2>
+            <p className="text-sm md:text-base font-bold" style={{ color: C.textMuted }}>
+              Problemas clássicos que o ReUNE resolve de uma vez por todas.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                icon: Shuffle,
+                title: "Sem Marmelada",
+                desc: "Algoritmo certificado: ninguém tira a si mesmo e ninguém tira o mesmo amigo duas vezes.",
+                color: C.orange
+              },
+              {
+                icon: Gift,
+                title: "Lista de Desejos",
+                desc: "Cada participante escreve 3 coisas que adoraria ganhar. Acabou o medo de receber presente ruim.",
+                color: C.yellow
+              },
+              {
+                icon: MapPin,
+                title: "A Festa Conectada",
+                desc: "Local da revelação com mapa e rotas diretas para Uber, Waze e Google Maps.",
+                color: C.mint
+              },
+              {
+                icon: Lock,
+                title: "Segredo Absoluto",
+                desc: "Nem o organizador sabe quem tirou quem. A surpresa fica guardada a sete chaves até a festa.",
+                color: C.sky
+              }
+            ].map((b, i) => (
+              <div
+                key={i}
+                className={`p-6 rounded-3xl ${nb.border} shadow-[6px_6px_0px_#1A1A1A] space-y-3`}
+                style={{ backgroundColor: C.cardBg }}
+              >
+                <div 
+                  className={`w-12 h-12 rounded-2xl ${nb.border} flex items-center justify-center shadow-[3px_3px_0px_#1A1A1A]`}
+                  style={{ backgroundColor: b.color }}
+                >
+                  <b.icon className="w-6 h-6 text-black" />
+                </div>
+                <h3 className="text-lg font-black">{b.title}</h3>
+                <p className="text-xs font-semibold leading-relaxed" style={{ color: C.textMuted }}>
+                  {b.desc}
+                </p>
+              </div>
             ))}
           </div>
         </div>
       </section>
+
+      {/* ═══ CASOS DE USO & CÍRCULOS MODERNOS ═══ */}
+      <section className="py-20 px-4 max-w-6xl mx-auto">
+        <div className="text-center max-w-2xl mx-auto mb-16">
+          <div 
+            className={`inline-flex items-center px-4 py-1.5 rounded-full ${nb.border} shadow-[3px_3px_0px_#1A1A1A] mb-3 font-black text-xs uppercase`}
+            style={{ backgroundColor: C.lavender, color: C.black }}
+          >
+            Seu Grupo, Suas Regras
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black mb-4">
+            Qual é a turma do seu Amigo Secreto?
+          </h2>
+          <p className="text-sm md:text-base font-bold" style={{ color: C.textMuted }}>
+            Clique na sua galera para começar com sugestões personalizadas!
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          {[
+            { 
+              label: "Turma do Pilates & Yoga", 
+              prefix: "Amigo Secreto do Pilates", 
+              emoji: "🧘‍♀️", 
+              color: C.yellow,
+              tag: "Em alta ✨"
+            },
+            { 
+              label: "Galera do Crossfit", 
+              prefix: "Amigo Secreto do Crossfit", 
+              emoji: "🏋️‍♂️", 
+              color: C.orange,
+              tag: "Do Box ⚡"
+            },
+            { 
+              label: "Amigo Secreto da Firma", 
+              prefix: "Amigo Secreto da Firma", 
+              emoji: "💼", 
+              color: C.sky,
+              tag: "Corporativo"
+            },
+            { 
+              label: "Família Reunida", 
+              prefix: "Amigo Secreto da Família", 
+              emoji: "🏠", 
+              color: C.pink,
+              tag: "Tradição"
+            },
+            { 
+              label: "Resenha & Futebol", 
+              prefix: "Amigo Secreto dos Parças", 
+              emoji: "🍻", 
+              color: C.mint,
+              tag: "Pelada ⚽"
+            },
+            { 
+              label: "Clube do Livro", 
+              prefix: "Amigo Secreto do Clube do Livro", 
+              emoji: "📚", 
+              color: C.lavender,
+              tag: "Literário"
+            },
+            { 
+              label: "Igreja & Célula", 
+              prefix: "Amigo Secreto da Célula", 
+              emoji: "⛪", 
+              color: C.yellow,
+              tag: "Comunidade"
+            },
+            { 
+              label: "Gamers & Discord", 
+              prefix: "Amigo Secreto dos Gamers", 
+              emoji: "🎮", 
+              color: C.sky,
+              tag: "Online 👾"
+            },
+            { 
+              label: "Amigo dos Pets", 
+              prefix: "Amigo Secreto dos Pets", 
+              emoji: "🐾", 
+              color: C.mint,
+              tag: "Dog Lovers 🐶"
+            },
+            { 
+              label: "Turma da Faculdade", 
+              prefix: "Amigo Secreto da Faculdade", 
+              emoji: "🎓", 
+              color: C.pink,
+              tag: "Semestre 📚"
+            },
+          ].map((c, idx) => (
+            <motion.div
+              key={idx}
+              whileHover={{ y: -4, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleStartWithGroup(c.prefix, c.emoji)}
+              className={`p-4 rounded-2xl ${nb.border} shadow-[4px_4px_0px_#1A1A1A] cursor-pointer transition-all flex flex-col items-center justify-between text-center min-h-[140px] relative overflow-hidden`}
+              style={{ backgroundColor: c.color }}
+            >
+              <div className="w-11 h-11 rounded-xl border-[2px] border-black bg-white flex items-center justify-center text-2xl shadow-[2px_2px_0px_#1A1A1A] mb-2">
+                {c.emoji}
+              </div>
+              <div>
+                <p className="font-black text-xs md:text-sm text-black leading-snug">
+                  {c.label}
+                </p>
+                <span className="inline-block mt-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-black bg-white/70">
+                  {c.tag}
+                </span>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══ FAQ SECTION ═══ */}
+      <section className="py-20 px-4 border-t-[3px] border-black" style={{ backgroundColor: C.sectionBg }}>
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-5xl font-black mb-3">
+              Perguntas Frequentes
+            </h2>
+            <p className="text-sm font-bold" style={{ color: C.textMuted }}>
+              Tudo o que você precisa saber antes de criar seu sorteio.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {faqs.map((faq, idx) => (
+              <div
+                key={idx}
+                className={`rounded-2xl ${nb.border} shadow-[4px_4px_0px_#1A1A1A] overflow-hidden transition-all`}
+                style={{ backgroundColor: C.cardBg }}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleFaq(idx)}
+                  className="w-full p-5 text-left font-black text-sm md:text-base flex items-center justify-between gap-4"
+                >
+                  <span>{faq.q}</span>
+                  <ChevronDown 
+                    className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${openFaqIndex === idx ? "rotate-180" : ""}`} 
+                  />
+                </button>
+                <AnimatePresence>
+                  {openFaqIndex === idx && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="px-5 pb-5 text-xs md:text-sm font-medium leading-relaxed border-t-2 border-black/10 pt-3"
+                      style={{ color: C.textMuted }}
+                    >
+                      {faq.a}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ CTA FINAL ═══ */}
+      <section className="py-20 px-4 text-center max-w-4xl mx-auto">
+        <div 
+          className={`p-8 md:p-14 rounded-3xl ${nb.border} shadow-[10px_10px_0px_#1A1A1A] space-y-6`}
+          style={{ backgroundColor: C.yellow }}
+        >
+          <div className="inline-block p-4 rounded-2xl border-[3px] border-black bg-white text-3xl shadow-[4px_4px_0px_#1A1A1A] transform -rotate-3">
+            🎁
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black text-black leading-tight">
+            Pronto para acabar com a bagunça do papelzinho?
+          </h2>
+          <p className="text-sm md:text-base font-bold text-gray-800 max-w-xl mx-auto">
+            Crie seu grupo agora, mande o link no WhatsApp e garanta que o Amigo Secreto da galera seja inesquecível!
+          </p>
+
+          <div className="pt-2">
+            <Button
+              size="lg"
+              onClick={handleStartClick}
+              disabled={authLoading}
+              className={`h-16 px-10 text-lg md:text-xl rounded-2xl ${nb.button} bg-black hover:bg-gray-800 text-white shadow-[6px_6px_0px_#FFF]`}
+            >
+              <Sparkles className="w-5 h-5 mr-3 text-[#FFD93D]" />
+              CRIAR MEU AMIGO SECRETO GRÁTIS
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ STICKY BAR MOBILE DE CONVERSÃO ═══ */}
+      <div 
+        className="fixed bottom-0 left-0 right-0 px-4 pt-3 pb-safe z-30 md:hidden border-t-[3px] border-black backdrop-blur-md flex items-center justify-between gap-3 shadow-[0px_-4px_0px_#000]"
+        style={{ backgroundColor: isDark ? "rgba(30, 27, 24, 0.95)" : "rgba(255, 253, 247, 0.95)" }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">🎁</span>
+          <div className="leading-tight">
+            <p className="font-black text-xs">Amigo Secreto</p>
+            <p className="text-[10px] font-bold text-emerald-600">100% Gratuito</p>
+          </div>
+        </div>
+
+        <Button
+          size="sm"
+          onClick={handleStartClick}
+          className={`h-11 px-5 rounded-xl font-black text-xs ${nb.button} shadow-[3px_3px_0px_#1A1A1A] touch-press`}
+          style={{ backgroundColor: C.orange, color: "#fff" }}
+        >
+          Criar Agora ➔
+        </Button>
+      </div>
+
+      {/* ═══ MODAL DE ESCOLHA (SEM CADASTRO VS SUÍTE COMPLETA) ═══ */}
+      <SecretSantaChoiceModal
+        open={showChoiceModal}
+        onClose={() => setShowChoiceModal(false)}
+        onSelectQuick={handleSelectQuick}
+        onSelectFull={handleSelectFull}
+        groupTitle={selectedCircleTitle}
+        isDark={isDark}
+      />
+
+      {/* ═══ MODAL DEDICADO DO AMIGO SECRETO (WIZARD 3 PASSOS) ═══ */}
+      <SecretSantaWizardModal
+        open={showWizard}
+        onOpenChange={(isOpen) => {
+          setShowWizard(isOpen);
+          if (!isOpen) {
+            setWizardInitialTitle(undefined);
+            setWizardInitialEmoji(undefined);
+          }
+        }}
+        initialTitle={wizardInitialTitle}
+        initialEmoji={wizardInitialEmoji}
+      />
 
       {/* Footer */}
       <Footer palette={C} />

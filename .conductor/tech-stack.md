@@ -63,6 +63,7 @@ Foi corrigido o problema onde ao criar um novo evento, o sistema tentava recuper
 | Ícones | `lucide-react` |
 | Animações | `framer-motion` |
 | Gráficos | `recharts` (para resumos financeiros) |
+| Mapas & Places | `@react-google-maps/api` (Google Places Autocomplete, Maps e Rotas) |
 | Feedback | `sonner` (Toasts) |
 
 ## Arquitetura

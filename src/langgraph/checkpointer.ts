@@ -89,6 +89,7 @@ export class SupabaseCheckpointer extends BaseCheckpointSaver {
       metadata: {
         ...metadata,
         thread_id: threadId,
+        user_id: metadata?.user_id || threadId,
       },
       parent_config: parentConfig,
     };

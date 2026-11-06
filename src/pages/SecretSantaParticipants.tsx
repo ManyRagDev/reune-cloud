@@ -5,18 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, UserPlus, Users, Shuffle, Mail, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, UserPlus, Users, Shuffle, Mail, Loader2, Trash2, MessageCircle, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { SecretSantaShareModal } from "@/components/events/SecretSantaShareModal";
 
 interface Participant {
   id: string;
-  user_id: string;
+  user_id?: string | null;
   status: "pending" | "confirmed";
   display_name?: string | null;
   avatar_url?: string | null;
   email?: string | null;
+  invitation_token?: string | null;
 }
 
 interface PendingInvitation {
@@ -47,7 +49,9 @@ export default function SecretSantaParticipants() {
   const [adding, setAdding] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [drawing, setDrawing] = useState(false);
-  const [eventData, setEventData] = useState<{ title: string; event_date: string; event_time: string } | null>(null);
+  const [eventData, setEventData] = useState<{ title: string; event_date: string; event_time: string; location?: string; address?: string } | null>(null);
+  const [secretSantaConfig, setSecretSantaConfig] = useState<any>(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   useEffect(() => {
     if (!eventId) return;
@@ -62,7 +66,7 @@ export default function SecretSantaParticipants() {
       // Buscar dados do evento
       const { data: event, error: eventError } = await supabase
         .from("table_reune")
-        .select("title, event_date, event_time")
+        .select("title, event_date, event_time, location, address")
         .eq("id", Number(eventId))
         .single();
 
@@ -89,8 +93,9 @@ export default function SecretSantaParticipants() {
       }
 
       setSecretSantaId(secretSantaData.id);
+      setSecretSantaConfig(secretSantaData);
 
-      // Buscar participantes já adicionados ao Amigo Secreto (agora com display_name e email)
+      // Buscar participantes já adicionados ao Amigo Secreto (com display_name, email e token)
       const { data: participantsData, error: participantsError } = await supabase
         .from("event_secret_santa_participants")
         .select(`
@@ -98,31 +103,35 @@ export default function SecretSantaParticipants() {
           user_id,
           status,
           display_name,
-          email
+          email,
+          invitation_token
         `)
         .eq("secret_santa_id", secretSantaData.id);
 
       if (participantsError) throw participantsError;
 
       if (participantsData && participantsData.length > 0) {
-        const userIds = participantsData.map(p => p.user_id);
+        const userIds = participantsData.map(p => p.user_id).filter(Boolean) as string[];
 
         // Buscar perfis para avatar
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("id, display_name, avatar_url")
-          .in("id", userIds);
+        let profilesData: any[] = [];
+        if (userIds.length > 0) {
+          const { data: profs } = await supabase
+            .from("profiles")
+            .select("id, display_name, avatar_url")
+            .in("id", userIds);
+          profilesData = profs || [];
+        }
 
         const participantsWithInfo: Participant[] = participantsData.map(p => {
-          const profile = profilesData?.find(prof => prof.id === p.user_id);
+          const profile = profilesData.find(prof => prof.id === p.user_id);
           return {
             ...p,
             status: p.status as "pending" | "confirmed",
-            // Usar display_name do participante ou do perfil
             display_name: p.display_name || profile?.display_name,
             avatar_url: profile?.avatar_url,
-            // Email já está no registro do participante
             email: p.email,
+            invitation_token: p.invitation_token,
           };
         });
 
@@ -608,7 +617,7 @@ export default function SecretSantaParticipants() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg">
                   <Users className="w-6 h-6 text-primary" />
@@ -620,6 +629,15 @@ export default function SecretSantaParticipants() {
                   </CardDescription>
                 </div>
               </div>
+
+              <Button
+                type="button"
+                onClick={() => setShareModalOpen(true)}
+                className="bg-[#25D366] hover:bg-[#1EBE5D] text-black font-black border-[2px] border-black rounded-xl shadow-[3px_3px_0px_0px_#000000] flex items-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4 fill-black text-white" />
+                Convidar no WhatsApp
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -797,6 +815,33 @@ export default function SecretSantaParticipants() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Modal de Compartilhamento no WhatsApp */}
+        {eventData && secretSantaConfig && eventId && (
+          <SecretSantaShareModal
+            open={shareModalOpen}
+            onOpenChange={setShareModalOpen}
+            eventId={Number(eventId)}
+            eventTitle={eventData.title}
+            inviteMode={secretSantaConfig.invite_mode || 'open'}
+            secretSantaData={{
+              minValue: secretSantaConfig.min_value,
+              maxValue: secretSantaConfig.max_value,
+              drawDate: secretSantaConfig.draw_date,
+              eventDate: eventData.event_date,
+              eventTime: eventData.event_time,
+              location: eventData.location,
+              address: eventData.address,
+            }}
+            individualParticipants={participants
+              .filter(p => p.invitation_token && p.display_name)
+              .map(p => ({
+                id: p.id,
+                display_name: p.display_name!,
+                invitation_token: p.invitation_token!,
+              }))}
+          />
+        )}
       </div>
     </div>
   );
