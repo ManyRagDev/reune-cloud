@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Gift, Check, ArrowRight, X, Sparkles, MapPin, ShieldCheck, Link2, Users } from "lucide-react";
+import { Zap, Gift, Check, ArrowRight, X, Sparkles, MapPin, ShieldCheck, Link2, Users, UserCheck, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NBLight, NBDark, NBPalette, nb } from "@/lib/neobrutalism";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
@@ -69,13 +69,13 @@ export const SecretSantaChoiceModal = ({
               Como você prefere organizar{groupTitle ? ` o "${groupTitle}"` : " seu amigo secreto"}?
             </h2>
             <p className="mt-2 text-xs sm:text-sm font-medium opacity-80" style={{ color: C.textMuted }}>
-              Escolha entre o fluxo automático com <strong className="underline">1 link no grupo</strong> ou o sorteador instantâneo <strong className="underline">chega e faz</strong>.
+              Você decide: a <strong className="underline">experiência completa com muitos recursos</strong> (com cadastro em 1 min) ou o <strong className="underline">sorteio direto e prático</strong> (sem cadastro).
             </p>
           </div>
 
           {/* Grid de Opções */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* ═══ OPÇÃO 1 (PROTAGONISTA): LINK ÚNICO DE GRUPO (SUÍTE COMPLETA) ═══ */}
+            {/* ═══ OPÇÃO 1: COM CADASTRO (EXPERIÊNCIA COMPLETA & RECURSOS AVANÇADOS) ═══ */}
             <div
               className={`flex flex-col justify-between p-6 rounded-2xl border-[3px] border-black shadow-[6px_6px_0px_#1A1A1A] relative hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_#1A1A1A] transition-all`}
               style={{ backgroundColor: isDark ? "#2A231C" : "#FFFBEB" }}
@@ -86,19 +86,19 @@ export const SecretSantaChoiceModal = ({
                     className="w-12 h-12 rounded-xl border-[2px] border-black flex items-center justify-center shadow-[3px_3px_0px_#1A1A1A]"
                     style={{ backgroundColor: C.yellow }}
                   >
-                    <Link2 className="w-6 h-6 text-black" />
+                    <Sparkles className="w-6 h-6 text-black" />
                   </div>
                   <span
                     className="px-3 py-1 rounded-full border-[2px] border-black text-[11px] font-black uppercase shadow-[2px_2px_0px_#1A1A1A]"
                     style={{ backgroundColor: C.yellow, color: C.black }}
                   >
-                    ⭐ Mais Usado em Grupos
+                    👑 Com Cadastro • Recursos Completos
                   </span>
                 </div>
 
-                <h3 className="text-xl sm:text-2xl font-black mb-1">Link Único para o Grupo</h3>
-                <p className="text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-4">
-                  🔗 Cole 1 link no WhatsApp e a galera entra sozinha
+                <h3 className="text-xl sm:text-2xl font-black mb-1">Experiência Completa</h3>
+                <p className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-400 mb-4">
+                  ✨ Requer cadastro do organizador (1 min) • Libera todos os recursos
                 </p>
 
                 {/* Passo a Passo Visual */}
@@ -108,15 +108,15 @@ export const SecretSantaChoiceModal = ({
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-black text-white text-[11px] flex items-center justify-center shrink-0 font-black mt-0.5">1</span>
-                    <span>Você cria o evento em 1 min (data, valor e local)</span>
+                    <span>Você cria sua conta grátis em 1 min e define a festa</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-black text-white text-[11px] flex items-center justify-center shrink-0 font-black mt-0.5">2</span>
-                    <span>Manda <strong>1 único link</strong> no grupo do WhatsApp</span>
+                    <span>Manda <strong>1 único link no grupo</strong> do WhatsApp</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-black text-white text-[11px] flex items-center justify-center shrink-0 font-black mt-0.5">3</span>
-                    <span>Amigos entram, escolhem presentes e criam seu PIN</span>
+                    <span>Amigos entram sozinhos e colocam seus desejos de presentes</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[11px] flex items-center justify-center shrink-0 font-black mt-0.5">🎲</span>
@@ -124,7 +124,7 @@ export const SecretSantaChoiceModal = ({
                   </div>
                 </div>
 
-                {/* Benefícios ReUNE (É mais que um sorteador) */}
+                {/* Recursos Exclusivos que justificam o cadastro */}
                 <ul className="space-y-2 text-xs sm:text-sm font-semibold mb-6">
                   <li className="flex items-center gap-2">
                     <Gift className="w-4 h-4 text-amber-600 shrink-0" />
@@ -136,7 +136,7 @@ export const SecretSantaChoiceModal = ({
                   </li>
                   <li className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Painel para acompanhar quem já confirmou</span>
+                    <span>Painel persistente com lista de confirmações</span>
                   </li>
                 </ul>
               </div>
@@ -148,8 +148,8 @@ export const SecretSantaChoiceModal = ({
                   className={`w-full h-13 rounded-xl font-black text-sm border-[3px] border-black shadow-[4px_4px_0px_#1A1A1A] touch-press hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#1A1A1A] transition-all`}
                   style={{ backgroundColor: C.orange, color: "#fff" }}
                 >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Criar e Gerar Link do Grupo
+                  <UserCheck className="w-4 h-4 mr-2" />
+                  Cadastrar Grátis e Criar Evento
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
                 <p className="text-[11px] font-medium text-center mt-2 opacity-75">
@@ -158,7 +158,7 @@ export const SecretSantaChoiceModal = ({
               </div>
             </div>
 
-            {/* ═══ OPÇÃO 2: SORTEADOR RELÂMPAGO (CHEGA E FAZ / SEM CADASTRO) ═══ */}
+            {/* ═══ OPÇÃO 2: SEM CADASTRO (PRATICIDADE MÁXIMA & SORTEIO PURO) ═══ */}
             <div
               className={`flex flex-col justify-between p-6 rounded-2xl border-[3px] border-black shadow-[5px_5px_0px_#1A1A1A] relative hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0px_#1A1A1A] transition-all`}
               style={{ backgroundColor: isDark ? "#24201C" : "#F4FDF9" }}
@@ -175,13 +175,13 @@ export const SecretSantaChoiceModal = ({
                     className="px-2.5 py-1 rounded-full border-[2px] border-black text-[11px] font-black uppercase shadow-[1px_1px_0px_#1A1A1A]"
                     style={{ backgroundColor: C.mint, color: C.black }}
                   >
-                    ⚡ Chega e Faz • Sem Cadastro
+                    ⚡ Zero Cadastro • Só Praticidade
                   </span>
                 </div>
 
                 <h3 className="text-xl sm:text-2xl font-black mb-1">Sorteador Relâmpago</h3>
                 <p className="text-xs sm:text-sm font-semibold text-teal-700 dark:text-teal-400 mb-4">
-                  ✉️ Para quem já tem a lista de nomes e quer sortear agora
+                  🚀 Sem conta e sem login • Sorteio básico instantâneo
                 </p>
 
                 {/* Passo a Passo Visual */}
@@ -203,19 +203,19 @@ export const SecretSantaChoiceModal = ({
                   </div>
                 </div>
 
-                {/* Benefícios */}
+                {/* O que tem (e o que é simplificado) */}
                 <ul className="space-y-2 text-xs sm:text-sm font-semibold mb-6">
                   <li className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-600 shrink-0 font-bold" />
-                    <span>Zero cadastro para você e amigos</span>
+                    <span><strong>Zero cadastro</strong> para você e amigos (chega e faz)</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 font-bold" />
                     <span>Envelopes digitais com <strong>lacre de cera anti-espião</strong></span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <WhatsAppIcon className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Botão direto para despachar no WhatsApp</span>
+                  <li className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4 shrink-0 opacity-60" />
+                    <span className="text-xs">Sorteio puro (sem lista de presentes nem página de festa)</span>
                   </li>
                 </ul>
               </div>
@@ -228,11 +228,11 @@ export const SecretSantaChoiceModal = ({
                   style={{ backgroundColor: C.mint, color: C.black }}
                 >
                   <Zap className="w-4 h-4 mr-2 fill-current" />
-                  Digitar Nomes e Sortear na Hora
+                  Continuar Sem Cadastro
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
                 <p className="text-[11px] font-medium text-center mt-2 opacity-75">
-                  Envelopes individuais enviados no privado
+                  Direto ao ponto • Envelopes enviados no privado
                 </p>
               </div>
             </div>
@@ -240,7 +240,7 @@ export const SecretSantaChoiceModal = ({
 
           {/* Micro-footer explicativo */}
           <div className="mt-6 text-center text-xs font-semibold opacity-75">
-            🔒 100% Gratuito em ambas as opções • Sem anúncios invasivos • Sorteio criptografado e secreto
+            🔒 Ambas as opções são 100% gratuitas e seguras • Sem anúncios invasivos • Sorteio criptografado
           </div>
         </motion.div>
       </div>
