@@ -26,3 +26,4 @@
 - [x] **025-secret-santa-choice-ux-clarity** - Redesign de UX do Modal de Escolha de Amigo Secreto (Link de Grupo vs Sorteador Relâmpago) `[.conductor/tracks/025-secret-santa-choice-ux-clarity/plan.md]`
 - [x] **026-mobile-ux-audit-and-refinement** - Auditoria Completa de UI/UX Mobile (Layout, Linhas, Colunas, Safe-Areas e Modais) `[.conductor/tracks/026-mobile-ux-audit-and-refinement/plan.md]`
 - [x] **027-secret-santa-landing-v4-interactive-polish** - Polish Interativo da Landing Page Amigo Secreto (Card Stack Framer Motion, Trilha em S, Carrossel Snap e Hero Toggle) `[.conductor/tracks/027-secret-santa-landing-v4-interactive-polish/plan.md]`
+- [x] **028-secret-santa-choice-modal-mobile-compact** - Redesign Compacto do Modal de Escolha no Mobile (Zero Scroll, Decisão Imediata em 1 Tela) `[.conductor/tracks/028-secret-santa-choice-modal-mobile-compact/plan.md]`
