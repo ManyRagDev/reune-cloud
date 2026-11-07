@@ -88,7 +88,12 @@ Antes de iniciar o chat, o usuário deve selecionar o contexto na interface:
 - `groqService.ts` para integração com LLM
 
 ### 3. Secret Santa
-- Landing Page dedicada e de alta conversão para tráfego pago/orgânico (`/amigo-secreto` em `SecretSantaLanding.tsx`) com Open Graph meta tags, mockup de WhatsApp, comparativo de modos, casos de uso, FAQ interativo e sticky bar mobile.
+- Landing Page dedicada e de alta conversão para tráfego pago/orgânico (`/amigo-secreto` em `SecretSantaLanding.tsx`) com Open Graph meta tags, mockup interativo de WhatsApp e telas reais, comparativo de modos em baralho empilhado (Framer Motion drag), trilha cronológica em 'S', casos de uso, FAQ interativo e sticky bar mobile.
+  - **Toggle Interativo de Mockup no Hero:** Alternância em tempo real entre o *Modo Grupo (Link do WhatsApp + Tela de Revelação com PIN de 4 dígitos)* e o *Modo Relâmpago (WhatsApp Individual + Envelope Lacrado com Selo de Cera)*, eliminando qualquer ambiguidade sobre a tela final do convidado.
+  - **O Grande Diferencial (Pilha de Cartas com Framer Motion):** Baralho empilhado com física elástica (`drag="x"`, rotação, z-index dinâmico) e controles táteis `[ < ] [ • • • ] [ > ]` para alternar entre Link de Grupo, Convites Anti-Penetras e Sorteador Relâmpago.
+  - **Como Funciona em 3 Passos (Economia de Scroll):** 3 cards alinhados horizontalmente com setas direcionais neobrutalistas no desktop e carrossel snap horizontal (`overflow-x-auto snap-x`) no mobile, reduzindo mais de 400px de scroll vertical.
+  - **Por Que Abandonar o Papelzinho (Trilha Sinuosa em 'S'):** Timeline estilo tabuleiro/jogo conectada por linha guia tracejada com nós coloridos numerados para cada marco (Zero marmelada, Lista de desejos, Festa conectada e Segredo absoluto).
+  - **Diagramação e CTA Final Mobile-Proof:** Botão `"CRIAR MEU AMIGO SECRETO GRÁTIS"` com quebra flexível e padding proporcional que previne truncamento em qualquer largura de tela (a partir de 360px).
 - **Modal de Pré-Decisão Transparente (`SecretSantaChoiceModal.tsx`):**
   - Ao clicar em "Criar meu amigo secreto", exibe caixa de seleção clara entre:
     1. *⚡ Sorteador Relâmpago (Sem Cadastro, instantâneo, envelopes no WhatsApp)*.

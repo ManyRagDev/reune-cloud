@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,18 +14,19 @@ import {
   Sun, 
   Moon, 
   ShieldCheck, 
-  MessageCircle, 
   Lock, 
+  Unlock,
   MapPin, 
-  HelpCircle, 
   ChevronDown, 
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2, 
   Clock, 
   Heart,
   Smile,
-  Briefcase,
-  Home,
-  GraduationCap
+  AlertTriangle,
+  Layers,
+  Check
 } from "lucide-react";
 import { Helmet } from "react-helmet";
 import { Footer } from "@/components/landing/Footer";
@@ -62,7 +63,17 @@ export default function SecretSantaLanding() {
   const [wizardInitialEmoji, setWizardInitialEmoji] = useState<string | undefined>(undefined);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
-  // Se o usuário veio redirecionado do login com ?action=wizard, abre o Wizard automaticamente
+  /* ── 1. Hero Mockup Toggle (Grupo com PIN vs Relâmpago com Envelopes) ── */
+  const [heroMockupTab, setHeroMockupTab] = useState<'group' | 'quick'>('group');
+
+  /* ── 2. Card Deck Swipe State (O Grande Diferencial) ─────────────────── */
+  const [cardDeckIndex, setCardDeckIndex] = useState(0);
+
+  /* ── 3. Como Funciona (Mobile Carousel State) ────────────────────────── */
+  const [howStepIndex, setHowStepIndex] = useState(0);
+  const howCarouselRef = useRef<HTMLDivElement>(null);
+
+  // Redirecionamento automático caso venha do login com ?action=wizard
   useEffect(() => {
     if (user && searchParams.get('action') === 'wizard') {
       const groupFromUrl = searchParams.get('group');
@@ -115,6 +126,147 @@ export default function SecretSantaLanding() {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
   };
 
+  /* ── Cards da Pilha (O Grande Diferencial) ── */
+  const differentialCards = [
+    {
+      id: "grupo",
+      tag: "👑 Com Cadastro • Mais Popular",
+      tagBg: C.mint,
+      icon: "🚀",
+      iconBg: C.yellow,
+      title: "Link Aberto do Grupo",
+      subtitle: "Cole 1 link no WhatsApp e a galera entra sozinha",
+      description: "Crie o evento em 1 minuto e mande o link no grupo. Cada amigo entra, cadastra seus presentes e cria seu PIN.",
+      benefits: [
+        "1 link no WhatsApp da galera (zero trabalho manual)",
+        "Lista de desejos para acertar no presente",
+        "Revelação protegida por PIN de 4 dígitos"
+      ],
+      buttonLabel: "USAR MODO GRUPO ➔",
+      action: handleStartClick,
+      cardBg: C.cardBg,
+      accentColor: C.mint
+    },
+    {
+      id: "antipenetras",
+      tag: "🔒 Com Cadastro • Blindado",
+      tagBg: C.sky,
+      icon: "🛡️",
+      iconBg: C.sky,
+      title: "Convites Anti-Penetras",
+      subtitle: "Links exclusivos e individuais por participante",
+      description: "Cadastre os amigos autorizados. O ReUNE gera um link exclusivo com token criptografado para cada um.",
+      benefits: [
+        "Link individual e token intransferível",
+        "Zero risco de penetras ou pessoas duplicadas",
+        "Botão direto para enviar no WhatsApp de cada um"
+      ],
+      buttonLabel: "USAR MODO ANTI-PENETRAS ➔",
+      action: handleStartClick,
+      cardBg: C.cardBg,
+      accentColor: C.sky
+    },
+    {
+      id: "relampago",
+      tag: "⚡ Sem Cadastro • Só Praticidade",
+      tagBg: C.yellow,
+      icon: "⚡",
+      iconBg: C.orange,
+      title: "Sorteador Relâmpago",
+      subtitle: "Sorteio instantâneo com Envelopes Lacrados",
+      description: "Para quem quer resolver na hora sem criar conta. Digite os nomes, sorteie e mande os envelopes lacrados.",
+      benefits: [
+        "Zero cadastro, sem conta e sem senhas",
+        "Envelopes digitais com selo de cera lacrado",
+        "Alerta anti-spoilers se alguém abrir antes"
+      ],
+      buttonLabel: "IR PARA SORTEADOR RELÂMPAGO ➔",
+      action: () => navigate('/amigo-secreto/rapido'),
+      cardBg: C.cardBg,
+      accentColor: C.yellow
+    }
+  ];
+
+  const nextDeckCard = () => {
+    setCardDeckIndex((prev) => (prev + 1) % differentialCards.length);
+  };
+
+  const prevDeckCard = () => {
+    setCardDeckIndex((prev) => (prev - 1 + differentialCards.length) % differentialCards.length);
+  };
+
+  /* ── Passos do Como Funciona ── */
+  const steps = [
+    {
+      step: "01",
+      title: "Defina as Regras",
+      desc: "Escolha o nome da turma, a faixa de valor dos presentes e a data do sorteio em 1 minuto.",
+      emoji: "⚙️",
+      bg: C.yellow
+    },
+    {
+      step: "02",
+      title: "Mande no WhatsApp",
+      desc: "Compartilhe o convite pronto com um clique. Cada amigo entra, coloca o que quer ganhar e cria seu PIN.",
+      emoji: "📲",
+      bg: C.pink
+    },
+    {
+      step: "03",
+      title: "Sorteio & Revelação",
+      desc: "Com um clique o sorteio acontece. Cada um digita o seu PIN e descobre quem tirou sem spoilers!",
+      emoji: "🎉",
+      bg: C.mint
+    }
+  ];
+
+  const scrollHowCarouselTo = (index: number) => {
+    setHowStepIndex(index);
+    if (howCarouselRef.current) {
+      const cardWidth = howCarouselRef.current.clientWidth * 0.85;
+      howCarouselRef.current.scrollTo({
+        left: index * cardWidth,
+        behavior: "smooth"
+      });
+    }
+  };
+
+  /* ── 4 Marcos da Trilha em 'S' ── */
+  const pathMilestones = [
+    {
+      number: "1",
+      icon: Shuffle,
+      title: "Sem Marmelada & Spoilers",
+      desc: "Algoritmo certificado: ninguém tira a si mesmo e ninguém tira duas vezes a mesma pessoa. Sorteio matematicamente justo.",
+      color: C.orange,
+      badge: "Algoritmo Justo"
+    },
+    {
+      number: "2",
+      icon: Gift,
+      title: "Lista de Desejos de Presentes",
+      desc: "Cada amigo lista 3 coisas que realmente gostaria de ganhar. Acabou o constrangimento de receber presente sem uso!",
+      color: C.yellow,
+      badge: "Acerte no Presente"
+    },
+    {
+      number: "3",
+      icon: MapPin,
+      title: "A Festa Conectada",
+      desc: "Local da revelação com mapa interativo e rotas diretas de 1 clique para Uber, Waze e Google Maps.",
+      color: C.mint,
+      badge: "Chegue Fácil"
+    },
+    {
+      number: "4",
+      icon: Lock,
+      title: "Segredo Absoluto até a Revelação",
+      desc: "Nem o criador do grupo sabe quem tirou quem. Protegido por PIN pessoal de 4 dígitos ou Lacre de Cera digital.",
+      color: C.sky,
+      badge: "Zero Bisbilhotice"
+    }
+  ];
+
   const faqs = [
     {
       q: "Precisa baixar algum aplicativo no celular?",
@@ -129,8 +281,8 @@ export default function SecretSantaLanding() {
       a: "Ao entrar no Amigo Secreto, cada participante cria um PIN de 4 dígitos. No dia da revelação, basta digitar esse PIN para ver o amigo sorteado sem nenhum risco de spoilers na tela!"
     },
     {
-      q: "Qual a diferença entre o Modo Aberto e o Anti-Penetras?",
-      a: "No Modo Aberto, você manda 1 link geral no WhatsApp e qualquer amigo do grupo pode entrar. No Modo Anti-Penetras, você digita os nomes autorizados e cada um recebe um link exclusivo e intransferível."
+      q: "Qual a diferença entre o Modo Aberto e o Sorteador Relâmpago?",
+      a: "O Modo Aberto (Com Cadastro) gera 1 link único para colar no grupo do WhatsApp, com lista de desejos de presentes, local da festa no mapa e PIN de revelação. O Sorteador Relâmpago (Sem Cadastro) é instantâneo: você digita os nomes e despacha envelopes lacrados individuais pelo WhatsApp em 1 minuto sem precisar de conta."
     },
     {
       q: "É realmente 100% gratuito?",
@@ -214,7 +366,7 @@ export default function SecretSantaLanding() {
       </nav>
 
       {/* ═══ HERO SECTION ═══ */}
-      <section className="relative px-4 py-12 md:py-20 max-w-6xl mx-auto">
+      <section className="relative px-4 py-12 md:py-18 max-w-6xl mx-auto">
         <div className="flex flex-col items-center text-center space-y-6">
           {/* Badge de Topo */}
           <motion.div
@@ -267,12 +419,12 @@ export default function SecretSantaLanding() {
               size="lg"
               onClick={handleStartClick}
               disabled={authLoading}
-              className={`h-16 px-8 text-lg md:text-xl rounded-2xl ${nb.button} w-full shadow-[6px_6px_0px_#1A1A1A] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[3px_3px_0px_#1A1A1A]`}
+              className={`min-h-[58px] py-4 px-6 text-base sm:text-lg md:text-xl rounded-2xl ${nb.button} w-full shadow-[6px_6px_0px_#1A1A1A] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[3px_3px_0px_#1A1A1A] touch-press leading-tight whitespace-normal text-center`}
               style={{ backgroundColor: C.orange, color: "#fff" }}
             >
-              <Gift className="w-6 h-6 mr-3" />
-              CRIAR MEU AMIGO SECRETO
-              <ArrowRight className="w-6 h-6 ml-3" />
+              <Gift className="w-6 h-6 mr-2.5 flex-shrink-0" />
+              <span>CRIAR MEU AMIGO SECRETO</span>
+              <ArrowRight className="w-5 h-5 ml-2.5 flex-shrink-0" />
             </Button>
 
             <button
@@ -300,194 +452,344 @@ export default function SecretSantaLanding() {
             </span>
           </div>
 
-          {/* ═══ MOCKUPS VISUAIS EM DUPLA ═══ */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.6 }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl pt-8 text-left"
-          >
-            {/* Card 1: Mensagem do WhatsApp */}
-            <div 
-              className={`p-6 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] relative transform md:-rotate-1`}
-              style={{ backgroundColor: C.cardBg }}
-            >
-              <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-dashed border-gray-300">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-[#25D366] flex items-center justify-center">
-                    <WhatsAppIcon className="w-4 h-4 text-white fill-current" />
-                  </div>
-                  <span className="font-black text-xs uppercase">No Grupo do WhatsApp</span>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                  1 Clique
-                </span>
-              </div>
-
-              <div className="p-3.5 rounded-xl border-[2px] border-black bg-[#E7F8EE] font-mono text-xs text-gray-800 space-y-2 leading-relaxed">
-                <p className="font-bold text-black">🎁 *AMIGO SECRETO DA FIRMA 2026* 🎁</p>
-                <p>💰 *Valor:* R$ 50 a R$ 100<br />🎲 *Sorteio:* 18 de Dezembro<br />🎉 *Festa:* 22 de Dezembro às 19h30</p>
-                <p className="text-emerald-700 font-bold">👉 Entre pelo link e cadastre seus desejos:</p>
-                <p className="underline text-blue-600 break-all">reuneapp.com.br/amigo/32/entrar</p>
-              </div>
-            </div>
-
-            {/* Card 2: Revelação Secreta com PIN */}
-            <div 
-              className={`p-6 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] relative transform md:rotate-1`}
-              style={{ backgroundColor: C.cardBg }}
-            >
-              <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-dashed border-gray-300">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-[#FFD93D] border-[2px] border-black flex items-center justify-center text-xs">
-                    🔒
-                  </div>
-                  <span className="font-black text-xs uppercase">Revelação com PIN Pessoal</span>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-200 text-yellow-900">
-                  Zero Spoilers
-                </span>
-              </div>
-
-              <div className="p-4 rounded-xl border-[2px] border-black bg-white space-y-2">
-                <span className="text-[10px] font-black uppercase text-gray-500">Seu Amigo Secreto é:</span>
-                <h4 className="text-2xl font-black text-[#FF6B35]">Mariana Costa 🤫</h4>
-                <div className="p-2.5 rounded-lg border-[2px] border-black bg-[#FFF8E1] text-xs">
-                  <p className="font-bold text-black">🎁 O que ela quer ganhar:</p>
-                  <p className="text-gray-700 font-medium">"Livro de ficção científica ou café especial moído"</p>
-                </div>
+          {/* ═══ TOGGLE INTERATIVO DE MOCKUPS DO HERO (ITEM 1) ═══ */}
+          <div className="w-full max-w-4xl pt-6">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 mb-5">
+              <span className="text-xs font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Veja como seus amigos verão:
+              </span>
+              <div className="inline-flex p-1 rounded-2xl border-[2px] border-black bg-white dark:bg-zinc-900 shadow-[3px_3px_0px_#1A1A1A]">
+                <button
+                  type="button"
+                  onClick={() => setHeroMockupTab('group')}
+                  className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 ${
+                    heroMockupTab === 'group'
+                      ? 'bg-[#FFD93D] text-black border-[2px] border-black shadow-[2px_2px_0px_#000]'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-black border-[2px] border-transparent'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Modo Grupo (Link Único + PIN)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHeroMockupTab('quick')}
+                  className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 ${
+                    heroMockupTab === 'quick'
+                      ? 'bg-[#FFD93D] text-black border-[2px] border-black shadow-[2px_2px_0px_#000]'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-black border-[2px] border-transparent'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
+                  <span>Modo Relâmpago (Envelopes Lacrados)</span>
+                </button>
               </div>
             </div>
-          </motion.div>
+
+            <AnimatePresence mode="wait">
+              {heroMockupTab === 'group' ? (
+                /* ── MOCKUPS DO MODO GRUPO (Com Cadastro) ── */
+                <motion.div
+                  key="mockup-group"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.3 }}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left"
+                >
+                  {/* Card 1: Mensagem do WhatsApp no Grupo */}
+                  <div 
+                    className={`p-6 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] relative transform md:-rotate-1`}
+                    style={{ backgroundColor: C.cardBg }}
+                  >
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-dashed border-gray-300 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-[#25D366] flex items-center justify-center">
+                          <WhatsAppIcon className="w-4 h-4 text-white fill-current" />
+                        </div>
+                        <span className="font-black text-xs uppercase">No Grupo do WhatsApp</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300">
+                        1 Link Para Todos
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border-[2px] border-black bg-[#E7F8EE] font-mono text-xs text-gray-800 space-y-2 leading-relaxed">
+                      <p className="font-bold text-black">🎁 *AMIGO SECRETO DA FIRMA 2026* 🎁</p>
+                      <p>💰 *Valor:* R$ 50 a R$ 100<br />🎲 *Sorteio:* 18 de Dezembro<br />🎉 *Festa:* 22 de Dezembro às 19h30</p>
+                      <p className="text-emerald-700 font-bold">👉 Entre pelo link, cadastre seus presentes e crie seu PIN de 4 dígitos:</p>
+                      <p className="underline text-blue-600 break-all font-semibold">reuneapp.com.br/amigo/32/entrar</p>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Tela Real do Convidado com PIN (SecretSantaJoin.tsx) */}
+                  <div 
+                    className={`p-6 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] relative transform md:rotate-1`}
+                    style={{ backgroundColor: C.cardBg }}
+                  >
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-dashed border-gray-300 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-[#FFD93D] border-[2px] border-black flex items-center justify-center text-xs">
+                          🔒
+                        </div>
+                        <span className="font-black text-xs uppercase">Tela Real do Convidado</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-200 dark:bg-yellow-950 text-yellow-900 dark:text-yellow-300 border border-yellow-300">
+                        PIN de 4 Dígitos
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-xl border-[2px] border-black bg-white dark:bg-zinc-900 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase text-gray-500">Seu Amigo Sorteado é:</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Sorteio Concluído</span>
+                      </div>
+                      <h4 className="text-2xl font-black text-[#FF6B35]">Mariana Costa 🤫</h4>
+                      <div className="p-2.5 rounded-lg border-[2px] border-black bg-[#FFF8E1] dark:bg-zinc-800 text-xs">
+                        <p className="font-bold text-black dark:text-white">🎁 O que ela quer ganhar:</p>
+                        <p className="text-gray-700 dark:text-gray-300 font-medium">"Livro de ficção científica ou café especial moído"</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                /* ── MOCKUPS DO MODO RELÂMPAGO (Sem Cadastro) ── */
+                <motion.div
+                  key="mockup-quick"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.3 }}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left"
+                >
+                  {/* Card 1: Mensagem Individual no WhatsApp */}
+                  <div 
+                    className={`p-6 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] relative transform md:-rotate-1`}
+                    style={{ backgroundColor: C.cardBg }}
+                  >
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-dashed border-gray-300 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-[#25D366] flex items-center justify-center">
+                          <WhatsAppIcon className="w-4 h-4 text-white fill-current" />
+                        </div>
+                        <span className="font-black text-xs uppercase">No WhatsApp de Cada Amigo</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300">
+                        Envelope Individual
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border-[2px] border-black bg-[#E7F8EE] font-mono text-xs text-gray-800 space-y-2 leading-relaxed">
+                      <p className="font-bold text-black">🎁 *Amigo Secreto: Turma do Churrasco*</p>
+                      <p>Olá <strong>Mariana</strong>! Seu envelope secreto do sorteio está pronto e lacrado.</p>
+                      <p className="text-emerald-700 font-bold">👉 Toque no seu link exclusivo para romper o lacre e ver quem você tirou:</p>
+                      <p className="underline text-blue-600 break-all font-semibold">reuneapp.com.br/envelope/env_8f2a</p>
+                      <p className="text-[11px] text-gray-600 italic">🔒 Nem o organizador sabe quem você tirou!</p>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Tela Real do Envelope Lacrado com Cera (QuickSecretSantaEnvelope.tsx) */}
+                  <div 
+                    className={`p-6 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] relative transform md:rotate-1`}
+                    style={{ backgroundColor: C.cardBg }}
+                  >
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-dashed border-gray-300 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-[#FF4444] border-[2px] border-black flex items-center justify-center text-xs text-white">
+                          ✉️
+                        </div>
+                        <span className="font-black text-xs uppercase">Tela Real do Envelope</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300 border border-red-300">
+                        Selo de Cera Digital
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-xl border-[2px] border-black bg-white dark:bg-zinc-900 space-y-3 text-center">
+                      <div className="inline-block relative">
+                        <div className="w-16 h-16 rounded-2xl border-[2px] border-black bg-[#FFF7D6] flex items-center justify-center text-3xl shadow-[3px_3px_0px_#000]">
+                          ✉️
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-[2px] border-black bg-[#FF4444] text-white flex items-center justify-center shadow-[1px_1px_0px_#000]">
+                          <Lock className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-gray-500 block">ENVELOPE LACRADO PARA:</span>
+                        <h4 className="text-xl font-black text-black dark:text-white">Mariana</h4>
+                      </div>
+                      <div className="p-2 rounded-lg border-[2px] border-black bg-[#E2F7EB] text-[11px] text-emerald-950 text-left font-semibold">
+                        🛡️ Lacre de Segurança Ativo: detecta violação se alguém xeretar antes!
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </section>
 
-      {/* ═══ OS 2 MODOS DE CONVITE: O DIFERENCIAL REUNE ═══ */}
-      <section className="py-16 px-4 relative border-y-[3px] border-black" style={{ backgroundColor: C.sectionBg }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center max-w-2xl mx-auto mb-12">
+      {/* ═══ OS DIFERENCIAIS: PILHA DE CARTAS INTERATIVA (ITEM 2) ═══ */}
+      <section className="py-12 md:py-20 px-4 relative border-y-[3px] border-black" style={{ backgroundColor: C.sectionBg }}>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-8">
             <div 
-              className={`inline-flex items-center px-4 py-1.5 rounded-full ${nb.border} shadow-[3px_3px_0px_#1A1A1A] mb-3 font-black text-xs uppercase`}
+              className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full ${nb.border} shadow-[3px_3px_0px_#1A1A1A] mb-3 font-black text-xs uppercase`}
               style={{ backgroundColor: C.pink, color: C.black }}
             >
-              O Grande Diferencial
+              <Layers className="w-4 h-4" />
+              <span>O Grande Diferencial</span>
             </div>
-            <h2 className="text-3xl md:text-5xl font-black mb-4">
-              Dois modos pensados para a sua realidade.
+            <h2 className="text-3xl md:text-5xl font-black mb-3">
+              Formatos pensados para a sua realidade.
             </h2>
             <p className="text-sm md:text-base font-bold" style={{ color: C.textMuted }}>
-              Quer agilidade máxima no grupo ou controle absoluto contra penetras? Você escolhe.
+              Deslize a carta para os lados para explorar as opções e escolher a melhor para o seu grupo.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* MODO 1: Aberto */}
-            <div 
-              className={`p-8 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] flex flex-col justify-between`}
-              style={{ backgroundColor: C.cardBg }}
-            >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className={`w-14 h-14 rounded-2xl ${nb.border} flex items-center justify-center text-3xl shadow-[3px_3px_0px_#1A1A1A]`} style={{ backgroundColor: C.mint }}>
-                    🚀
-                  </div>
-                  <span className="px-3 py-1 rounded-full border-[2px] border-black font-black text-xs bg-white uppercase">
-                    Mais Popular
-                  </span>
-                </div>
+          {/* PILHA DE CARTAS NEOBRUTALISTA COM FRAMER MOTION */}
+          <div className="relative w-full max-w-lg mx-auto min-h-[430px] sm:min-h-[400px] flex items-center justify-center">
+            {differentialCards.map((card, idx) => {
+              // Cálculo da posição no deck empilhado
+              const offset = (idx - cardDeckIndex + differentialCards.length) % differentialCards.length;
+              const isTop = offset === 0;
+              const isSecond = offset === 1;
+              const isThird = offset === 2;
 
-                <h3 className="text-2xl font-black">Link Aberto do Grupo</h3>
-                <p className="font-medium text-sm leading-relaxed" style={{ color: C.textMuted }}>
-                  Envie 1 link geral no WhatsApp da galera. Cada participante clica, digita seu nome, escolhe seus presentes e cria seu PIN secreto de 4 dígitos.
-                </p>
+              if (offset > 2) return null;
 
-                <ul className="space-y-2.5 text-xs font-bold pt-2">
-                  <li className="flex items-center gap-2">
-                    <WhatsAppIcon className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <span>Compartilhamento instantâneo no grupo do WhatsApp</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <span>Sem complicação: o próprio amigo se cadastra</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <span>PIN individual para ver o resultado do sorteio</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="pt-6">
-                <Button
-                  onClick={handleStartClick}
-                  className={`w-full h-12 rounded-xl ${nb.button} font-black text-xs`}
-                  style={{ backgroundColor: C.mint, color: C.black }}
+              return (
+                <motion.div
+                  key={card.id}
+                  drag={isTop ? "x" : false}
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.65}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.x < -70) {
+                      nextDeckCard();
+                    } else if (info.offset.x > 70) {
+                      prevDeckCard();
+                    }
+                  }}
+                  animate={{
+                    scale: isTop ? 1 : isSecond ? 0.94 : 0.88,
+                    y: isTop ? 0 : isSecond ? 14 : 26,
+                    rotate: isTop ? 0 : isSecond ? 2.5 : -2.5,
+                    zIndex: isTop ? 30 : isSecond ? 20 : 10,
+                    opacity: isTop ? 1 : isSecond ? 0.85 : 0.5,
+                  }}
+                  transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                  className={`absolute inset-x-0 top-0 p-5 sm:p-7 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] flex flex-col justify-between select-none ${
+                    isTop ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"
+                  }`}
+                  style={{ backgroundColor: card.cardBg }}
                 >
-                  USAR MODO ABERTO ➔
-                </Button>
+                  <div className="space-y-3 sm:space-y-4">
+                    {/* Header do Card */}
+                    <div className="flex items-center justify-between">
+                      <div 
+                        className={`w-12 h-12 rounded-2xl ${nb.border} flex items-center justify-center text-2xl shadow-[3px_3px_0px_#1A1A1A]`}
+                        style={{ backgroundColor: card.iconBg }}
+                      >
+                        {card.icon}
+                      </div>
+                      <span 
+                        className="px-2.5 py-1 rounded-full border-[2px] border-black font-black text-[11px] sm:text-xs uppercase shadow-[2px_2px_0px_#000]"
+                        style={{ backgroundColor: card.tagBg, color: C.black }}
+                      >
+                        {card.tag}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-xl sm:text-2xl font-black">{card.title}</h3>
+                      <p className="text-xs font-bold text-[#FF6B35] mt-0.5">{card.subtitle}</p>
+                    </div>
+
+                    <p className="font-medium text-xs sm:text-sm leading-relaxed" style={{ color: C.textMuted }}>
+                      {card.description}
+                    </p>
+
+                    <ul className="space-y-1.5 text-xs font-bold pt-1">
+                      {card.benefits.map((b, bIdx) => (
+                        <li key={bIdx} className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <span>{b}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="pt-5">
+                    <Button
+                      onClick={card.action}
+                      className={`w-full h-12 rounded-xl ${nb.button} font-black text-xs shadow-[3px_3px_0px_#000]`}
+                      style={{ backgroundColor: card.accentColor, color: C.black }}
+                    >
+                      {card.buttonLabel}
+                    </Button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Controles da Pilha de Cartas */}
+          <div className="flex flex-col items-center justify-center gap-3 mt-8">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={prevDeckCard}
+                className={`w-11 h-11 rounded-xl ${nb.border} shadow-[3px_3px_0px_#1A1A1A] flex items-center justify-center font-black transition-all hover:translate-x-[1px] hover:translate-y-[1px]`}
+                style={{ backgroundColor: C.yellow, color: C.black }}
+                title="Carta Anterior"
+              >
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              </button>
+
+              {/* Indicadores de bolinha */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border-[2px] border-black bg-white dark:bg-zinc-900 shadow-[2px_2px_0px_#000]">
+                {differentialCards.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCardDeckIndex(i)}
+                    className={`h-2.5 rounded-full transition-all ${
+                      cardDeckIndex === i ? "w-7 bg-black dark:bg-white" : "w-2.5 bg-gray-300 dark:bg-gray-600"
+                    }`}
+                  />
+                ))}
               </div>
+
+              <button
+                type="button"
+                onClick={nextDeckCard}
+                className={`w-11 h-11 rounded-xl ${nb.border} shadow-[3px_3px_0px_#1A1A1A] flex items-center justify-center font-black transition-all hover:translate-x-[1px] hover:translate-y-[1px]`}
+                style={{ backgroundColor: C.yellow, color: C.black }}
+                title="Próxima Carta"
+              >
+                <ChevronRight className="w-5 h-5 stroke-[2.5]" />
+              </button>
             </div>
 
-            {/* MODO 2: Anti-Penetras */}
-            <div 
-              className={`p-8 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] flex flex-col justify-between`}
-              style={{ backgroundColor: C.cardBg }}
-            >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className={`w-14 h-14 rounded-2xl ${nb.border} flex items-center justify-center text-3xl shadow-[3px_3px_0px_#1A1A1A]`} style={{ backgroundColor: C.sky }}>
-                    🛡️
-                  </div>
-                  <span className="px-3 py-1 rounded-full border-[2px] border-black font-black text-xs bg-white uppercase">
-                    Blindado
-                  </span>
-                </div>
-
-                <h3 className="text-2xl font-black">Convites Anti-Penetras</h3>
-                <p className="font-medium text-sm leading-relaxed" style={{ color: C.textMuted }}>
-                  Você pré-cadastra a lista de convidados autorizados. O ReUNE gera um link exclusivo para cada um. Ninguém de fora consegue se infiltrar no sorteio!
-                </p>
-
-                <ul className="space-y-2.5 text-xs font-bold pt-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <span>Link e token exclusivo por pessoa (intransferível)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <WhatsAppIcon className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <span>Botão direto para mandar no WhatsApp de cada amigo</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <span>Perfeito para firmas, equipes e orçamentos fechados</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="pt-6">
-                <Button
-                  onClick={handleStartClick}
-                  className={`w-full h-12 rounded-xl ${nb.button} font-black text-xs`}
-                  style={{ backgroundColor: C.sky, color: C.black }}
-                >
-                  USAR MODO ANTI-PENETRAS ➔
-                </Button>
-              </div>
-            </div>
+            <p className="text-[11px] font-black uppercase text-gray-500 tracking-wider">
+              👉 Deslize a carta para os lados ou use as setas
+            </p>
           </div>
         </div>
       </section>
 
-      {/* ═══ COMO FUNCIONA EM 3 PASSOS ═══ */}
-      <section className="py-20 px-4 max-w-6xl mx-auto">
-        <div className="text-center max-w-2xl mx-auto mb-16">
+      {/* ═══ COMO FUNCIONA: HORIZONTALIDADE & ECONOMIA DE SCROLL (ITEM 3) ═══ */}
+      <section className="py-16 md:py-24 px-4 max-w-6xl mx-auto">
+        <div className="text-center max-w-2xl mx-auto mb-12">
           <div 
             className={`inline-flex items-center px-4 py-1.5 rounded-full ${nb.border} shadow-[3px_3px_0px_#1A1A1A] mb-3 font-black text-xs uppercase`}
             style={{ backgroundColor: C.yellow, color: C.black }}
           >
             Simples Demais
           </div>
-          <h2 className="text-3xl md:text-5xl font-black mb-4">
+          <h2 className="text-3xl md:text-5xl font-black mb-3">
             Como funciona em 3 passos
           </h2>
           <p className="text-sm md:text-base font-bold" style={{ color: C.textMuted }}>
@@ -495,124 +797,229 @@ export default function SecretSantaLanding() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          {[
-            {
-              step: "01",
-              title: "Defina as Regras",
-              desc: "Escolha o nome do grupo, o valor sugerido dos presentes (R$ 30, R$ 50, R$ 100...) e a data do sorteio.",
-              emoji: "⚙️",
-              bg: C.yellow
-            },
-            {
-              step: "02",
-              title: "Mande no WhatsApp",
-              desc: "Compartilhe o convite pronto com um clique. Cada amigo entra, coloca o que quer ganhar e cria seu PIN.",
-              emoji: "📲",
-              bg: C.pink
-            },
-            {
-              step: "03",
-              title: "Sorteio & Revelação",
-              desc: "Com um clique o sorteio acontece. Cada pessoa abre o link, digita o seu PIN e descobre quem tirou sem spoilers!",
-              emoji: "🎉",
-              bg: C.mint
-            }
-          ].map((item, idx) => (
-            <div
-              key={idx}
-              className={`p-8 rounded-3xl ${nb.border} shadow-[6px_6px_0px_#1A1A1A] relative flex flex-col justify-between`}
-              style={{ backgroundColor: C.cardBg }}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <div className={`w-12 h-12 rounded-2xl ${nb.border} flex items-center justify-center text-2xl shadow-[2px_2px_0px_#1A1A1A]`} style={{ backgroundColor: item.bg }}>
-                    {item.emoji}
+        {/* ── VERSÃO DESKTOP: 3 Cards Horizontais com Setas Conectoras ── */}
+        <div className="hidden md:flex items-center justify-between gap-4">
+          {steps.map((item, idx) => (
+            <div key={idx} className="flex-1 flex items-center gap-3">
+              <div
+                className={`flex-1 p-6 lg:p-7 rounded-3xl ${nb.border} shadow-[6px_6px_0px_#1A1A1A] relative flex flex-col justify-between min-h-[260px]`}
+                style={{ backgroundColor: C.cardBg }}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div 
+                      className={`w-12 h-12 rounded-2xl ${nb.border} flex items-center justify-center text-2xl shadow-[2px_2px_0px_#1A1A1A]`}
+                      style={{ backgroundColor: item.bg }}
+                    >
+                      {item.emoji}
+                    </div>
+                    <span className="font-black text-3xl opacity-25">
+                      {item.step}
+                    </span>
                   </div>
-                  <span className="font-black text-4xl opacity-30">
-                    {item.step}
-                  </span>
+                  <h3 className="text-lg font-black mb-2">{item.title}</h3>
+                  <p className="text-xs font-medium leading-relaxed" style={{ color: C.textMuted }}>
+                    {item.desc}
+                  </p>
                 </div>
-                <h3 className="text-xl font-black mb-2">{item.title}</h3>
-                <p className="text-xs md:text-sm font-medium leading-relaxed" style={{ color: C.textMuted }}>
-                  {item.desc}
-                </p>
               </div>
+
+              {/* Seta conectora entre os cards (exceto no último) */}
+              {idx < steps.length - 1 && (
+                <div className="w-9 h-9 rounded-full border-[2px] border-black bg-[#FFD93D] flex items-center justify-center shadow-[2px_2px_0px_#000] flex-shrink-0 transform rotate-0">
+                  <ArrowRight className="w-5 h-5 text-black stroke-[3]" />
+                </div>
+              )}
             </div>
           ))}
         </div>
+
+        {/* ── VERSÃO MOBILE: Carrossel Snap Horizontal (Economiza 450px de Scroll Vertical) ── */}
+        <div className="block md:hidden">
+          <div 
+            ref={howCarouselRef}
+            className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 px-2 scrollbar-none"
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              const cardW = el.clientWidth * 0.82;
+              const idx = Math.round(el.scrollLeft / cardW);
+              if (idx >= 0 && idx < steps.length && idx !== howStepIndex) {
+                setHowStepIndex(idx);
+              }
+            }}
+          >
+            {steps.map((item, idx) => (
+              <div
+                key={idx}
+                className={`w-[82vw] max-w-[320px] shrink-0 snap-center p-6 rounded-3xl ${nb.border} shadow-[6px_6px_0px_#1A1A1A] flex flex-col justify-between min-h-[240px]`}
+                style={{ backgroundColor: C.cardBg }}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div 
+                      className={`w-12 h-12 rounded-2xl ${nb.border} flex items-center justify-center text-2xl shadow-[2px_2px_0px_#1A1A1A]`}
+                      style={{ backgroundColor: item.bg }}
+                    >
+                      {item.emoji}
+                    </div>
+                    <span className="font-black text-3xl opacity-30">
+                      {item.step}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black mb-1.5">{item.title}</h3>
+                  <p className="text-xs font-medium leading-relaxed" style={{ color: C.textMuted }}>
+                    {item.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Indicador de Bolinhas do Carrossel Mobile */}
+          <div className="flex items-center justify-center gap-2 pt-2">
+            {steps.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => scrollHowCarouselTo(i)}
+                className={`h-2.5 rounded-full transition-all ${
+                  howStepIndex === i ? "w-6 bg-black dark:bg-white" : "w-2.5 bg-gray-300 dark:bg-gray-600"
+                }`}
+              />
+            ))}
+          </div>
+          <p className="text-center text-[10px] font-black uppercase text-gray-500 tracking-wider mt-2">
+            👉 Deslize horizontalmente para ver os 3 passos
+          </p>
+        </div>
       </section>
 
-      {/* ═══ BENEFÍCIOS QUE MATAM OBJEÇÕES ═══ */}
-      <section className="py-20 px-4 border-t-[3px] border-black" style={{ backgroundColor: C.sectionBg }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-5xl font-black mb-4">
+      {/* ═══ POR QUE ABANDONAR O PAPELZINHO: TRILHA SINUOSA EM 'S' (ITEM 4) ═══ */}
+      <section className="py-16 md:py-24 px-4 border-t-[3px] border-black" style={{ backgroundColor: C.sectionBg }}>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <h2 className="text-3xl md:text-5xl font-black mb-3">
               Por que abandonar o papelzinho?
             </h2>
             <p className="text-sm md:text-base font-bold" style={{ color: C.textMuted }}>
-              Problemas clássicos que o ReUNE resolve de uma vez por todas.
+              Siga a jornada e veja os problemas clássicos que o ReUNE resolve de uma vez por todas.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                icon: Shuffle,
-                title: "Sem Marmelada",
-                desc: "Algoritmo certificado: ninguém tira a si mesmo e ninguém tira o mesmo amigo duas vezes.",
-                color: C.orange
-              },
-              {
-                icon: Gift,
-                title: "Lista de Desejos",
-                desc: "Cada participante escreve 3 coisas que adoraria ganhar. Acabou o medo de receber presente ruim.",
-                color: C.yellow
-              },
-              {
-                icon: MapPin,
-                title: "A Festa Conectada",
-                desc: "Local da revelação com mapa e rotas diretas para Uber, Waze e Google Maps.",
-                color: C.mint
-              },
-              {
-                icon: Lock,
-                title: "Segredo Absoluto",
-                desc: "Nem o organizador sabe quem tirou quem. A surpresa fica guardada a sete chaves até a festa.",
-                color: C.sky
-              }
-            ].map((b, i) => (
-              <div
-                key={i}
-                className={`p-6 rounded-3xl ${nb.border} shadow-[6px_6px_0px_#1A1A1A] space-y-3`}
-                style={{ backgroundColor: C.cardBg }}
-              >
-                <div 
-                  className={`w-12 h-12 rounded-2xl ${nb.border} flex items-center justify-center shadow-[3px_3px_0px_#1A1A1A]`}
-                  style={{ backgroundColor: b.color }}
-                >
-                  <b.icon className="w-6 h-6 text-black" />
+          {/* ── TRILHA EM 'S' NO DESKTOP (Alternada com Linha Central) ── */}
+          <div className="hidden md:block relative py-4">
+            {/* Linha Vertical Tracejada no Centro */}
+            <div className="absolute top-8 bottom-8 left-1/2 -translate-x-1/2 w-1 border-r-[3px] border-dashed border-black/40 dark:border-white/40 pointer-events-none" />
+
+            <div className="space-y-12 relative">
+              {pathMilestones.map((m, idx) => {
+                const isLeft = idx % 2 === 0;
+
+                return (
+                  <div key={idx} className="flex items-center justify-between gap-8 relative">
+                    {/* Lado Esquerdo */}
+                    <div className="w-1/2 flex justify-end">
+                      {isLeft && (
+                        <div 
+                          className={`w-full max-w-sm p-6 rounded-3xl ${nb.border} shadow-[6px_6px_0px_#1A1A1A] space-y-2`}
+                          style={{ backgroundColor: C.cardBg }}
+                        >
+                          <span 
+                            className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-black inline-block shadow-[1px_1px_0px_#000]"
+                            style={{ backgroundColor: m.color, color: C.black }}
+                          >
+                            {m.badge}
+                          </span>
+                          <h3 className="text-lg font-black">{m.title}</h3>
+                          <p className="text-xs font-semibold leading-relaxed" style={{ color: C.textMuted }}>
+                            {m.desc}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Nó Central Numerado com Linha Conectora */}
+                    <div 
+                      className={`w-14 h-14 rounded-full ${nb.border} flex items-center justify-center font-black text-xl shadow-[4px_4px_0px_#1A1A1A] z-10 flex-shrink-0 transition-transform hover:scale-110`}
+                      style={{ backgroundColor: m.color, color: C.black }}
+                    >
+                      <m.icon className="w-6 h-6 stroke-[2.5]" />
+                    </div>
+
+                    {/* Lado Direito */}
+                    <div className="w-1/2 flex justify-start">
+                      {!isLeft && (
+                        <div 
+                          className={`w-full max-w-sm p-6 rounded-3xl ${nb.border} shadow-[6px_6px_0px_#1A1A1A] space-y-2`}
+                          style={{ backgroundColor: C.cardBg }}
+                        >
+                          <span 
+                            className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-black inline-block shadow-[1px_1px_0px_#000]"
+                            style={{ backgroundColor: m.color, color: C.black }}
+                          >
+                            {m.badge}
+                          </span>
+                          <h3 className="text-lg font-black">{m.title}</h3>
+                          <p className="text-xs font-semibold leading-relaxed" style={{ color: C.textMuted }}>
+                            {m.desc}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── TRILHA EM 'S' NO MOBILE (Timeline com Linha Lateral e Nós Coloridos) ── */}
+          <div className="block md:hidden relative pl-6">
+            {/* Linha Lateral Tracejada */}
+            <div className="absolute top-4 bottom-4 left-6 w-1 border-r-[3px] border-dashed border-black/40 dark:border-white/40 pointer-events-none" />
+
+            <div className="space-y-6 relative">
+              {pathMilestones.map((m, idx) => (
+                <div key={idx} className="flex items-start gap-4">
+                  {/* Nó Numerado Lateral */}
+                  <div 
+                    className={`w-11 h-11 rounded-2xl ${nb.border} flex items-center justify-center font-black text-base shadow-[3px_3px_0px_#1A1A1A] z-10 flex-shrink-0 mt-2`}
+                    style={{ backgroundColor: m.color, color: C.black }}
+                  >
+                    <m.icon className="w-5 h-5 stroke-[2.5]" />
+                  </div>
+
+                  {/* Card do Marco */}
+                  <div 
+                    className={`flex-1 p-5 rounded-2xl ${nb.border} shadow-[4px_4px_0px_#1A1A1A] space-y-1.5`}
+                    style={{ backgroundColor: C.cardBg }}
+                  >
+                    <span 
+                      className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-black inline-block"
+                      style={{ backgroundColor: m.color, color: C.black }}
+                    >
+                      {m.badge}
+                    </span>
+                    <h3 className="text-base font-black">{m.title}</h3>
+                    <p className="text-xs font-medium leading-relaxed" style={{ color: C.textMuted }}>
+                      {m.desc}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-lg font-black">{b.title}</h3>
-                <p className="text-xs font-semibold leading-relaxed" style={{ color: C.textMuted }}>
-                  {b.desc}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ═══ CASOS DE USO & CÍRCULOS MODERNOS ═══ */}
-      <section className="py-20 px-4 max-w-6xl mx-auto">
-        <div className="text-center max-w-2xl mx-auto mb-16">
+      <section className="py-16 md:py-24 px-4 max-w-6xl mx-auto">
+        <div className="text-center max-w-2xl mx-auto mb-12">
           <div 
             className={`inline-flex items-center px-4 py-1.5 rounded-full ${nb.border} shadow-[3px_3px_0px_#1A1A1A] mb-3 font-black text-xs uppercase`}
             style={{ backgroundColor: C.lavender, color: C.black }}
           >
             Seu Grupo, Suas Regras
           </div>
-          <h2 className="text-3xl md:text-5xl font-black mb-4">
+          <h2 className="text-3xl md:text-5xl font-black mb-3">
             Qual é a turma do seu Amigo Secreto?
           </h2>
           <p className="text-sm md:text-base font-bold" style={{ color: C.textMuted }}>
@@ -718,9 +1125,9 @@ export default function SecretSantaLanding() {
       </section>
 
       {/* ═══ FAQ SECTION ═══ */}
-      <section className="py-20 px-4 border-t-[3px] border-black" style={{ backgroundColor: C.sectionBg }}>
+      <section className="py-16 md:py-24 px-4 border-t-[3px] border-black" style={{ backgroundColor: C.sectionBg }}>
         <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-10">
             <h2 className="text-3xl md:text-5xl font-black mb-3">
               Perguntas Frequentes
             </h2>
@@ -765,10 +1172,10 @@ export default function SecretSantaLanding() {
         </div>
       </section>
 
-      {/* ═══ CTA FINAL ═══ */}
-      <section className="py-20 px-4 text-center max-w-4xl mx-auto">
+      {/* ═══ CTA FINAL: CORREÇÃO DE DIAGRAMAÇÃO E BOTÃO SEM TRUNCAMENTO (ITEM 5) ═══ */}
+      <section className="py-16 md:py-24 px-4 text-center max-w-4xl mx-auto mb-16 md:mb-0">
         <div 
-          className={`p-8 md:p-14 rounded-3xl ${nb.border} shadow-[10px_10px_0px_#1A1A1A] space-y-6`}
+          className={`p-6 sm:p-10 md:p-14 rounded-3xl ${nb.border} shadow-[10px_10px_0px_#1A1A1A] space-y-6`}
           style={{ backgroundColor: C.yellow }}
         >
           <div className="inline-block p-4 rounded-2xl border-[3px] border-black bg-white text-3xl shadow-[4px_4px_0px_#1A1A1A] transform -rotate-3">
@@ -781,16 +1188,25 @@ export default function SecretSantaLanding() {
             Crie seu grupo agora, mande o link no WhatsApp e garanta que o Amigo Secreto da galera seja inesquecível!
           </p>
 
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col items-center justify-center gap-3">
             <Button
               size="lg"
               onClick={handleStartClick}
               disabled={authLoading}
-              className={`h-16 px-10 text-lg md:text-xl rounded-2xl ${nb.button} bg-black hover:bg-gray-800 text-white shadow-[6px_6px_0px_#FFF]`}
+              className={`min-h-[58px] py-4 px-4 sm:px-8 text-sm sm:text-base md:text-xl rounded-2xl ${nb.button} bg-black hover:bg-gray-800 text-white shadow-[6px_6px_0px_#FFF] w-full max-w-md mx-auto whitespace-normal leading-snug flex items-center justify-center gap-2.5 touch-press`}
             >
-              <Sparkles className="w-5 h-5 mr-3 text-[#FFD93D]" />
-              CRIAR MEU AMIGO SECRETO GRÁTIS
+              <Sparkles className="w-5 h-5 text-[#FFD93D] flex-shrink-0" />
+              <span className="font-black text-center">CRIAR MEU AMIGO SECRETO GRÁTIS</span>
             </Button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/amigo-secreto/rapido')}
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-black underline text-black hover:text-gray-800 transition-colors pt-1"
+            >
+              <Zap className="w-4 h-4 fill-black" />
+              <span>Quer praticidade imediata? Sorteie sem cadastro em 1 minuto ➔</span>
+            </button>
           </div>
         </div>
       </section>
