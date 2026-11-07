@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
 import { 
   Gift, 
   Users, 
@@ -68,6 +68,14 @@ export default function SecretSantaLanding() {
 
   /* ── 2. Card Deck Swipe State (O Grande Diferencial) ─────────────────── */
   const [cardDeckIndex, setCardDeckIndex] = useState(0);
+  const [isDismissing, setIsDismissing] = useState(false);
+  const deckX = useMotionValue(0);
+  const deckRotate = useTransform(deckX, [-300, 0, 300], [-14, 0, 14]);
+  const deckOpacity = useTransform(deckX, [-450, -250, 0, 250, 450], [0, 1, 1, 1, 0]);
+  const nextScale = useTransform(deckX, [-250, 0, 250], [1, 0.94, 1]);
+  const nextOpacity = useTransform(deckX, [-250, 0, 250], [1, 0.85, 1]);
+  const nextY = useTransform(deckX, [-250, 0, 250], [0, 14, 0]);
+  const nextRotate = useTransform(deckX, [-250, 0, 250], [0, 2.5, 0]);
 
   /* ── 3. Como Funciona (Mobile Carousel State) ────────────────────────── */
   const [howStepIndex, setHowStepIndex] = useState(0);
@@ -188,12 +196,103 @@ export default function SecretSantaLanding() {
   ];
 
   const nextDeckCard = () => {
-    setCardDeckIndex((prev) => (prev + 1) % differentialCards.length);
+    if (isDismissing) return;
+    setIsDismissing(true);
+    animate(deckX, -550, {
+      duration: 0.24,
+      ease: "easeOut",
+      onComplete: () => {
+        deckX.set(0);
+        setCardDeckIndex((prev) => (prev + 1) % differentialCards.length);
+        setIsDismissing(false);
+      }
+    });
   };
 
   const prevDeckCard = () => {
+    if (isDismissing) return;
+    deckX.set(0);
     setCardDeckIndex((prev) => (prev - 1 + differentialCards.length) % differentialCards.length);
   };
+
+  const handleDeckDragEnd = (_: any, info: any) => {
+    if (isDismissing) return;
+    const threshold = 60;
+    const velocityThreshold = 300;
+
+    if (Math.abs(info.offset.x) > threshold || Math.abs(info.velocity.x) > velocityThreshold) {
+      setIsDismissing(true);
+      const targetX = info.offset.x > 0 ? 550 : -550;
+      animate(deckX, targetX, {
+        duration: 0.24,
+        ease: "easeOut",
+        onComplete: () => {
+          deckX.set(0);
+          setCardDeckIndex((prev) => (prev + 1) % differentialCards.length);
+          setIsDismissing(false);
+        }
+      });
+    } else {
+      animate(deckX, 0, {
+        type: "spring",
+        stiffness: 450,
+        damping: 30
+      });
+    }
+  };
+
+  /* ── 3 Cartas Atuais da Pilha Dinâmica ── */
+  const topCard = differentialCards[cardDeckIndex];
+  const nextCard = differentialCards[(cardDeckIndex + 1) % differentialCards.length];
+  const thirdCard = differentialCards[(cardDeckIndex + 2) % differentialCards.length];
+
+  const renderCardBody = (card: typeof differentialCards[0]) => (
+    <div className="space-y-3 sm:space-y-4">
+      {/* Header do Card */}
+      <div className="flex items-center justify-between">
+        <div 
+          className={`w-12 h-12 rounded-2xl ${nb.border} flex items-center justify-center text-2xl shadow-[3px_3px_0px_#1A1A1A]`}
+          style={{ backgroundColor: card.iconBg }}
+        >
+          {card.icon}
+        </div>
+        <span 
+          className="px-2.5 py-1 rounded-full border-[2px] border-black font-black text-[11px] sm:text-xs uppercase shadow-[2px_2px_0px_#000]"
+          style={{ backgroundColor: card.tagBg, color: C.black }}
+        >
+          {card.tag}
+        </span>
+      </div>
+
+      <div>
+        <h3 className="text-xl sm:text-2xl font-black">{card.title}</h3>
+        <p className="text-xs font-bold text-[#FF6B35] mt-0.5">{card.subtitle}</p>
+      </div>
+
+      <p className="font-medium text-xs sm:text-sm leading-relaxed" style={{ color: C.textMuted }}>
+        {card.description}
+      </p>
+
+      <ul className="space-y-1.5 text-xs font-bold pt-1">
+        {card.benefits.map((b, bIdx) => (
+          <li key={bIdx} className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <span>{b}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="pt-4 sm:pt-5">
+        <Button
+          onClick={card.action}
+          className={`w-full h-12 rounded-xl ${nb.button} font-black text-xs shadow-[3px_3px_0px_#000]`}
+          style={{ backgroundColor: card.accentColor, color: C.black }}
+        >
+          {card.buttonLabel}
+        </Button>
+      </div>
+    </div>
+  );
 
   /* ── Passos do Como Funciona ── */
   const steps = [
@@ -651,89 +750,58 @@ export default function SecretSantaLanding() {
 
           {/* PILHA DE CARTAS NEOBRUTALISTA COM FRAMER MOTION */}
           <div className="relative w-full max-w-lg mx-auto min-h-[430px] sm:min-h-[400px] flex items-center justify-center">
-            {differentialCards.map((card, idx) => {
-              // Cálculo da posição no deck empilhado
-              const offset = (idx - cardDeckIndex + differentialCards.length) % differentialCards.length;
-              const isTop = offset === 0;
-              const isSecond = offset === 1;
-              const isThird = offset === 2;
+            {/* 3ª Carta (Fundo da Pilha) */}
+            <motion.div
+              key={`third-${thirdCard.id}`}
+              className={`absolute inset-x-0 top-0 p-5 sm:p-7 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] pointer-events-none select-none`}
+              style={{
+                backgroundColor: thirdCard.cardBg,
+                scale: 0.88,
+                y: 26,
+                rotate: -2.5,
+                opacity: 0.5,
+                zIndex: 10
+              }}
+            >
+              {renderCardBody(thirdCard)}
+            </motion.div>
 
-              if (offset > 2) return null;
+            {/* 2ª Carta (Imediatamente Abaixo do Topo - Sobe Fluidamente ao Jogar a Superior) */}
+            <motion.div
+              key={`next-${nextCard.id}`}
+              className={`absolute inset-x-0 top-0 p-5 sm:p-7 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] pointer-events-none select-none`}
+              style={{
+                backgroundColor: nextCard.cardBg,
+                scale: nextScale,
+                y: nextY,
+                rotate: nextRotate,
+                opacity: nextOpacity,
+                zIndex: 20
+              }}
+            >
+              {renderCardBody(nextCard)}
+            </motion.div>
 
-              return (
-                <motion.div
-                  key={card.id}
-                  drag={isTop ? "x" : false}
-                  dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.65}
-                  onDragEnd={(_, info) => {
-                    if (info.offset.x < -70) {
-                      nextDeckCard();
-                    } else if (info.offset.x > 70) {
-                      prevDeckCard();
-                    }
-                  }}
-                  animate={{
-                    scale: isTop ? 1 : isSecond ? 0.94 : 0.88,
-                    y: isTop ? 0 : isSecond ? 14 : 26,
-                    rotate: isTop ? 0 : isSecond ? 2.5 : -2.5,
-                    zIndex: isTop ? 30 : isSecond ? 20 : 10,
-                    opacity: isTop ? 1 : isSecond ? 0.85 : 0.5,
-                  }}
-                  transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                  className={`absolute inset-x-0 top-0 p-5 sm:p-7 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] flex flex-col justify-between select-none ${
-                    isTop ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"
-                  }`}
-                  style={{ backgroundColor: card.cardBg }}
-                >
-                  <div className="space-y-3 sm:space-y-4">
-                    {/* Header do Card */}
-                    <div className="flex items-center justify-between">
-                      <div 
-                        className={`w-12 h-12 rounded-2xl ${nb.border} flex items-center justify-center text-2xl shadow-[3px_3px_0px_#1A1A1A]`}
-                        style={{ backgroundColor: card.iconBg }}
-                      >
-                        {card.icon}
-                      </div>
-                      <span 
-                        className="px-2.5 py-1 rounded-full border-[2px] border-black font-black text-[11px] sm:text-xs uppercase shadow-[2px_2px_0px_#000]"
-                        style={{ backgroundColor: card.tagBg, color: C.black }}
-                      >
-                        {card.tag}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h3 className="text-xl sm:text-2xl font-black">{card.title}</h3>
-                      <p className="text-xs font-bold text-[#FF6B35] mt-0.5">{card.subtitle}</p>
-                    </div>
-
-                    <p className="font-medium text-xs sm:text-sm leading-relaxed" style={{ color: C.textMuted }}>
-                      {card.description}
-                    </p>
-
-                    <ul className="space-y-1.5 text-xs font-bold pt-1">
-                      {card.benefits.map((b, bIdx) => (
-                        <li key={bIdx} className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                          <span>{b}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="pt-5">
-                    <Button
-                      onClick={card.action}
-                      className={`w-full h-12 rounded-xl ${nb.button} font-black text-xs shadow-[3px_3px_0px_#000]`}
-                      style={{ backgroundColor: card.accentColor, color: C.black }}
-                    >
-                      {card.buttonLabel}
-                    </Button>
-                  </div>
-                </motion.div>
-              );
-            })}
+            {/* 1ª Carta (Topo Interativo - Jogável com Física de Arrasto e Fling Suave) */}
+            <motion.div
+              key={`top-${topCard.id}`}
+              drag={!isDismissing ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.65}
+              onDragEnd={handleDeckDragEnd}
+              className={`absolute inset-x-0 top-0 p-5 sm:p-7 rounded-3xl ${nb.border} shadow-[8px_8px_0px_#1A1A1A] select-none ${
+                !isDismissing ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"
+              }`}
+              style={{
+                backgroundColor: topCard.cardBg,
+                x: deckX,
+                rotate: deckRotate,
+                opacity: deckOpacity,
+                zIndex: 30
+              }}
+            >
+              {renderCardBody(topCard)}
+            </motion.div>
           </div>
 
           {/* Controles da Pilha de Cartas */}
@@ -754,7 +822,11 @@ export default function SecretSantaLanding() {
                 {differentialCards.map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => setCardDeckIndex(i)}
+                    onClick={() => {
+                      if (isDismissing || cardDeckIndex === i) return;
+                      deckX.set(0);
+                      setCardDeckIndex(i);
+                    }}
                     className={`h-2.5 rounded-full transition-all ${
                       cardDeckIndex === i ? "w-7 bg-black dark:bg-white" : "w-2.5 bg-gray-300 dark:bg-gray-600"
                     }`}

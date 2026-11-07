@@ -34,3 +34,4 @@ Implementar as 5 melhorias visuais e ergonômicas aprovadas na Landing Page do A
 - [x] 6. Build & Validação TypeScript (`npm run build`)
 - [x] 7. Teste de tela mobile real com Playwright e captura de screenshots
 - [x] 8. Commit e Push para branch `main` (deploy Vercel)
+- [x] 9. Fix Card Stack Fling & Sync: Correção da consistência visual entre a prévia do card de baixo durante o arrasto e o card final (fling com `animate`, `useMotionValue` e transições de `scale`/`opacity` sincronizadas)
