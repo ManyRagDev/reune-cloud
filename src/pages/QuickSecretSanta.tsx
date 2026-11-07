@@ -152,7 +152,12 @@ export default function QuickSecretSanta() {
         participants: res.participants,
       });
 
-      analytics.secretSanta.drawCompleted(participants.length);
+      // Rastreia conversão no GA4 (100% LGPD - dados operacionais anônimos)
+      analytics.secretSanta.quickDrawCreated({
+        participantsCount: participants.length,
+        title: res.title || title.trim() || 'Amigo Secreto',
+        drawId: res.draw_id,
+      });
       setShowConfetti(true);
       toast.success('🎉 Sorteio realizado com sucesso! Envelopes lacrados gerados!');
     } catch (err: any) {

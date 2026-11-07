@@ -30,4 +30,4 @@
 - [x] **029-telegram-signup-notification** - Notificação de Novos Cadastros via Telegram Bot & Supabase Webhook `[.conductor/tracks/029-telegram-signup-notification/plan.md]`
 - [x] **030-google-analytics-integration** - Integração com Google Analytics 4 (GA4) `[.conductor/tracks/030-google-analytics-integration/plan.md]`
 - [x] **031-admin-user-management-panel** - Painel Administrativo de Usuários com Acesso Restrito e Launcher Global `[.conductor/tracks/031-admin-user-management-panel/plan.md]`
-- [ ] **032-legal-terms-privacy-lgpd-and-footer-cleanup** - Revisão dos Termos de Uso, Política de Privacidade com LGPD e Limpeza do Rodapé `[.conductor/tracks/032-legal-terms-privacy-lgpd-and-footer-cleanup/plan.md]`
+- [x] **032-legal-terms-privacy-lgpd-and-footer-cleanup** - Revisão dos Termos de Uso, Política de Privacidade com LGPD e Limpeza do Rodapé `[.conductor/tracks/032-legal-terms-privacy-lgpd-and-footer-cleanup/plan.md]`

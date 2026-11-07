@@ -75,12 +75,37 @@ export const analytics = {
       });
     },
 
-    // Realização do sorteio relâmpago
+    // Realização do sorteio relâmpago (Legado / Compatibilidade)
     drawCompleted: (participantsCount: number) => {
       trackEvent("secret_santa_draw_completed", {
         category: "conversion",
         label: `${participantsCount} participantes`,
         value: participantsCount,
+      });
+    },
+
+    // Criação de Amigo Secreto sem cadastro (100% em conformidade com LGPD - sem PII)
+    quickDrawCreated: (params: {
+      participantsCount: number;
+      title?: string;
+      drawId?: string;
+    }) => {
+      trackEvent("amigo_secreto_sem_cadastro_criado", {
+        category: "conversion",
+        label: `${params.participantsCount} participantes`,
+        value: params.participantsCount,
+        participants_count: params.participantsCount,
+        group_title: params.title || "Amigo Secreto",
+        draw_id: params.drawId,
+        method: "sem_cadastro",
+      });
+
+      trackEvent("secret_santa_draw_completed", {
+        category: "conversion",
+        label: `${params.participantsCount} participantes`,
+        value: params.participantsCount,
+        participants_count: params.participantsCount,
+        group_title: params.title || "Amigo Secreto",
       });
     },
 

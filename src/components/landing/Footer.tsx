@@ -15,7 +15,7 @@ export const Footer = ({ palette }: FooterProps) => {
       style={{ backgroundColor: C.sectionBg, color: C.text }}
     >
       <div className="container max-w-7xl mx-auto">
-        <div className="grid md:grid-cols-4 gap-8 mb-12">
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
           {/* Brand */}
           <div className="space-y-4">
             <div
@@ -40,24 +40,7 @@ export const Footer = ({ palette }: FooterProps) => {
               </li>
               <li>
                 <a href="/privacidade" className="hover:underline opacity-80 hover:opacity-100">
-                  Política de Privacidade
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Links */}
-          <div>
-            <h4 className="font-black mb-4 text-lg">Recursos</h4>
-            <ul className="space-y-3 text-sm font-medium">
-              <li>
-                <a href="/status" className="hover:underline opacity-80 hover:opacity-100">
-                  Status do Sistema
-                </a>
-              </li>
-              <li>
-                <a href="/presskit" className="hover:underline opacity-80 hover:opacity-100">
-                  Press Kit
+                  Política de Privacidade & LGPD
                 </a>
               </li>
             </ul>

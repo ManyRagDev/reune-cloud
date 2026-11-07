@@ -61,4 +61,22 @@ describe("Analytics Utility (GA4)", () => {
       share_type: "quick_individual",
     });
   });
+
+  it("deve disparar evento de criação sem cadastro (LGPD safe)", () => {
+    analytics.secretSanta.quickDrawCreated({
+      participantsCount: 8,
+      title: "Amigos da Firma",
+      drawId: "draw-123-uuid",
+    });
+
+    expect(window.gtag).toHaveBeenCalledWith("event", "amigo_secreto_sem_cadastro_criado", {
+      event_category: "conversion",
+      event_label: "8 participantes",
+      value: 8,
+      participants_count: 8,
+      group_title: "Amigos da Firma",
+      draw_id: "draw-123-uuid",
+      method: "sem_cadastro",
+    });
+  });
 });
