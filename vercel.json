@@ -1,6 +1,22 @@
 {
   "rewrites": [
     {
+      "source": "/amigo-secreto",
+      "destination": "/amigo-secreto.html"
+    },
+    {
+      "source": "/amigo-secreto/(.*)",
+      "destination": "/amigo-secreto.html"
+    },
+    {
+      "source": "/envelope/(.*)",
+      "destination": "/amigo-secreto.html"
+    },
+    {
+      "source": "/amigo/(.*)",
+      "destination": "/amigo-secreto.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

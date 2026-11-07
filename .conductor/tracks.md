@@ -22,3 +22,4 @@
 - [x] **021-secret-santa-copy-refinements-and-whatsapp-branding** - Refinamento de Copy do Amigo Secreto & Padronização da Marca WhatsApp `[.conductor/tracks/021-secret-santa-copy-refinements-and-whatsapp-branding/plan.md]`
 - [x] **022-full-app-e2e-audit-and-qa** - Auditoria Completa de Usabilidade e Testes E2E com Navegador Real (ReUNE & Amigo Secreto) `[.conductor/tracks/022-full-app-e2e-audit-and-qa/plan.md]`
 - [x] **023-mobile-first-ui-ux-polish** - Otimização Mobile-First, Micro-Interações e Feedback Visual Fluido `[.conductor/tracks/023-mobile-first-ui-ux-polish/plan.md]`
+- [x] **024-og-thumbnails-redesign** - Redesign das Thumbnails de Prévia do WhatsApp/Redes (ReUNE Geral & Amigo Secreto) `[.conductor/tracks/024-og-thumbnails-redesign/plan.md]`
