@@ -28,6 +28,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import StudioPreview from "./pages/StudioPreview";
 import { AnalyticsTracker } from "./components/AnalyticsTracker";
+import { AdminFloatingButton } from "./components/admin/AdminFloatingButton";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <AnalyticsTracker />
+          <AdminFloatingButton />
           <Routes>
             <Route path="/" element={<LandingV3 />} />
             <Route path="/v3" element={<LandingV3 />} />
