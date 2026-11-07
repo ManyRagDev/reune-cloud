@@ -23,3 +23,4 @@
 - [x] **022-full-app-e2e-audit-and-qa** - Auditoria Completa de Usabilidade e Testes E2E com Navegador Real (ReUNE & Amigo Secreto) `[.conductor/tracks/022-full-app-e2e-audit-and-qa/plan.md]`
 - [x] **023-mobile-first-ui-ux-polish** - Otimização Mobile-First, Micro-Interações e Feedback Visual Fluido `[.conductor/tracks/023-mobile-first-ui-ux-polish/plan.md]`
 - [x] **024-og-thumbnails-redesign** - Redesign das Thumbnails de Prévia do WhatsApp/Redes (ReUNE Geral & Amigo Secreto) `[.conductor/tracks/024-og-thumbnails-redesign/plan.md]`
+- [x] **025-secret-santa-choice-ux-clarity** - Redesign de UX do Modal de Escolha de Amigo Secreto (Link de Grupo vs Sorteador Relâmpago) `[.conductor/tracks/025-secret-santa-choice-ux-clarity/plan.md]`
