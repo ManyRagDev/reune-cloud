@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Gift, ArrowRight, X, Sparkles, MapPin, ShieldCheck, Users, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NBLight, NBDark, NBPalette, nb } from "@/lib/neobrutalism";
+import { analytics } from "@/lib/analytics";
 
 interface SecretSantaChoiceModalProps {
   open: boolean;
@@ -105,7 +106,10 @@ export const SecretSantaChoiceModal = ({
               <div>
                 <Button
                   size="sm"
-                  onClick={onSelectFull}
+                  onClick={() => {
+                    analytics.secretSanta.selectMode("full");
+                    onSelectFull();
+                  }}
                   className={`w-full min-h-[44px] py-2 px-3 rounded-xl font-black text-xs border-[2px] border-black shadow-[3px_3px_0px_#1A1A1A] touch-press hover:translate-x-[1px] hover:translate-y-[1px] transition-all flex items-center justify-center gap-1.5`}
                   style={{ backgroundColor: C.orange, color: "#fff" }}
                 >
@@ -150,7 +154,10 @@ export const SecretSantaChoiceModal = ({
               <div>
                 <Button
                   size="sm"
-                  onClick={onSelectQuick}
+                  onClick={() => {
+                    analytics.secretSanta.selectMode("quick");
+                    onSelectQuick();
+                  }}
                   className={`w-full min-h-[44px] py-2 px-3 rounded-xl font-black text-xs border-[2px] border-black shadow-[3px_3px_0px_#1A1A1A] touch-press hover:translate-x-[1px] hover:translate-y-[1px] transition-all flex items-center justify-center gap-1.5`}
                   style={{ backgroundColor: C.mint, color: C.black }}
                 >

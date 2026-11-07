@@ -34,6 +34,7 @@ import { NBLight, NBDark, NBPalette, nb } from "@/lib/neobrutalism";
 import { SecretSantaWizardModal } from "@/components/events/SecretSantaWizardModal";
 import { SecretSantaChoiceModal } from "@/components/events/SecretSantaChoiceModal";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+import { analytics } from "@/lib/analytics";
 
 export default function SecretSantaLanding() {
   const navigate = useNavigate();
@@ -94,6 +95,7 @@ export default function SecretSantaLanding() {
   }, [user, searchParams, navigate]);
 
   const handleStartClick = () => {
+    analytics.secretSanta.openChoiceModal("hero_or_cta");
     setSelectedCircleTitle(undefined);
     setWizardInitialTitle(undefined);
     setWizardInitialEmoji(undefined);
@@ -101,6 +103,7 @@ export default function SecretSantaLanding() {
   };
 
   const handleStartWithGroup = (groupTitle: string, emoji: string) => {
+    analytics.secretSanta.openChoiceModal(`preset_${groupTitle}`);
     const currentYear = new Date().getFullYear();
     const fullTitle = `${groupTitle} ${currentYear}`;
     setSelectedCircleTitle(fullTitle);

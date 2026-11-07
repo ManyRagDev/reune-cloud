@@ -4,6 +4,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- 📊 Google Analytics 4 (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-KKX5FSRGFP"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-KKX5FSRGFP', {
+      send_page_view: false // Gerenciado de forma precisa pelo React Router (SPA)
+    });
+  </script>
+
   <title>ReUNE – Churrascos e Eventos Sem Caos</title>
   <meta name="description"
     content="Lista de compras calculada por IA, divisão justa de custos e convites no WhatsApp. Experimente grátis." />

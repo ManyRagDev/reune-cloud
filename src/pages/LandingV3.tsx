@@ -23,6 +23,7 @@ import videoAtual from "@/assets/video_atual.mp4";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { NBLight, NBDark, NBPalette, nb } from "@/lib/neobrutalism";
 import { MarqueeStrip } from "@/components/landing/MarqueeStrip";
+import { analytics } from "@/lib/analytics";
 
 export default function LandingV3() {
     const navigate = useNavigate();
@@ -158,7 +159,10 @@ export default function LandingV3() {
                     </button>
 
                     <button
-                        onClick={() => navigate("/app")}
+                        onClick={() => {
+                            analytics.reune.ctaClick("entrar_navbar", "landing_v3_navbar");
+                            navigate("/app");
+                        }}
                         className={`px-5 py-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm flex items-center gap-2 transition-colors duration-300`}
                         style={{ backgroundColor: C.yellow, color: C.black }}
                     >
@@ -279,7 +283,10 @@ export default function LandingV3() {
                         {/* CTAs — stacked left */}
                         <div className="flex flex-col sm:flex-row gap-3 pt-2">
                             <button
-                                onClick={() => navigate("/app")}
+                                onClick={() => {
+                                    analytics.reune.ctaClick("testar_gratis_hero", "landing_v3_hero");
+                                    navigate("/app");
+                                }}
                                 className={`group h-14 px-8 text-lg font-black rounded-xl ${nb.border} ${nb.shadowLg} ${nb.hover} flex items-center justify-center gap-2 transition-colors duration-300`}
                                 style={{ backgroundColor: C.orange, color: "#FFFDF7" }}
                             >

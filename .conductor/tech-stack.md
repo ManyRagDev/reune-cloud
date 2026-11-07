@@ -65,6 +65,7 @@ Foi corrigido o problema onde ao criar um novo evento, o sistema tentava recuper
 | Gráficos | `recharts` (para resumos financeiros) |
 | Mapas & Places | `@react-google-maps/api` (Google Places Autocomplete, Maps e Rotas) |
 | Feedback | `sonner` (Toasts) |
+| Analytics | Google Analytics 4 (GA4 `gtag.js` com `AnalyticsTracker` nativo para SPA) |
 
 ## Arquitetura
 

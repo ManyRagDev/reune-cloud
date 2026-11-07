@@ -23,6 +23,7 @@ import { rpc } from '@/api/rpc';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CelebrationConfetti } from '@/components/ui/CelebrationConfetti';
+import { analytics } from '@/lib/analytics';
 
 export default function QuickSecretSantaEnvelope() {
   const { token } = useParams<{ token: string }>();
@@ -120,6 +121,7 @@ export default function QuickSecretSantaEnvelope() {
       localStorage.setItem(`envelope_${token}_opened`, 'true');
 
       setRevealedData(res);
+      analytics.secretSanta.envelopeOpened(res.status !== 'violated');
 
       if (res.status === 'violated') {
         toast.error('🚨 ATENÇÃO: Lacre Violado!', {

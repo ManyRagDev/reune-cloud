@@ -27,3 +27,5 @@
 - [x] **026-mobile-ux-audit-and-refinement** - Auditoria Completa de UI/UX Mobile (Layout, Linhas, Colunas, Safe-Areas e Modais) `[.conductor/tracks/026-mobile-ux-audit-and-refinement/plan.md]`
 - [x] **027-secret-santa-landing-v4-interactive-polish** - Polish Interativo da Landing Page Amigo Secreto (Card Stack Framer Motion, Trilha em S, Carrossel Snap e Hero Toggle) `[.conductor/tracks/027-secret-santa-landing-v4-interactive-polish/plan.md]`
 - [x] **028-secret-santa-choice-modal-mobile-compact** - Redesign Compacto do Modal de Escolha no Mobile (Zero Scroll, Decisão Imediata em 1 Tela) `[.conductor/tracks/028-secret-santa-choice-modal-mobile-compact/plan.md]`
+- [x] **029-telegram-signup-notification** - Notificação de Novos Cadastros via Telegram Bot & Supabase Webhook `[.conductor/tracks/029-telegram-signup-notification/plan.md]`
+- [x] **030-google-analytics-integration** - Integração com Google Analytics 4 (GA4) `[.conductor/tracks/030-google-analytics-integration/plan.md]`

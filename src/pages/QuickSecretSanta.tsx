@@ -29,6 +29,7 @@ import { NBLight, nb } from '@/lib/neobrutalism';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { CelebrationConfetti } from '@/components/ui/CelebrationConfetti';
 import { motion } from 'framer-motion';
+import { analytics } from '@/lib/analytics';
 
 interface QuickParticipantResult {
   name: string;
@@ -151,6 +152,7 @@ export default function QuickSecretSanta() {
         participants: res.participants,
       });
 
+      analytics.secretSanta.drawCompleted(participants.length);
       setShowConfetti(true);
       toast.success('🎉 Sorteio realizado com sucesso! Envelopes lacrados gerados!');
     } catch (err: any) {
@@ -164,6 +166,7 @@ export default function QuickSecretSanta() {
   const getEnvelopeUrl = (token: string) => `${origin}/envelope/${token}`;
 
   const handleShareWhatsApp = (p: QuickParticipantResult) => {
+    analytics.secretSanta.shareWhatsApp("quick_individual");
     const url = getEnvelopeUrl(p.token);
     const msg = `Fala, *${p.name}*! 🎁
 

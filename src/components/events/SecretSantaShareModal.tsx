@@ -6,6 +6,7 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { analytics } from '@/lib/analytics';
 
 export interface SecretSantaShareModalProps {
   open: boolean;
@@ -97,11 +98,13 @@ _Organizado com carinho pelo ReUNE_ 🚀`;
   };
 
   const handleShareWhatsAppGroup = () => {
+    analytics.secretSanta.shareWhatsApp("group_link");
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(groupMessage)}`;
     window.open(url, '_blank');
   };
 
   const handleShareWhatsAppIndividual = (p: { display_name: string; invitation_token: string }) => {
+    analytics.secretSanta.shareWhatsApp("envelope");
     const tokenUrl = `${origin}/amigo/entrar/${p.invitation_token}`;
     const personalMsg = `Fala, *${p.display_name}*! 🎁 
 
