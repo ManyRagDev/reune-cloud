@@ -33,3 +33,4 @@
 - [x] **032-legal-terms-privacy-lgpd-and-footer-cleanup** - Revisão dos Termos de Uso, Política de Privacidade com LGPD e Limpeza do Rodapé `[.conductor/tracks/032-legal-terms-privacy-lgpd-and-footer-cleanup/plan.md]`
 - [x] **033-landing-demo-video-simulation** - Novo Vídeo de Demonstração da Landing Page (Criação de Evento + Notificação no Celular) `[.conductor/tracks/033-landing-demo-video-simulation/plan.md]`
 - [x] **034-admin-power-dashboard-metrics-and-users** - Painel Administrativo 360° (Métricas GA4 & Dados Unificados de Usuários) `[.conductor/tracks/034-admin-power-dashboard-metrics-and-users/plan.md]`
+- [x] **035-internal-panels-mobile-layout-fix** - Correção de Responsividade e Vazamento nos Painéis Internos do ReUNE (Dashboard, EventDetails, Itens & Amigo Secreto) `[.conductor/tracks/035-internal-panels-mobile-layout-fix/plan.md]`

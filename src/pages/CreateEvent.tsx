@@ -237,31 +237,31 @@ const CreateEvent = ({ onBack, onCreate, initialData, defaultSecretSanta = false
   };
 
   return (
-    <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: C.bg, color: C.text }}>
+    <div className="min-h-screen transition-colors duration-300 overflow-x-clip w-full" style={{ backgroundColor: C.bg, color: C.text }}>
       {/* ═══ NAVBAR ═══ */}
       <nav
-        className={`sticky top-0 z-50 px-4 md:px-8 py-3 ${nb.border} border-t-0 border-x-0 flex items-center justify-between transition-colors duration-300`}
+        className={`sticky top-0 z-50 px-3 sm:px-4 md:px-8 py-2.5 sm:py-3 ${nb.border} border-t-0 border-x-0 flex items-center justify-between gap-2 transition-colors duration-300`}
         style={{ backgroundColor: C.bg }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 pr-1">
           <button
             onClick={onBack}
-            className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover}`}
+            className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover} shrink-0`}
             style={{ backgroundColor: C.sectionBg, color: C.text }}
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
-          <div>
-            <h1 className="text-xl font-black" style={{ color: C.orange }}>Novo Evento 🎉</h1>
-            <p className="text-xs font-bold" style={{ color: C.textMuted, opacity: 0.6 }}>Preencha as infos e bora!</p>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base sm:text-xl font-black truncate leading-tight" style={{ color: C.orange }}>Novo Evento 🎉</h1>
+            <p className="text-[10px] sm:text-xs font-bold truncate" style={{ color: C.textMuted, opacity: 0.6 }}>Preencha as infos e bora!</p>
           </div>
         </div>
         <button
           onClick={() => setIsDark(!isDark)}
-          className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover}`}
+          className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover} shrink-0`}
           style={{ backgroundColor: isDark ? C.yellow : C.lavender, color: C.black }}
         >
-          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          {isDark ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
         </button>
       </nav>
 

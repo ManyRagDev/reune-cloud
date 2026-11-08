@@ -1115,26 +1115,26 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: C.bg, color: C.text }}>
+    <div className="min-h-screen transition-colors duration-300 overflow-x-clip w-full" style={{ backgroundColor: C.bg, color: C.text }}>
       {/* ═══ NAVBAR — Solid Neubrutalist top bar ═══ */}
       <nav
-        className={`sticky top-0 z-50 px-4 md:px-8 py-3 ${nb.border} border-t-0 border-x-0 flex items-center justify-between transition-colors duration-300`}
+        className={`sticky top-0 z-50 px-3 sm:px-4 md:px-8 py-2.5 sm:py-3 ${nb.border} border-t-0 border-x-0 flex items-center justify-between gap-2 transition-colors duration-300`}
         style={{ backgroundColor: C.bg }}
       >
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover}`} style={{ backgroundColor: C.sectionBg, color: C.text }}>
-            <ArrowLeft className="w-5 h-5" />
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 pr-1">
+          <button onClick={onBack} className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover} shrink-0`} style={{ backgroundColor: C.sectionBg, color: C.text }}>
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-black truncate" style={{ color: C.orange }}>{event.title}</h1>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <h1 className="text-base sm:text-xl font-black truncate leading-tight" style={{ color: C.orange }}>{event.title}</h1>
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1 flex-wrap">
               {isOrganizer && (
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-xs font-black`} style={{ backgroundColor: C.yellow, color: C.black }}>👑 Organizador</span>
+                <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-lg ${nb.border} text-[10px] sm:text-xs font-black`} style={{ backgroundColor: C.yellow, color: C.black }}>👑 Organizador</span>
               )}
               {canEdit ? (
                 <div className="inline-block" onClick={(e) => e.stopPropagation()}>
                   <Select defaultValue={event.status || 'draft'} onValueChange={handleStatusChange}>
-                    <SelectTrigger className={`h-7 w-[130px] text-xs font-bold rounded-lg ${nb.border}`} style={{ backgroundColor: C.inputBg, color: C.text }}>
+                    <SelectTrigger className={`h-6 sm:h-7 w-[105px] sm:w-[130px] text-[11px] sm:text-xs font-bold rounded-lg ${nb.border}`} style={{ backgroundColor: C.inputBg, color: C.text }}>
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1146,51 +1146,51 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   </Select>
                 </div>
               ) : (
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg ${nb.border} text-xs font-black`} style={{ backgroundColor: C.sectionBg, color: C.text }}>
+                <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-lg ${nb.border} text-[10px] sm:text-xs font-black`} style={{ backgroundColor: C.sectionBg, color: C.text }}>
                   {event.status === 'finalized' ? 'Finalizado' : event.status === 'cancelled' ? 'Cancelado' : event.status}
                 </span>
               )}
             </div>
           </div>
         </div>
-        <button onClick={() => setIsDark(!isDark)} className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover}`} style={{ backgroundColor: isDark ? C.yellow : C.lavender, color: C.black }}>
-          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        <button onClick={() => setIsDark(!isDark)} className={`p-2 rounded-lg ${nb.border} ${nb.shadow} ${nb.hover} shrink-0`} style={{ backgroundColor: isDark ? C.yellow : C.lavender, color: C.black }}>
+          {isDark ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
         </button>
       </nav>
 
-      <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-4xl mx-auto px-3 sm:px-4 py-6 sm:py-8 space-y-6 w-full">
         {/* ═══ Amigo Secreto Top Banner (se ativo) ═══ */}
         {hasSecretSanta && (
           <div
-            className={`p-5 rounded-2xl ${nb.border} ${nb.shadowLg} flex flex-col sm:flex-row sm:items-center justify-between gap-4`}
+            className={`p-4 sm:p-5 rounded-2xl ${nb.border} ${nb.shadowLg} flex flex-col md:flex-row md:items-center justify-between gap-4 w-full`}
             style={{ backgroundColor: C.pink, color: C.black }}
           >
-            <div className="flex items-center gap-3.5">
+            <div className="flex items-start sm:items-center gap-3 sm:gap-3.5 min-w-0">
               <div
-                className={`w-12 h-12 rounded-xl ${nb.border} flex items-center justify-center text-2xl shadow-sm`}
+                className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl ${nb.border} flex items-center justify-center text-xl sm:text-2xl shadow-sm shrink-0`}
                 style={{ backgroundColor: C.yellow }}
               >
                 🎁
               </div>
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border-[2px] border-black bg-white text-xs font-black uppercase mb-0.5">
+              <div className="min-w-0 flex-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border-[2px] border-black bg-white text-[10px] sm:text-xs font-black uppercase mb-0.5">
                   DINÂMICA ATIVA
                 </div>
-                <h3 className="text-lg font-black leading-tight">
+                <h3 className="text-base sm:text-lg font-black leading-tight">
                   Amigo Secreto vinculado a este evento
                 </h3>
-                <p className="text-xs font-bold opacity-80">
+                <p className="text-xs font-bold opacity-80 mt-0.5">
                   {secretSantaData?.has_drawn
                     ? 'O sorteio já foi realizado! Veja quem você tirou.'
                     : 'Aguardando sorteio. Convidados podem cadastrar lista de desejos.'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
               {isOrganizer && (
                 <button
                   onClick={() => navigate(`/event/${eventId}/secret-santa/admin`)}
-                  className={`px-4 py-2.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm transition-all`}
+                  className={`flex-1 sm:flex-none justify-center px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-xs sm:text-sm transition-all`}
                   style={{ backgroundColor: C.yellow, color: C.black }}
                 >
                   ⚙️ Gerenciar Sorteio
@@ -1199,7 +1199,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
               {secretSantaData?.has_drawn && (
                 <button
                   onClick={() => navigate(`/event/${eventId}/secret-santa/my-result`)}
-                  className={`px-4 py-2.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm transition-all`}
+                  className={`flex-1 sm:flex-none justify-center px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-xs sm:text-sm transition-all`}
                   style={{ backgroundColor: C.mint, color: C.black }}
                 >
                   🎁 Ver Meu Amigo
@@ -1207,7 +1207,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
               )}
               <button
                 onClick={() => navigate(`/event/${eventId}/secret-santa/wishlist`)}
-                className={`px-3.5 py-2.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-xs transition-all`}
+                className={`flex-1 sm:flex-none justify-center px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-xs transition-all`}
                 style={{ backgroundColor: C.cardBg, color: C.text }}
               >
                 Minha Lista
@@ -1217,28 +1217,28 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
         )}
 
         {/* ═══ Event Info Card ═══ */}
-        <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300`} style={{ backgroundColor: C.cardBg }}>
+        <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300 w-full`} style={{ backgroundColor: C.cardBg }}>
           <div className="h-3 w-full" style={{ backgroundColor: C.sky }} />
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
-                <h2 className="text-xl font-black flex items-center gap-2" style={{ color: C.text }}>📋 Informações do Evento</h2>
-                {!canEdit && <p className="text-sm font-medium mt-1" style={{ color: C.textMuted, opacity: 0.6 }}>Confirme ou sugira alternativas</p>}
-                {canEdit && isEditingEventInfo && <p className="text-sm font-bold mt-1" style={{ color: C.orange }}>Modo de edição ativo ✏️</p>}
+                <h2 className="text-lg sm:text-xl font-black flex items-center gap-2" style={{ color: C.text }}>📋 Informações do Evento</h2>
+                {!canEdit && <p className="text-xs sm:text-sm font-medium mt-1" style={{ color: C.textMuted, opacity: 0.6 }}>Confirme ou sugira alternativas</p>}
+                {canEdit && isEditingEventInfo && <p className="text-xs sm:text-sm font-bold mt-1" style={{ color: C.orange }}>Modo de edição ativo ✏️</p>}
               </div>
               {canEdit && !isEditingEventInfo && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={startEditingEventInfo}
-                  className="gap-2"
+                  className="gap-2 self-start sm:self-auto"
                 >
                   <Pencil className="w-4 h-4" />
                   Editar
                 </Button>
               )}
               {canEdit && isEditingEventInfo && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 self-end sm:self-auto">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1386,16 +1386,16 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 </div>
 
                 {/* Data */}
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center text-muted-foreground">
-                    <Calendar className="w-5 h-5 mr-3" />
-                    <div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 border rounded-lg">
+                  <div className="flex items-center text-muted-foreground min-w-0">
+                    <Calendar className="w-5 h-5 mr-3 shrink-0" />
+                    <div className="min-w-0">
                       <span className="font-medium text-foreground">Data:</span>
-                      <p>{formatDate(event.event_date)}</p>
+                      <p className="font-semibold text-sm sm:text-base truncate">{formatDate(event.event_date)}</p>
                     </div>
                   </div>
                   {!canEdit && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 self-end sm:self-auto w-full sm:w-auto justify-end">
                       <Button
                         variant={confirmation.date === "confirmed" ? "default" : "outline"}
                         size="sm"
@@ -1435,16 +1435,16 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 </div>
 
                 {/* Horário */}
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center text-muted-foreground">
-                    <Clock className="w-5 h-5 mr-3" />
-                    <div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 border rounded-lg">
+                  <div className="flex items-center text-muted-foreground min-w-0">
+                    <Clock className="w-5 h-5 mr-3 shrink-0" />
+                    <div className="min-w-0">
                       <span className="font-medium text-foreground">Horário:</span>
-                      <p>{event.event_time}</p>
+                      <p className="font-semibold text-sm sm:text-base">{event.event_time}</p>
                     </div>
                   </div>
                   {!canEdit && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 self-end sm:self-auto w-full sm:w-auto justify-end">
                       <Button
                         variant={confirmation.time === "confirmed" ? "default" : "outline"}
                         size="sm"
@@ -1490,17 +1490,17 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                 </div>
 
                 {/* Local com Mapa e Ações de Rotas */}
-                <div className="p-4 border rounded-lg space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center text-muted-foreground">
-                      <MapPin className="w-5 h-5 mr-3 flex-shrink-0" />
-                      <div>
+                <div className="p-3.5 sm:p-4 border rounded-lg space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center text-muted-foreground min-w-0">
+                      <MapPin className="w-5 h-5 mr-3 shrink-0" />
+                      <div className="min-w-0">
                         <span className="font-medium text-foreground">Local:</span>
-                        <p className="font-semibold">{event.location}</p>
+                        <p className="font-semibold text-sm sm:text-base break-words">{event.location}</p>
                       </div>
                     </div>
                     {!canEdit && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 self-end sm:self-auto w-full sm:w-auto justify-end">
                         <Button
                           variant={confirmation.location === "confirmed" ? "default" : "outline"}
                           size="sm"
@@ -1765,15 +1765,15 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
         {/* ═══ Supplies List ═══ */}
         {event && (
-          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300`} style={{ backgroundColor: C.cardBg }}>
+          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300 w-full`} style={{ backgroundColor: C.cardBg }}>
             <div className="h-3 w-full" style={{ backgroundColor: C.orange }} />
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 className="text-xl font-black flex items-center gap-2" style={{ color: C.text }}>
+                  <h2 className="text-lg sm:text-xl font-black flex items-center gap-2" style={{ color: C.text }}>
                     📦 Lista de Insumos ({supplies.length})
                   </h2>
-                  <p className="text-sm font-medium mt-1" style={{ color: C.textMuted, opacity: 0.6 }}>
+                  <p className="text-xs sm:text-sm font-medium mt-1" style={{ color: C.textMuted, opacity: 0.6 }}>
                     {isConfirmedGuest && !isOrganizer && !isEventCreator
                       ? "Escolha os itens que você pode levar"
                       : "Gerencie os itens necessários para o evento"}
@@ -1788,7 +1788,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                         input.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }
                     }}
-                    className={`px-4 py-2 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm flex items-center gap-2`}
+                    className={`px-3.5 sm:px-4 py-2 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-xs sm:text-sm flex items-center gap-2 self-start sm:self-auto`}
                     style={{ backgroundColor: C.mint, color: C.black }}
                   >
                     <Plus className="w-4 h-4" />
@@ -1799,19 +1799,19 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
               {/* Cost Summary */}
               {hasAnyPrice && (
-                <div className={`mb-6 p-4 rounded-xl ${nb.border} ${nb.shadow}`} style={{ backgroundColor: C.yellow }}>
-                  <div className="flex flex-col sm:flex-row justify-between gap-4">
+                <div className={`mb-6 p-3.5 sm:p-4 rounded-xl ${nb.border} ${nb.shadow}`} style={{ backgroundColor: C.yellow }}>
+                  <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
                     <div>
-                      <p className="text-sm font-bold" style={{ color: C.black, opacity: 0.6 }}>Custo Total Estimado</p>
-                      <p className="text-2xl font-black" style={{ color: C.black }}>
+                      <p className="text-xs sm:text-sm font-bold" style={{ color: C.black, opacity: 0.6 }}>Custo Total Estimado</p>
+                      <p className="text-xl sm:text-2xl font-black" style={{ color: C.black }}>
                         {totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
                     </div>
                     <div className="sm:text-right">
-                      <p className="text-sm font-bold" style={{ color: C.black, opacity: 0.6 }}>
+                      <p className="text-xs sm:text-sm font-bold" style={{ color: C.black, opacity: 0.6 }}>
                         Custo por Pessoa ({totalPeople} confirmados)
                       </p>
-                      <p className="text-xl font-black" style={{ color: C.black }}>
+                      <p className="text-lg sm:text-xl font-black" style={{ color: C.black }}>
                         {costPerPerson.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
                     </div>
@@ -1826,7 +1826,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                   return (
                     <div
                       key={supply.id}
-                      className={`p-4 border-2 rounded-lg transition-all ${getSupplyStatus(supply) === 'mine'
+                      className={`p-3.5 sm:p-4 border-2 rounded-xl transition-all ${getSupplyStatus(supply) === 'mine'
                         ? 'border-primary bg-primary/5'
                         : getSupplyStatus(supply) === 'taken'
                           ? 'border-muted bg-muted/30'
@@ -1842,7 +1842,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                             placeholder="Nome do item"
                             className="font-medium"
                           />
-                          <div className="flex gap-2">
+                          <div className="grid grid-cols-2 gap-2">
                             <Input
                               type="number"
                               min="0.1"
@@ -1850,13 +1850,13 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                               value={editingSupplyData.quantidade}
                               onChange={(e) => setEditingSupplyData({ ...editingSupplyData, quantidade: parseFloat(e.target.value) || 0 })}
                               placeholder="Quantidade"
-                              className="flex-1"
+                              className="w-full"
                             />
                             <Select
                               value={editingSupplyData.unidade}
                               onValueChange={(value) => setEditingSupplyData({ ...editingSupplyData, unidade: value })}
                             >
-                              <SelectTrigger className="w-[140px]">
+                              <SelectTrigger className="w-full">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="bg-background border shadow-lg z-50">
@@ -1874,18 +1874,18 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                             </Select>
                           </div>
                           <div className="flex items-center gap-2">
-                            <DollarSign className="w-4 h-4 text-muted-foreground" />
+                            <DollarSign className="w-4 h-4 text-muted-foreground shrink-0" />
                             <Input
                               type="number"
                               min="0"
                               step="0.01"
                               value={editingSupplyData.valor_estimado || ''}
                               onChange={(e) => setEditingSupplyData({ ...editingSupplyData, valor_estimado: e.target.value ? parseFloat(e.target.value) : null })}
-                              placeholder="Valor unitário estimado (opcional)"
-                              className="flex-1"
+                              placeholder="Valor estimado (opcional)"
+                              className="flex-1 min-w-0"
                             />
                           </div>
-                          <div className="flex gap-2 justify-end">
+                          <div className="flex gap-2 justify-end pt-1">
                             <Button
                               size="sm"
                               variant="outline"
@@ -1914,31 +1914,32 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                       ) : (
                         // Modo de visualização
                         <>
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-medium">{supply.name}</h4>
-                                <Badge variant={getSupplyStatusVariant(supply)} className="text-xs">
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <h4 className="font-bold text-sm sm:text-base break-words">{supply.name}</h4>
+                                <Badge variant={getSupplyStatusVariant(supply)} className="text-[10px] sm:text-xs">
                                   {getSupplyStatusText(supply)}
                                 </Badge>
                               </div>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <p>
+                              <div className="flex items-center gap-3 text-xs sm:text-sm text-muted-foreground flex-wrap">
+                                <p className="font-semibold">
                                   {supply.quantidade} {supply.unidade}
                                 </p>
                                 {supply.valor_estimado && (
-                                  <p className="flex items-center text-primary">
-                                    <DollarSign className="w-3 h-3 mr-1" />
+                                  <p className="flex items-center text-primary font-bold">
+                                    <DollarSign className="w-3 h-3 mr-0.5" />
                                     {supply.valor_estimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                   </p>
                                 )}
                               </div>
                             </div>
                             {canEdit && (
-                              <div className="flex gap-1">
+                              <div className="flex gap-1 shrink-0">
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-8 w-8 p-0"
                                   onClick={() => {
                                     setEditingSupplyId(supply.id);
                                     setEditingSupplyData({
@@ -1954,12 +1955,12 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                                   onClick={() => {
                                     if (confirm('Tem certeza que deseja remover este item?')) {
                                       deleteSupply(supply.id);
                                     }
                                   }}
-                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -1977,7 +1978,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                               />
                               <label
                                 htmlFor={`supply-${supply.id}`}
-                                className={`text-sm font-medium leading-none ${getSupplyStatus(supply) === 'taken'
+                                className={`text-xs sm:text-sm font-medium leading-none ${getSupplyStatus(supply) === 'taken'
                                   ? 'cursor-not-allowed opacity-70'
                                   : 'cursor-pointer'
                                   }`}
@@ -2012,7 +2013,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
                 {/* Campo de adicionar item - APENAS ORGANIZADORES/CRIADORES */}
                 {canEdit && (
-                  <div className="space-y-3 mt-4 p-4 bg-muted/50 rounded-lg border-2 border-dashed border-primary/30">
+                  <div className="space-y-3 mt-4 p-3.5 sm:p-4 bg-muted/50 rounded-xl border-2 border-dashed border-primary/30">
                     <Input
                       placeholder="Adicionar item..."
                       value={newSupply}
@@ -2020,37 +2021,39 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                       onKeyPress={(e) => e.key === "Enter" && addSupply()}
                       className="bg-background"
                     />
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        value={newSupplyQuantity}
-                        onChange={(e) => setNewSupplyQuantity(parseFloat(e.target.value) || 1)}
-                        placeholder="Quantidade"
-                        className="bg-background flex-1"
-                      />
-                      <Select
-                        value={newSupplyUnit}
-                        onValueChange={setNewSupplyUnit}
-                      >
-                        <SelectTrigger className="w-[140px] bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border shadow-lg z-50">
-                          <SelectItem value="un">Unidade(s)</SelectItem>
-                          <SelectItem value="kg">Quilograma(s)</SelectItem>
-                          <SelectItem value="g">Grama(s)</SelectItem>
-                          <SelectItem value="l">Litro(s)</SelectItem>
-                          <SelectItem value="ml">Mililitro(s)</SelectItem>
-                          <SelectItem value="pacote">Pacote(s)</SelectItem>
-                          <SelectItem value="caixa">Caixa(s)</SelectItem>
-                          <SelectItem value="dúzia">Dúzia(s)</SelectItem>
-                          <SelectItem value="fatia">Fatia(s)</SelectItem>
-                          <SelectItem value="porção">Porção(ões)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button onClick={addSupply} disabled={!newSupply.trim()} className="shrink-0">
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                      <div className="grid grid-cols-2 sm:col-span-8 gap-2">
+                        <Input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={newSupplyQuantity}
+                          onChange={(e) => setNewSupplyQuantity(parseFloat(e.target.value) || 1)}
+                          placeholder="Quantidade"
+                          className="bg-background w-full"
+                        />
+                        <Select
+                          value={newSupplyUnit}
+                          onValueChange={setNewSupplyUnit}
+                        >
+                          <SelectTrigger className="w-full bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border shadow-lg z-50">
+                            <SelectItem value="un">Unidade(s)</SelectItem>
+                            <SelectItem value="kg">Quilograma(s)</SelectItem>
+                            <SelectItem value="g">Grama(s)</SelectItem>
+                            <SelectItem value="l">Litro(s)</SelectItem>
+                            <SelectItem value="ml">Mililitro(s)</SelectItem>
+                            <SelectItem value="pacote">Pacote(s)</SelectItem>
+                            <SelectItem value="caixa">Caixa(s)</SelectItem>
+                            <SelectItem value="dúzia">Dúzia(s)</SelectItem>
+                            <SelectItem value="fatia">Fatia(s)</SelectItem>
+                            <SelectItem value="porção">Porção(ões)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button onClick={addSupply} disabled={!newSupply.trim()} className="sm:col-span-4 w-full">
                         <Plus className="w-4 h-4 mr-2" />
                         Adicionar
                       </Button>
@@ -2064,27 +2067,27 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
         {/* ═══ Dinâmicas do Evento ═══ */}
         {canViewFullDetails && (
-          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300`} style={{ backgroundColor: C.cardBg }}>
+          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden transition-colors duration-300 w-full`} style={{ backgroundColor: C.cardBg }}>
             <div className="h-3 w-full" style={{ backgroundColor: C.pink }} />
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-xl font-black flex items-center gap-2" style={{ color: C.text }}>🎁 Dinâmicas do Evento</h2>
-                  <p className="text-sm font-medium mt-1" style={{ color: C.textMuted, opacity: 0.6 }}>Atividades especiais</p>
+                  <h2 className="text-lg sm:text-xl font-black flex items-center gap-2" style={{ color: C.text }}>🎁 Dinâmicas do Evento</h2>
+                  <p className="text-xs sm:text-sm font-medium mt-1" style={{ color: C.textMuted, opacity: 0.6 }}>Atividades especiais</p>
                 </div>
               </div>
               <div className="space-y-3">
                 {hasSecretSanta ? (
-                  <div className={`p-4 rounded-xl ${nb.border} ${nb.shadow}`} style={{ backgroundColor: C.pink }}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3 flex-1">
-                        <div className={`p-2 rounded-xl ${nb.border}`} style={{ backgroundColor: C.cardBg }}>
+                  <div className={`p-3.5 sm:p-4 rounded-xl ${nb.border} ${nb.shadow}`} style={{ backgroundColor: C.pink }}>
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className={`p-2 rounded-xl ${nb.border} shrink-0`} style={{ backgroundColor: C.cardBg }}>
                           <Gift className="w-5 h-5" style={{ color: C.black }} />
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-black mb-1" style={{ color: C.black }}>Amigo Secreto</h3>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-black mb-1 text-base leading-tight" style={{ color: C.black }}>Amigo Secreto</h3>
                           {secretSantaData && (
-                            <div className="space-y-1 text-sm font-bold" style={{ color: C.black, opacity: 0.7 }}>
+                            <div className="space-y-1 text-xs sm:text-sm font-bold" style={{ color: C.black, opacity: 0.7 }}>
                               {secretSantaData.min_value && secretSantaData.max_value && (
                                 <p>Valor: R$ {secretSantaData.min_value} - R$ {secretSantaData.max_value}</p>
                               )}
@@ -2102,12 +2105,12 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                         </div>
                       </div>
                       {isOrganizer && (
-                        <button className={`px-3 py-1.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm`} style={{ backgroundColor: C.cardBg, color: C.text }} onClick={() => navigate(`/event/${eventId}/secret-santa/admin`)}>
-                          Gerenciar
+                        <button className={`w-full sm:w-auto px-3.5 py-2 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-xs sm:text-sm shrink-0`} style={{ backgroundColor: C.cardBg, color: C.text }} onClick={() => navigate(`/event/${eventId}/secret-santa/admin`)}>
+                          ⚙️ Gerenciar
                         </button>
                       )}
                       {!isOrganizer && secretSantaData.has_drawn && (
-                        <button className={`px-3 py-1.5 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-sm`} style={{ backgroundColor: C.orange, color: '#FFFDF7' }} onClick={() => navigate(`/event/${eventId}/secret-santa/my-result`)}>
+                        <button className={`w-full sm:w-auto px-3.5 py-2 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-xs sm:text-sm shrink-0`} style={{ backgroundColor: C.orange, color: '#FFFDF7' }} onClick={() => navigate(`/event/${eventId}/secret-santa/my-result`)}>
                           Ver Resultado
                         </button>
                       )}
@@ -2123,7 +2126,7 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
                         <p className="font-bold mb-4" style={{ color: C.textMuted, opacity: 0.5 }}>Nenhuma dinâmica adicionada</p>
                         <button
                           onClick={() => navigate(`/event/${eventId}/secret-santa/setup`)}
-                          className={`px-6 py-3 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black flex items-center gap-2 mx-auto`}
+                          className={`w-full sm:w-auto px-6 py-3 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black flex items-center justify-center gap-2 mx-auto`}
                           style={{ backgroundColor: C.pink, color: C.black }}
                         >
                           <Plus className="w-4 h-4" />
@@ -2144,9 +2147,9 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
 
         {/* ═══ Save Buttons ═══ */}
         {isOrganizer && (
-          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden`} style={{ backgroundColor: C.orange }}>
-            <div className="p-6">
-              <button className={`w-full py-4 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-lg`} style={{ backgroundColor: '#FFFDF7', color: C.black }} disabled={saving} onClick={handleSaveLists}>
+          <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden w-full`} style={{ backgroundColor: C.orange }}>
+            <div className="p-4 sm:p-6">
+              <button className={`w-full py-3.5 sm:py-4 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-base sm:text-lg`} style={{ backgroundColor: '#FFFDF7', color: C.black }} disabled={saving} onClick={handleSaveLists}>
                 {saving ? "Salvando..." : "💾 Salvar Alterações"}
               </button>
               <p className="text-xs font-bold text-center mt-3" style={{ color: '#FFFDF7', opacity: 0.8 }}>
@@ -2160,9 +2163,9 @@ const EventDetails = ({ eventId, onBack }: EventDetailsProps) => {
           (confirmation.date !== "pending" ||
             confirmation.time !== "pending" ||
             confirmation.location !== "pending") && (
-            <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden`} style={{ backgroundColor: C.mint }}>
-              <div className="p-6">
-                <button className={`w-full py-4 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-lg`} style={{ backgroundColor: '#FFFDF7', color: C.black }} disabled={saving} onClick={handleSaveConfirmation}>
+            <div className={`rounded-2xl ${nb.border} ${nb.shadowLg} overflow-hidden w-full`} style={{ backgroundColor: C.mint }}>
+              <div className="p-4 sm:p-6">
+                <button className={`w-full py-3.5 sm:py-4 rounded-xl ${nb.border} ${nb.shadow} ${nb.hover} font-black text-base sm:text-lg`} style={{ backgroundColor: '#FFFDF7', color: C.black }} disabled={saving} onClick={handleSaveConfirmation}>
                   {saving ? "Salvando..." : "💾 Salvar Minhas Preferências"}
                 </button>
                 <p className="text-xs font-bold text-center mt-3" style={{ color: C.black, opacity: 0.6 }}>

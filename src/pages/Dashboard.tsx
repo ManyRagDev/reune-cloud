@@ -74,7 +74,14 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
     storage_multiplier?: number;
   } | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'owner' | 'confirmed' | 'pending'>('all');
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const userId = user?.id;
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -266,28 +273,28 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
   }
 
   return (
-    <div className="min-h-screen bg-white font-sans">
+    <div className="min-h-screen bg-white font-sans overflow-x-clip w-full">
       {/* Header divertido */}
-      <nav className="sticky top-0 z-50 px-4 md:px-8 py-4 border-b-[3px] border-black bg-white">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <nav className="sticky top-0 z-50 px-3 sm:px-4 md:px-8 py-3 sm:py-4 border-b-[3px] border-black bg-white">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
           {/* Logo */}
           <motion.div 
-            className="relative"
+            className="relative shrink-0"
             whileHover={{ rotate: -2 }}
             transition={{ duration: 0.2 }}
           >
-            <div className="px-5 py-2.5 rounded-xl border-[3px] border-black shadow-[4px_4px_0px_0px_#000000] font-black text-2xl bg-[#FF6B35] text-white transform -rotate-1">
+            <div className="px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl border-[3px] border-black shadow-[3px_3px_0px_0px_#000000] sm:shadow-[4px_4px_0px_0px_#000000] font-black text-xl sm:text-2xl bg-[#FF6B35] text-white transform -rotate-1">
               ReUNE
             </div>
             {/* Sticker decorativo */}
-            <div className="absolute -top-2 -right-3 w-6 h-6 bg-[#FFD93D] rounded-full border-[2px] border-black" />
+            <div className="absolute -top-1.5 -right-2 sm:-top-2 sm:-right-3 w-5 h-5 sm:w-6 sm:h-6 bg-[#FFD93D] rounded-full border-[2px] border-black pointer-events-none" />
           </motion.div>
 
           {/* Ações */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <button 
               onClick={() => setSecretSantaModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl border-[3px] border-black bg-[#FF69B4] text-white shadow-[3px_3px_0px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_0px_#000000] transition-all font-black text-xs md:text-sm flex items-center gap-1.5"
+              className="p-2 sm:px-3.5 sm:py-2 rounded-xl border-[3px] border-black bg-[#FF69B4] text-white shadow-[2px_2px_0px_0px_#000000] sm:shadow-[3px_3px_0px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_0px_#000000] transition-all font-black text-xs md:text-sm flex items-center gap-1.5"
               title="Organizar ou vincular Amigo Secreto"
             >
               <Gift className="w-4 h-4" />
@@ -297,7 +304,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
             <NotificationBell />
             <button 
               onClick={() => setAccountDialogOpen(true)}
-              className="w-11 h-11 rounded-xl border-[3px] border-black bg-[#A8D8FF] shadow-[3px_3px_0px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_0px_#000000] transition-all flex items-center justify-center font-bold text-lg"
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl border-[3px] border-black bg-[#A8D8FF] shadow-[2px_2px_0px_0px_#000000] sm:shadow-[3px_3px_0px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_0px_#000000] transition-all flex items-center justify-center font-bold text-base sm:text-lg"
             >
               {userEmail?.charAt(0).toUpperCase() || 'U'}
             </button>
@@ -309,13 +316,13 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
       </nav>
 
       {/* Hero Section */}
-      <section className="px-4 md:px-8 py-8 md:py-12 max-w-6xl mx-auto">
+      <section className="px-4 md:px-8 py-6 sm:py-8 md:py-12 max-w-6xl mx-auto w-full">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border-[3px] border-black bg-[#FFD93D] shadow-[3px_3px_0px_0px_#000000] font-bold text-sm mb-4"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full border-[3px] border-black bg-[#FFD93D] shadow-[3px_3px_0px_0px_#000000] font-bold text-xs sm:text-sm mb-3 sm:mb-4"
             >
               <Zap className="w-4 h-4" />
               {events.length === 0 ? 'Bora começar?' : `${events.length} rolê${events.length !== 1 ? 's' : ''} pra curtir`}
@@ -324,7 +331,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-4xl md:text-6xl font-black leading-tight"
+              className="text-3xl sm:text-4xl md:text-6xl font-black leading-tight"
             >
               O que tá{' '}
               <span className="text-[#FF6B35]">rolando?</span>
@@ -333,7 +340,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-gray-600 mt-2 font-medium"
+              className="text-gray-600 mt-2 font-medium text-sm sm:text-base"
             >
               Seus eventos organizados num só lugar. Simples assim.
             </motion.p>
@@ -368,67 +375,69 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
           onClick={() => setSecretSantaModalOpen(true)}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
-          className="mt-8 p-5 md:p-6 rounded-2xl border-[3px] border-black bg-[#FF69B4] text-black shadow-[6px_6px_0px_0px_#000000] cursor-pointer transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+          className="mt-6 sm:mt-8 p-4 sm:p-5 md:p-6 rounded-2xl border-[3px] border-black bg-[#FF69B4] text-black shadow-[4px_4px_0px_0px_#000000] sm:shadow-[6px_6px_0px_0px_#000000] cursor-pointer transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 w-full"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl border-[3px] border-black bg-[#FFD93D] flex items-center justify-center text-3xl shadow-[3px_3px_0px_0px_#000000] flex-shrink-0 transform -rotate-3">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl border-[3px] border-black bg-[#FFD93D] flex items-center justify-center text-2xl sm:text-3xl shadow-[3px_3px_0px_0px_#000000] shrink-0 transform -rotate-3">
               🎁
             </div>
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border-[2px] border-black bg-white font-black text-xs uppercase mb-1">
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border-[2px] border-black bg-white font-black text-[10px] sm:text-xs uppercase mb-1">
                 <span>NOVO</span> • <span>AMIGO SECRETO REUNE</span>
               </div>
-              <h2 className="text-xl md:text-2xl font-black text-black leading-tight">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-black text-black leading-tight">
                 Organize seu Amigo Secreto sem complicação!
               </h2>
-              <p className="text-sm font-bold opacity-85 text-black">
+              <p className="text-xs sm:text-sm font-bold opacity-85 text-black mt-1">
                 Sorteio 100% justo, lista de desejos e vinculado à festa da revelação.
               </p>
             </div>
           </div>
-          <div className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border-[3px] border-black bg-white hover:bg-yellow-100 text-black font-black text-sm shadow-[3px_3px_0px_0px_#000000] whitespace-nowrap self-start md:self-auto transition-colors">
+          <div className="inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl border-[3px] border-black bg-white hover:bg-yellow-100 text-black font-black text-xs sm:text-sm shadow-[3px_3px_0px_0px_#000000] whitespace-nowrap self-stretch sm:self-start md:self-auto transition-colors">
             Organizar ou Vincular <ArrowRight className="w-4 h-4" />
           </div>
         </motion.div>
 
         {/* Tabs coloridos */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex gap-3 mt-8 overflow-x-auto pb-2 scrollbar-hide"
-        >
-          {[
-            { key: 'all', label: 'TODOS', count: tabCounts.all, color: '#FFD93D' },
-            { key: 'owner', label: 'MEUS', count: tabCounts.owner, color: '#A8D8FF' },
-            { key: 'confirmed', label: 'VOU!', count: tabCounts.confirmed, color: '#B8F3D0' },
-            { key: 'pending', label: 'PENDENTES', count: tabCounts.pending, color: '#FF69B4' },
-          ].map((tab, index) => (
-            <motion.button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as typeof activeTab)}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              className={`
-                px-5 py-3 rounded-xl border-[3px] border-black font-black text-sm whitespace-nowrap
-                shadow-[4px_4px_0px_0px_#000000] transition-all duration-150
-                ${activeTab === tab.key 
-                  ? 'translate-x-[3px] translate-y-[3px] shadow-[1px_1px_0px_0px_#000000]' 
-                  : 'hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000000]'
-                }
-              `}
-              style={{ 
-                backgroundColor: activeTab === tab.key ? tab.color : 'white',
-                transform: `rotate(${index % 2 === 0 ? -1 : 1}deg)`
-              }}
-            >
-              {tab.label}
-              <span className="ml-2 px-2 py-0.5 rounded-full bg-black/10 text-xs">
-                {tab.count}
-              </span>
-            </motion.button>
-          ))}
-        </motion.div>
+        <div className="w-full max-w-full min-w-0 overflow-x-auto pb-3 pt-4 sm:pt-6 scrollbar-hide">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex gap-2 sm:gap-3 w-max min-w-full px-1"
+          >
+            {[
+              { key: 'all', label: 'TODOS', count: tabCounts.all, color: '#FFD93D' },
+              { key: 'owner', label: 'MEUS', count: tabCounts.owner, color: '#A8D8FF' },
+              { key: 'confirmed', label: 'VOU!', count: tabCounts.confirmed, color: '#B8F3D0' },
+              { key: 'pending', label: 'PENDENTES', count: tabCounts.pending, color: '#FF69B4' },
+            ].map((tab, index) => (
+              <motion.button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as typeof activeTab)}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className={`
+                  px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl border-[3px] border-black font-black text-xs sm:text-sm whitespace-nowrap
+                  shadow-[3px_3px_0px_0px_#000000] sm:shadow-[4px_4px_0px_0px_#000000] transition-all duration-150
+                  ${activeTab === tab.key 
+                    ? 'translate-x-[2px] translate-y-[2px] shadow-[1px_1px_0px_0px_#000000]' 
+                    : 'hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_#000000]'
+                  }
+                `}
+                style={{ 
+                  backgroundColor: activeTab === tab.key ? tab.color : 'white',
+                  transform: isMobile ? 'none' : `rotate(${index % 2 === 0 ? -1 : 1}deg)`
+                }}
+              >
+                {tab.label}
+                <span className="ml-1.5 sm:ml-2 px-1.5 sm:px-2 py-0.5 rounded-full bg-black/10 text-[10px] sm:text-xs">
+                  {tab.count}
+                </span>
+              </motion.button>
+            ))}
+          </motion.div>
+        </div>
       </section>
 
       {/* Events Grid - Cards tortos e coloridos */}
@@ -473,26 +482,26 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
               const date = formatDate(event.event_date);
               const status = getEventStatus(event);
               const colors = cardColors[index % cardColors.length];
-              const rotation = rotations[index % rotations.length];
+              const rotation = isMobile ? 0 : rotations[index % rotations.length];
               
               return (
                 <motion.article
                   key={event.id}
-                  initial={{ opacity: 0, y: 30, rotate: rotation * 2 }}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0, rotate: rotation }}
-                  transition={{ delay: index * 0.08, duration: 0.4 }}
-                  whileHover={{ rotate: 0, y: -8, scale: 1.02 }}
+                  transition={{ delay: index * 0.05, duration: 0.3 }}
+                  whileHover={isMobile ? { y: -2 } : { rotate: 0, y: -6, scale: 1.01 }}
                   className="group cursor-pointer"
                   onClick={() => onViewEvent(event.id.toString())}
                 >
                   {/* Card Container */}
                   <div 
-                    className="relative rounded-2xl border-[3px] border-black p-5 shadow-[6px_6px_0px_0px_#000000] transition-all duration-200"
+                    className="relative rounded-2xl border-[3px] border-black p-4 sm:p-5 shadow-[4px_4px_0px_0px_#000000] sm:shadow-[6px_6px_0px_0px_#000000] transition-all duration-200"
                     style={{ backgroundColor: colors.bg }}
                   >
                     {/* Status Badge */}
-                    <div className="absolute -top-3 -right-3">
-                      <div className={`px-3 py-1.5 rounded-full border-[3px] border-black font-black text-xs shadow-[2px_2px_0px_0px_#000000] ${status.textColor} ${status.color}`}>
+                    <div className="absolute -top-2.5 right-2 sm:-top-3 sm:-right-3 z-10">
+                      <div className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border-[2.5px] sm:border-[3px] border-black font-black text-[11px] sm:text-xs shadow-[2px_2px_0px_0px_#000000] ${status.textColor} ${status.color}`}>
                         {status.label}
                       </div>
                     </div>
@@ -581,7 +590,7 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
                               navigate(`/event/${event.id}/secret-santa/my-result`);
                             }
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-[2px] border-black bg-white hover:bg-yellow-200 text-black font-black text-xs shadow-[2px_2px_0px_0px_#000000] transition-colors"
+                          className="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border-[2px] border-black bg-white hover:bg-yellow-200 text-black font-black text-xs shadow-[2px_2px_0px_0px_#000000] active:translate-y-0.5 transition-all"
                         >
                           <Gift className="w-3.5 h-3.5 text-[#FF6B35]" />
                           {event.isOwner ? 'Gerenciar Sorteio ⚙️' : 'Ver Meu Amigo 🎁'}
@@ -617,29 +626,30 @@ const Dashboard = ({ userEmail, onCreateEvent, onViewEvent, onLogout }: Dashboar
 
       {/* FAB - Sticker style */}
       <motion.div 
-        className="fixed bottom-6 right-6 z-50"
+        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50 select-none"
         initial={{ scale: 0, rotate: -20 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{ delay: 0.5, type: "spring" }}
       >
         <motion.button 
           onClick={onCreateEvent}
-          whileHover={{ scale: 1.1, rotate: 5 }}
+          whileHover={{ scale: 1.08, rotate: 3 }}
           whileTap={{ scale: 0.95 }}
-          className="relative w-16 h-16 rounded-2xl border-[3px] border-black bg-[#FF6B35] shadow-[5px_5px_0px_0px_#000000] flex items-center justify-center group"
+          className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-[3px] border-black bg-[#FF6B35] shadow-[4px_4px_0px_0px_#000000] sm:shadow-[5px_5px_0px_0px_#000000] flex items-center justify-center group"
+          aria-label="Criar novo rolê"
         >
-          <Plus className="w-8 h-8 text-white group-hover:rotate-90 transition-transform duration-300" />
+          <Plus className="w-7 h-7 sm:w-8 sm:h-8 text-white group-hover:rotate-90 transition-transform duration-300" />
           
           {/* Sticker decorativo */}
-          <div className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-[#FFD93D] border-[2px] border-black" />
+          <div className="absolute -top-1.5 -left-1.5 sm:-top-2 sm:-left-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-[#FFD93D] border-[2px] border-black" />
         </motion.button>
         
-        {/* Tooltip */}
+        {/* Tooltip (apenas desktop para não atrapalhar cliques no mobile) */}
         <motion.div 
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.8 }}
-          className="absolute right-20 top-4 px-4 py-2 rounded-xl border-[3px] border-black bg-white shadow-[3px_3px_0px_0px_#000000] whitespace-nowrap font-bold text-sm transform -rotate-2"
+          className="hidden sm:block absolute right-20 top-4 px-4 py-2 rounded-xl border-[3px] border-black bg-white shadow-[3px_3px_0px_0px_#000000] whitespace-nowrap font-bold text-sm transform -rotate-2 pointer-events-none"
         >
           Novo Rolê! 🎉
         </motion.div>
