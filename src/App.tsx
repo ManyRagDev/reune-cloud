@@ -27,6 +27,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import StudioPreview from "./pages/StudioPreview";
+import LandingVideoScene from "./pages/Simulations/LandingVideoScene";
 import { AnalyticsTracker } from "./components/AnalyticsTracker";
 import { AdminFloatingButton } from "./components/admin/AdminFloatingButton";
 
@@ -53,6 +54,7 @@ const App = () => {
 
             {/* Studio Route */}
             <Route path="/studio-preview" element={<StudioPreview />} />
+            <Route path="/simulacao-video" element={<LandingVideoScene />} />
 
             {/* Secret Santa Routes */}
             <Route path="/amigo-secreto" element={<SecretSantaLanding />} />

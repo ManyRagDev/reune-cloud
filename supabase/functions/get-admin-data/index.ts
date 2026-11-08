@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
             console.error('⚠️  Failed to fetch users:', error);
         }
 
-        // Fetch Secret Santa Events
+        // Fetch Secret Santa Events (Com Conta)
         const { data: events, error: eventsError } = await supabase
             .from("event_secret_santa")
             .select(`
@@ -156,6 +156,74 @@ Deno.serve(async (req) => {
             .order("created_at", { ascending: false });
 
         if (eventsError) throw eventsError;
+
+        // Fetch Quick Secret Santas (Sem Cadastro / Relâmpago)
+        let quickSecretSantas: any[] = [];
+        try {
+            const { data: qData, error: qError } = await supabase
+                .from("quick_secret_santa")
+                .select(`
+                    id,
+                    title,
+                    created_at,
+                    quick_secret_santa_participants (
+                        id,
+                        name,
+                        token,
+                        opened_at,
+                        views_count
+                    )
+                `)
+                .order("created_at", { ascending: false });
+
+            if (!qError && qData) {
+                quickSecretSantas = qData.map((draw: any) => {
+                    const participants = draw.quick_secret_santa_participants || [];
+                    const openedCount = participants.filter((p: any) => !!p.opened_at).length;
+                    return {
+                        id: draw.id,
+                        title: draw.title || 'Amigo Secreto Relâmpago',
+                        created_at: draw.created_at,
+                        total_participants: participants.length,
+                        opened_count: openedCount,
+                        participants: participants.map((p: any) => ({
+                            id: p.id,
+                            name: p.name,
+                            opened: !!p.opened_at,
+                            opened_at: p.opened_at,
+                            views_count: p.views_count || 0,
+                        }))
+                    };
+                });
+            }
+        } catch (error) {
+            console.error('⚠️ Failed to fetch quick secret santas:', error);
+        }
+
+        // Fetch ReUNE General Social Events (Churrascos, Festas, Almoços)
+        let reuneEvents: any[] = [];
+        try {
+            const { data: rEvents, error: rError } = await supabase
+                .from("table_reune")
+                .select(`
+                    id,
+                    title,
+                    user_id,
+                    tipo_evento,
+                    status,
+                    data_evento,
+                    qtd_pessoas,
+                    created_at,
+                    valor_total_estimado
+                `)
+                .order("created_at", { ascending: false });
+
+            if (!rError && rEvents) {
+                reuneEvents = rEvents;
+            }
+        } catch (error) {
+            console.error('⚠️ Failed to fetch table_reune:', error);
+        }
 
         // Fetch Email Templates
         let templates = [];
@@ -216,6 +284,8 @@ Deno.serve(async (req) => {
                 waitlist: waitlist || [],
                 users: users || [],
                 events: events || [],
+                quickSecretSantas: quickSecretSantas || [],
+                reuneEvents: reuneEvents || [],
                 templates: templates || [],
                 settings: settings || [],
                 emailStats: stats,

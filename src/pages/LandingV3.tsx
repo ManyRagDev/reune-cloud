@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/landing/Footer";
 import videoAtual from "@/assets/video_atual.mp4";
+import videoNovoWebm from "@/assets/video_novo.webm";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { NBLight, NBDark, NBPalette, nb } from "@/lib/neobrutalism";
 import { MarqueeStrip } from "@/components/landing/MarqueeStrip";
@@ -416,18 +417,15 @@ export default function LandingV3() {
                             style={{ backgroundColor: C.sectionBg }}
                         >
                             <video
-                                ref={(el) => {
-                                    if (el) {
-                                        el.load();
-                                        el.pause();
-                                    }
-                                }}
-                                src={videoAtual}
-                                className="w-full h-full object-cover rounded-lg"
+                                className="w-full h-full object-cover rounded-lg aspect-video shadow-inner bg-[#1A1A1A]"
                                 controls
-                                preload="auto"
+                                playsInline
+                                preload="metadata"
                                 muted
+                                loop
                             >
+                                <source src={videoNovoWebm} type="video/webm" />
+                                <source src={videoAtual} type="video/mp4" />
                                 Seu navegador não suporta o elemento de vídeo.
                             </video>
                         </div>

@@ -31,3 +31,5 @@
 - [x] **030-google-analytics-integration** - Integração com Google Analytics 4 (GA4) `[.conductor/tracks/030-google-analytics-integration/plan.md]`
 - [x] **031-admin-user-management-panel** - Painel Administrativo de Usuários com Acesso Restrito e Launcher Global `[.conductor/tracks/031-admin-user-management-panel/plan.md]`
 - [x] **032-legal-terms-privacy-lgpd-and-footer-cleanup** - Revisão dos Termos de Uso, Política de Privacidade com LGPD e Limpeza do Rodapé `[.conductor/tracks/032-legal-terms-privacy-lgpd-and-footer-cleanup/plan.md]`
+- [x] **033-landing-demo-video-simulation** - Novo Vídeo de Demonstração da Landing Page (Criação de Evento + Notificação no Celular) `[.conductor/tracks/033-landing-demo-video-simulation/plan.md]`
+- [x] **034-admin-power-dashboard-metrics-and-users** - Painel Administrativo 360° (Métricas GA4 & Dados Unificados de Usuários) `[.conductor/tracks/034-admin-power-dashboard-metrics-and-users/plan.md]`

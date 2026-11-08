@@ -67,10 +67,60 @@ export interface EmailStats {
   pending: number;
 }
 
+export interface QuickSecretSantaParticipant {
+  id: string;
+  name: string;
+  opened: boolean;
+  opened_at: string | null;
+  views_count: number;
+}
+
+export interface QuickSecretSantaAdmin {
+  id: string;
+  title: string;
+  created_at: string;
+  total_participants: number;
+  opened_count: number;
+  participants: QuickSecretSantaParticipant[];
+}
+
+export interface ReuneEventAdmin {
+  id: string;
+  title: string;
+  user_id: string;
+  tipo_evento?: string | null;
+  status?: string | null;
+  data_evento?: string | null;
+  qtd_pessoas?: number | null;
+  created_at: string;
+  valor_total_estimado?: number | null;
+}
+
+export interface GAMetricsData {
+  configured: boolean;
+  propertyId: string;
+  setupGuide?: {
+    title: string;
+    steps: string[];
+  };
+  metrics: {
+    activeUsersNow: number;
+    totalUsers30d: number;
+    totalPageviews30d: number;
+    totalSessions30d: number;
+    topPages: Array<{ path: string; views: number; title?: string; users?: number }>;
+    topEvents?: Array<{ name: string; count: number }>;
+    deviceBreakdown?: { mobile: number; desktop: number };
+  };
+  updatedAt?: string;
+}
+
 export interface AdminData {
   waitlist: Lead[];
   users: RegisteredUser[];
   events: any[];
+  quickSecretSantas?: QuickSecretSantaAdmin[];
+  reuneEvents?: ReuneEventAdmin[];
   templates: EmailTemplate[];
   settings: AdminSettings[];
   emailStats: EmailStats;
