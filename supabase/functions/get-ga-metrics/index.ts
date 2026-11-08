@@ -16,6 +16,7 @@ const ADMIN_EMAILS = [
  */
 function pemToBinary(pem: string): ArrayBuffer {
     const cleanPem = pem
+        .replace(/\\n/g, '\n')
         .replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/, '')
         .replace(/-----END (?:RSA )?PRIVATE KEY-----/, '')
         .replace(/\s+/g, '');
@@ -130,17 +131,18 @@ Deno.serve(async (req) => {
         const isAdminByEmail = Boolean(userEmail && ADMIN_EMAILS.includes(userEmail));
         const adminPassword = Deno.env.get('ADMIN_DASHBOARD_PASSWORD');
         const isPasswordValid = Boolean(adminPassword && password && password === adminPassword);
+        const isServiceRole = Boolean(jwt && jwt === supabaseKey);
 
-        if (!isAdminByEmail && !isPasswordValid) {
+        if (!isAdminByEmail && !isPasswordValid && !isServiceRole) {
             return new Response(
                 JSON.stringify({ error: 'Acesso negado. Apenas administradores autorizados têm acesso.' }),
                 { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        // Recupera credenciais do Google Analytics Data API do ambiente
-        const rawServiceAccount = Deno.env.get('GA_SERVICE_ACCOUNT_KEY');
-        const propertyId = Deno.env.get('GA_PROPERTY_ID') || 'G-KKX5FSRGFP';
+        // Recupera credenciais: primeiro tenta Deno.env, depois busca em admin_settings
+        let rawServiceAccount = Deno.env.get('GA_SERVICE_ACCOUNT_KEY');
+        let propertyId = Deno.env.get('GA_PROPERTY_ID');
 
         let serviceAccount: Record<string, string> | null = null;
         if (rawServiceAccount) {
@@ -148,13 +150,36 @@ Deno.serve(async (req) => {
                 serviceAccount = JSON.parse(rawServiceAccount);
             } catch (_) {
                 try {
-                    // Tenta decodificar base64 se aplicável
                     serviceAccount = JSON.parse(atob(rawServiceAccount));
                 } catch {
                     serviceAccount = null;
                 }
             }
         }
+
+        if (!serviceAccount || !propertyId) {
+            try {
+                const { data: dbSettings } = await supabase
+                    .from('admin_settings')
+                    .select('key, value')
+                    .in('key', ['ga_service_account', 'ga_property_id']);
+
+                if (dbSettings) {
+                    for (const s of dbSettings) {
+                        if (s.key === 'ga_service_account' && s.value) {
+                            serviceAccount = typeof s.value === 'string' ? JSON.parse(s.value) : s.value;
+                        }
+                        if (s.key === 'ga_property_id' && s.value) {
+                            propertyId = typeof s.value === 'string' ? s.value : String(s.value);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Erro ao carregar admin_settings:', err);
+            }
+        }
+
+        if (!propertyId) propertyId = '563180016';
 
         // Se credenciais do Google Cloud Service Account estiverem configuradas:
         if (serviceAccount?.client_email && serviceAccount?.private_key) {
@@ -173,7 +198,6 @@ Deno.serve(async (req) => {
                         },
                         body: JSON.stringify({
                             metrics: [{ name: 'activeUsers' }],
-                            dimensions: [{ name: 'unifiedScreenName' }],
                         }),
                     }
                 );
@@ -181,7 +205,7 @@ Deno.serve(async (req) => {
                 const realtimeData = realtimeRes.ok ? await realtimeRes.json() : null;
                 const activeUsersNow = Number(realtimeData?.rows?.[0]?.metricValues?.[0]?.value || 0);
 
-                // 2. Relatório Consolidado (Últimos 30 dias)
+                // 2. Relatório Consolidado de Páginas (Últimos 30 dias)
                 const reportRes = await fetch(
                     `https://analyticsdata.googleapis.com/v1beta/properties/${numericPropertyId}:runReport`,
                     {
@@ -211,22 +235,77 @@ Deno.serve(async (req) => {
                     users: Number(row.metricValues?.[0]?.value || 0),
                 }));
 
-                const totals = reportData?.totals?.[0]?.metricValues || [];
-                const totalUsers30d = Number(totals[0]?.value || 0);
-                const totalPageviews30d = Number(totals[1]?.value || 0);
-                const totalSessions30d = Number(totals[2]?.value || 0);
+                // 3. Relatório de Eventos (Últimos 30 dias)
+                const eventsRes = await fetch(
+                    `https://analyticsdata.googleapis.com/v1beta/properties/${numericPropertyId}:runReport`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+                            dimensions: [{ name: 'eventName' }],
+                            metrics: [{ name: 'eventCount' }],
+                            limit: 15,
+                        }),
+                    }
+                );
+
+                const eventsData = eventsRes.ok ? await eventsRes.json() : null;
+                const topEvents = (eventsData?.rows || []).map((row: any) => ({
+                    name: row.dimensionValues?.[0]?.value || '',
+                    count: Number(row.metricValues?.[0]?.value || 0),
+                }));
+
+                // 4. Divisão Mobile vs Desktop
+                const devicesRes = await fetch(
+                    `https://analyticsdata.googleapis.com/v1beta/properties/${numericPropertyId}:runReport`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+                            dimensions: [{ name: 'deviceCategory' }],
+                            metrics: [{ name: 'activeUsers' }],
+                        }),
+                    }
+                );
+
+                const devicesData = devicesRes.ok ? await devicesRes.json() : null;
+                let mobileCount = 0;
+                let desktopCount = 0;
+                for (const d of (devicesData?.rows || [])) {
+                    const cat = d.dimensionValues?.[0]?.value?.toLowerCase() || '';
+                    const count = Number(d.metricValues?.[0]?.value || 0);
+                    if (cat === 'mobile' || cat === 'tablet') mobileCount += count;
+                    else desktopCount += count;
+                }
+                const devTotal = mobileCount + desktopCount || 1;
+                const mobilePct = Math.round((mobileCount / devTotal) * 100);
+                const desktopPct = 100 - mobilePct;
+
+                // Totais calculados
+                const totalPageviews30d = topPages.reduce((acc: number, curr: any) => acc + curr.views, 0);
+                const totalUsers30d = (devicesData?.rows || []).reduce((acc: number, curr: any) => acc + Number(curr.metricValues?.[0]?.value || 0), 0);
+                const totalSessions30d = (reportData?.rows || []).reduce((acc: number, curr: any) => acc + Number(curr.metricValues?.[2]?.value || 0), 0);
 
                 return new Response(
                     JSON.stringify({
                         configured: true,
-                        propertyId,
+                        propertyId: numericPropertyId,
                         metrics: {
                             activeUsersNow,
                             totalUsers30d,
                             totalPageviews30d,
                             totalSessions30d,
                             topPages,
-                            deviceBreakdown: { mobile: 78, desktop: 22 },
+                            topEvents,
+                            deviceBreakdown: { mobile: mobilePct, desktop: desktopPct },
                         },
                         updatedAt: new Date().toISOString(),
                     }),
@@ -234,50 +313,28 @@ Deno.serve(async (req) => {
                 );
             } catch (err: any) {
                 console.error('Erro ao consultar GA Data API:', err);
+                return new Response(
+                    JSON.stringify({
+                        error: 'Erro na API do Google Analytics',
+                        details: err?.message,
+                        configured: true,
+                    }),
+                    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
             }
         }
 
-        // Fallback estruturado se a chave de serviço ainda não tiver sido inserida no Supabase
+        // Fallback se não configurado
         return new Response(
             JSON.stringify({
                 configured: false,
                 propertyId,
-                setupGuide: {
-                    title: 'Como conectar a Google Analytics Data API ao ReUNE',
-                    steps: [
-                        'Acesse o Google Cloud Console (console.cloud.google.com) e crie um projeto.',
-                        'Ative a "Google Analytics Data API".',
-                        'Em IAM & Admin > Contas de Serviço, crie uma Service Account e gere uma chave JSON.',
-                        'No Google Analytics (analytics.google.com), dê permissão de "Leitor" para o e-mail da Service Account na propriedade G-KKX5FSRGFP.',
-                        'Cole a chave JSON no Supabase Secrets com o nome GA_SERVICE_ACCOUNT_KEY e defina GA_PROPERTY_ID.',
-                    ],
-                },
-                metrics: {
-                    activeUsersNow: 1,
-                    totalPageviews30d: 1350,
-                    totalSessions30d: 920,
-                    totalUsers30d: 680,
-                    topPages: [
-                        { path: '/amigo-secreto', views: 640, title: 'Landing Amigo Secreto' },
-                        { path: '/', views: 420, title: 'ReUNE – Landing V3' },
-                        { path: '/amigo-secreto/rapido', views: 190, title: 'Sorteador Relâmpago' },
-                        { path: '/envelope/*', views: 100, title: 'Envelopes Lacrados' },
-                    ],
-                    topEvents: [
-                        { name: 'page_view', count: 1350 },
-                        { name: 'amigo_secreto_sem_cadastro_criado', count: 52 },
-                        { name: 'secret_santa_whatsapp_share', count: 68 },
-                        { name: 'secret_santa_open_choice_modal', count: 124 },
-                        { name: 'reune_cta_click', count: 85 },
-                    ],
-                    deviceBreakdown: { mobile: 80, desktop: 20 },
-                },
-                updatedAt: new Date().toISOString(),
+                message: 'Chave de serviço Google Cloud não configurada.',
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     } catch (error: any) {
-        console.error('Erro na Edge Function get-ga-metrics:', error);
+        console.error('Erro geral get-ga-metrics:', error);
         return new Response(
             JSON.stringify({ error: 'Internal Server Error', details: error?.message }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

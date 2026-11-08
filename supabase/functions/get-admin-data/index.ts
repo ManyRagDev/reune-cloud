@@ -51,8 +51,9 @@ Deno.serve(async (req) => {
         const isAdminByEmail = Boolean(userEmail && ADMIN_EMAILS.includes(userEmail));
         const adminPassword = Deno.env.get('ADMIN_DASHBOARD_PASSWORD');
         const isPasswordValid = Boolean(adminPassword && password && password === adminPassword);
+        const isServiceRole = Boolean(jwt && jwt === supabaseKey);
 
-        if (!isAdminByEmail && !isPasswordValid) {
+        if (!isAdminByEmail && !isPasswordValid && !isServiceRole) {
             console.error('⛔ Acesso negado. Email autenticado:', userEmail || 'Nenhum');
             return new Response(
                 JSON.stringify({ error: 'Acesso negado. Apenas administradores autorizados têm acesso.' }),
